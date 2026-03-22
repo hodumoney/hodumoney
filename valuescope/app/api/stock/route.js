@@ -197,4 +197,12 @@ export async function GET(request) {
       dailyChange: safe(quote?.changePercentage || profile?.changePercentage) / 100,
       yearHigh: profile?.range ? safe(parseFloat(profile.range.split("-")[1])) : 0,
       yearLow: profile?.range ? safe(parseFloat(profile.range.split("-")[0])) : 0,
-      volume: safe(quote?.volume || profile?.vol
+      volume: safe(quote?.volume || profile?.volume),
+      beta: safe(profile?.beta),
+      quarterly,
+      annual,
+    });
+  } catch (err) {
+    return Response.json({ error: "Error: " + err.message }, { status: 500 });
+  }
+}
