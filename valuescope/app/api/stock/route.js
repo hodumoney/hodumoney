@@ -1,6 +1,6 @@
 import {
   getProfile, getQuote, getIncomeQuarterly, getBalanceQuarterly,
-  getCashflowQuarterly, getKeyMetrics, getRatios,
+  getCashflowQuarterly,
 } from "@/lib/fmp";
 
 export async function GET(request) {
@@ -12,15 +12,13 @@ export async function GET(request) {
   }
 
   try {
-    const [profile, quote, income, balance, cashflow, metrics, ratios] =
+    const [profile, quote, income, balance, cashflow] =
       await Promise.all([
         getProfile(symbol),
         getQuote(symbol),
         getIncomeQuarterly(symbol),
         getBalanceQuarterly(symbol),
         getCashflowQuarterly(symbol),
-        getKeyMetrics(symbol),
-        getRatios(symbol),
       ]);
 
     if (!profile && !quote) {
@@ -32,8 +30,6 @@ export async function GET(request) {
     const incR = (income || []).slice(0, 5).reverse();
     const balR = (balance || []).slice(0, 5).reverse();
     const cfR = (cashflow || []).slice(0, 5).reverse();
-    const metR = (metrics || []).slice(0, 5).reverse();
-    const ratR = (ratios || []).slice(0, 5).reverse();
 
     const makeLabel = (dateStr) => {
       if (!dateStr) return "";
@@ -45,6 +41,47 @@ export async function GET(request) {
 
     const labels = incR.map(r => makeLabel(r.date || r.fillingDate));
 
+    const price = safe(quote?.price || profile?.price);
+    const mktCap = safe(quote?.marketCap || profile?.marketCap);
+
+    const calcPER = (inc, p) => {
+      const eps = safe(inc?.epsdiluted || inc?.eps);
+      return eps !== 0 ? p / (eps * 4) : 0;
+    };
+
+    const calcPBR = (bal, mc) => {
+      const eq = safe(bal?.totalStockholdersEquity);
+      return eq !== 0 ? mc / eq : 0;
+    };
+
+    const calcDE = (bal) => {
+      const eq = safe(bal?.totalStockholdersEquity);
+      const debt = safe(bal?.totalDebt || bal?.longTermDebt);
+      return eq !== 0 ? debt / eq : 0;
+    };
+
+    const calcROE = (inc, bal) => {
+      const ni = safe(inc?.netIncome);
+      const eq = safe(bal?.totalStockholdersEquity);
+      return eq !== 0 ? (ni * 4 / eq) * 100 : 0;
+    };
+
+    const calcOpMargin = (inc) => {
+      const rev = safe(inc?.revenue);
+      const op = safe(inc?.operatingIncome);
+      return rev !== 0 ? op / rev : 0;
+    };
+
+    const calcNetMargin = (inc) => {
+      const rev = safe(inc?.revenue);
+      const ni = safe(inc?.netIncome);
+      return rev !== 0 ? ni / rev : 0;
+    };
+
+    const lastInc = incR[incR.length - 1] || {};
+    const lastBal = balR[balR.length - 1] || {};
+    const divYield = safe(profile?.lastDividend) / (price || 1) * 100;
+
     return Response.json({
       name: profile?.companyName || quote?.name || symbol,
       ticker: symbol,
@@ -52,22 +89,50 @@ export async function GET(request) {
       description: profile?.description ? profile.description.split(".")[0] + "." : "",
       sector: profile?.sector || "",
       industry: profile?.industry || "",
-      price: safe(quote?.price || profile?.price),
-      marketCap: safe(quote?.marketCap || profile?.marketCap),
+      price: price,
+      marketCap: mktCap,
       dailyChange: safe(quote?.changePercentage || profile?.changePercentage) / 100,
-      yearHigh: safe(profile?.range ? parseFloat(profile.range.split("-")[1]) : 0),
-      yearLow: safe(profile?.range ? parseFloat(profile.range.split("-")[0]) : 0),
+      yearHigh: profile?.range ? safe(parseFloat(profile.range.split("-")[1])) : 0,
+      yearLow: profile?.range ? safe(parseFloat(profile.range.split("-")[0])) : 0,
       volume: safe(quote?.volume || profile?.volume),
       beta: safe(profile?.beta),
       labels,
       coreMetrics: {
-        per: { value: safe(ratR[ratR.length-1]?.priceEarningsRatio || metR[metR.length-1]?.peRatio), trend: ratR.map(m => safe(m.priceEarningsRatio || 0)), meaning: "1\ub144 \uc774\uc775 \ub300\ube44 \uc8fc\uac00 \uc218\uc900" },
-        pbr: { value: safe(ratR[ratR.length-1]?.priceToBookRatio), trend: ratR.map(m => safe(m.priceToBookRatio)), meaning: "\uc21c\uc790\uc0b0 \ub300\ube44 \uc8fc\uac00 \uc218\uc900" },
-        eps: { value: safe(incR[incR.length-1]?.epsdiluted || incR[incR.length-1]?.eps), trend: incR.map(m => safe(m.epsdiluted || m.eps)), meaning: "\uc8fc\ub2f9 \uc21c\uc774\uc775" },
-        de: { value: safe(metR[metR.length-1]?.debtToEquity), trend: metR.map(m => safe(m.debtToEquity)), meaning: "\uc790\uae30\uc790\ubcf8 \ub300\ube44 \ubd80\ucc44 \ube44\uc728" },
-        roe: { value: safe(ratR[ratR.length-1]?.returnOnEquity) * 100, trend: ratR.map(m => safe(m.returnOnEquity) * 100), meaning: "\uc790\uae30\uc790\ubcf8 \ub300\ube44 \uc774\uc775\ub960" },
-        div: { value: safe(ratR[ratR.length-1]?.dividendYield) * 100, trend: ratR.map(m => safe(m.dividendYield) * 100), meaning: "\ubc30\ub2f9 \uc218\uc775\ub960" },
-        ebitda: { value: safe(incR[incR.length-1]?.ebitda) / 1e6, trend: incR.map(m => safe(m.ebitda) / 1e6), meaning: "\uc601\uc5c5 \ud604\uae08 \ucc3d\ucd9c\ub825" },
+        per: {
+          value: calcPER(lastInc, price),
+          trend: incR.map(m => calcPER(m, price)),
+          meaning: "1\ub144 \uc774\uc775 \ub300\ube44 \uc8fc\uac00 \uc218\uc900"
+        },
+        pbr: {
+          value: calcPBR(lastBal, mktCap),
+          trend: balR.map(m => calcPBR(m, mktCap)),
+          meaning: "\uc21c\uc790\uc0b0 \ub300\ube44 \uc8fc\uac00 \uc218\uc900"
+        },
+        eps: {
+          value: safe(lastInc.epsdiluted || lastInc.eps),
+          trend: incR.map(m => safe(m.epsdiluted || m.eps)),
+          meaning: "\uc8fc\ub2f9 \uc21c\uc774\uc775"
+        },
+        de: {
+          value: calcDE(lastBal),
+          trend: balR.map(m => calcDE(m)),
+          meaning: "\uc790\uae30\uc790\ubcf8 \ub300\ube44 \ubd80\ucc44"
+        },
+        roe: {
+          value: calcROE(lastInc, lastBal),
+          trend: incR.map((m, i) => calcROE(m, balR[i] || {})),
+          meaning: "\uc790\uae30\uc790\ubcf8 \ub300\ube44 \uc774\uc775\ub960"
+        },
+        div: {
+          value: divYield,
+          trend: incR.map(() => divYield),
+          meaning: "\ubc30\ub2f9 \uc218\uc775\ub960"
+        },
+        ebitda: {
+          value: safe(lastInc.ebitda) / 1e6,
+          trend: incR.map(m => safe(m.ebitda) / 1e6),
+          meaning: "\uc601\uc5c5 \ud604\uae08 \ucc3d\ucd9c\ub825"
+        },
       },
       financials: {
         income: {
@@ -93,11 +158,14 @@ export async function GET(request) {
         },
         advanced: {
           labels,
-          evEbitda: metR.map(m => safe(m.enterpriseValueOverEBITDA)),
-          pe: metR.map(m => safe(m.peRatio)),
-          peg: metR.map(m => safe(m.pegRatio)),
-          opMargin: ratR.map(m => safe(m.operatingProfitMargin)),
-          netMargin: ratR.map(m => safe(m.netProfitMargin)),
+          evEbitda: incR.map(m => {
+            const eb = safe(m.ebitda);
+            return eb !== 0 ? mktCap / (eb * 4) : 0;
+          }),
+          pe: incR.map(m => calcPER(m, price)),
+          peg: incR.map(() => 0),
+          opMargin: incR.map(m => calcOpMargin(m)),
+          netMargin: incR.map(m => calcNetMargin(m)),
         },
         shares: {
           quarterly: incR.map(r => Math.round(safe(r.weightedAverageShsOutDil || r.weightedAverageShsOut) / 1e6)),
@@ -106,6 +174,6 @@ export async function GET(request) {
       }
     });
   } catch (err) {
-    return Response.json({ error: "Data fetch error: " + err.message }, { status: 500 });
+    return Response.json({ error: "Error: " + err.message }, { status: 500 });
   }
 }
