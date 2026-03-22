@@ -1,5 +1,4 @@
-// lib/fmp.js — Financial Modeling Prep API
-const BASE = "https://financialmodelingprep.com/api/v3";
+const BASE = "https://financialmodelingprep.com/stable";
 const KEY = process.env.FMP_API_KEY;
 
 async function fmpFetch(path) {
@@ -17,37 +16,37 @@ async function fmpFetch(path) {
 }
 
 export async function getProfile(symbol) {
-  const d = await fmpFetch(`/profile/${symbol}`);
+  const d = await fmpFetch(`/profile?symbol=${symbol}`);
   return Array.isArray(d) ? d[0] || null : null;
 }
 
 export async function getQuote(symbol) {
-  const d = await fmpFetch(`/quote/${symbol}`);
+  const d = await fmpFetch(`/quote?symbol=${symbol}`);
   return Array.isArray(d) ? d[0] || null : null;
 }
 
 export async function getIncomeQuarterly(symbol) {
-  const d = await fmpFetch(`/income-statement/${symbol}?period=quarter&limit=5`);
+  const d = await fmpFetch(`/income-statement?symbol=${symbol}&period=quarter&limit=5`);
   return Array.isArray(d) ? d : [];
 }
 
 export async function getBalanceQuarterly(symbol) {
-  const d = await fmpFetch(`/balance-sheet-statement/${symbol}?period=quarter&limit=5`);
+  const d = await fmpFetch(`/balance-sheet-statement?symbol=${symbol}&period=quarter&limit=5`);
   return Array.isArray(d) ? d : [];
 }
 
 export async function getCashflowQuarterly(symbol) {
-  const d = await fmpFetch(`/cash-flow-statement/${symbol}?period=quarter&limit=5`);
+  const d = await fmpFetch(`/cash-flow-statement?symbol=${symbol}&period=quarter&limit=5`);
   return Array.isArray(d) ? d : [];
 }
 
 export async function getKeyMetrics(symbol) {
-  const d = await fmpFetch(`/key-metrics/${symbol}?period=quarter&limit=5`);
+  const d = await fmpFetch(`/key-metrics?symbol=${symbol}&period=quarter&limit=5`);
   return Array.isArray(d) ? d : [];
 }
 
 export async function getRatios(symbol) {
-  const d = await fmpFetch(`/ratios/${symbol}?period=quarter&limit=5`);
+  const d = await fmpFetch(`/ratios?symbol=${symbol}&period=quarter&limit=5`);
   return Array.isArray(d) ? d : [];
 }
 
