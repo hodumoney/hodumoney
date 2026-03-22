@@ -31,6 +31,19 @@ export async function GET(request) {
   }
 
 
+  if (symbol === "TEST") {
+    const K = process.env.FMP_API_KEY;
+    try {
+      const url = `https://financialmodelingprep.com/stable/profile?symbol=AAPL&apikey=${K}`;
+      const res = await fetch(url);
+      const text = await res.text();
+      return Response.json({ status: res.status, body: text.substring(0, 300) });
+    } catch (err) {
+      return Response.json({ error: err.message });
+    }
+  }
+
+
   if (!symbol) {
     return Response.json({ error: "symbol 파라미터가 필요합니다" }, { status: 400 });
   }
