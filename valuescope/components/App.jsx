@@ -1616,8 +1616,8 @@ function CoreValuations({ data, viewMode }) {
   };
 
   // 라벨: API에서 가져온 labels 사용, 없으면 기본값
-  const trendLabels = data.labels && data.labels.length > 0
-    ? data.labels
+  const trendLabels = (data.quarterly || data).labels && (data.quarterly || data).labels.length > 0
+    ? (data.quarterly || data).labels
     : ["Q1", "Q2", "Q3", "Q4", "Q5"];
 
   return (
@@ -1760,7 +1760,7 @@ function FinRowCard({ label, values, labels, expanded, onToggle, fmtFn, allowNeg
 function FinancialStatements({ data }) {
   const [expandedKey, setExpandedKey] = useState(null);
   const toggle = (key) => setExpandedKey(expandedKey === key ? null : key);
-  const labels = data.financials.income.labels;
+  const labels = (data.quarterly || data).financials.income.labels;
 
   const sections = [
     {
@@ -1768,10 +1768,10 @@ function FinancialStatements({ data }) {
       subtitle: "단위: 백만 달러 ($M)",
       desc: "회사가 얼마나 벌고, 얼마나 남겼는지 보여주는 성적표입니다",
       rows: [
-        { key: "revenue", label: "총 매출", values: data.financials.income.revenue },
-        { key: "grossProfit", label: "매출 총이익", values: data.financials.income.grossProfit },
-        { key: "opIncome", label: "영업이익", values: data.financials.income.operatingIncome },
-        { key: "netIncome", label: "순이익", values: data.financials.income.netIncome },
+        { key: "revenue", label: "총 매출", values: (data.quarterly || data).financials.income.revenue },
+        { key: "grossProfit", label: "매출 총이익", values: (data.quarterly || data).financials.income.grossProfit },
+        { key: "opIncome", label: "영업이익", values: (data.quarterly || data).financials.income.operatingIncome },
+        { key: "netIncome", label: "순이익", values: (data.quarterly || data).financials.income.netIncome },
       ]
     },
     {
@@ -1779,9 +1779,9 @@ function FinancialStatements({ data }) {
       subtitle: "단위: 백만 달러 ($M)",
       desc: "회사가 가진 자산과 빚, 순자산을 보여주는 재무 건강 진단서입니다",
       rows: [
-        { key: "totalAssets", label: "총 자산", values: data.financials.balance.totalAssets },
-        { key: "currentLiab", label: "유동 부채", values: data.financials.balance.currentLiab },
-        { key: "equity", label: "자본 총계", values: data.financials.balance.equity },
+        { key: "totalAssets", label: "총 자산", values: (data.quarterly || data).financials.balance.totalAssets },
+        { key: "currentLiab", label: "유동 부채", values: (data.quarterly || data).financials.balance.currentLiab },
+        { key: "equity", label: "자본 총계", values: (data.quarterly || data).financials.balance.equity },
       ]
     },
     {
@@ -1789,11 +1789,11 @@ function FinancialStatements({ data }) {
       subtitle: "단위: 백만 달러 ($M)",
       desc: "실제로 현금이 어디서 들어오고 어디로 나갔는지 추적합니다",
       rows: [
-        { key: "fcf", label: "자유현금흐름", values: data.financials.cashflow.fcf },
-        { key: "opCash", label: "영업활동 현금흐름", values: data.financials.cashflow.opCash },
-        { key: "invCash", label: "투자활동 현금흐름", values: data.financials.cashflow.invCash, allowNeg: true },
-        { key: "finCash", label: "재무활동 현금흐름", values: data.financials.cashflow.finCash, allowNeg: true },
-        { key: "netChange", label: "현금 증감액", values: data.financials.cashflow.netChange, allowNeg: true },
+        { key: "fcf", label: "자유현금흐름", values: (data.quarterly || data).financials.cashflow.fcf },
+        { key: "opCash", label: "영업활동 현금흐름", values: (data.quarterly || data).financials.cashflow.opCash },
+        { key: "invCash", label: "투자활동 현금흐름", values: (data.quarterly || data).financials.cashflow.invCash, allowNeg: true },
+        { key: "finCash", label: "재무활동 현금흐름", values: (data.quarterly || data).financials.cashflow.finCash, allowNeg: true },
+        { key: "netChange", label: "현금 증감액", values: (data.quarterly || data).financials.cashflow.netChange, allowNeg: true },
       ]
     }
   ];
@@ -1827,32 +1827,32 @@ function FinancialStatements({ data }) {
 function AdvancedMetrics({ data }) {
   const [expandedKey, setExpandedKey] = useState(null);
   const toggle = (key) => setExpandedKey(expandedKey === key ? null : key);
-  const labels = data.financials.advanced.labels;
+  const labels = (data.quarterly || data).financials.advanced.labels;
 
   const sections = [
     {
       title: "📐 밸류에이션 심화",
       desc: "기업의 적정 가치를 다각도로 평가하는 심화 지표입니다",
       rows: [
-        { key: "evEbitda", label: "EV/EBITDA", values: data.financials.advanced.evEbitda, fmt: v => `${v.toFixed(1)}x` },
-        { key: "pe", label: "PER", values: data.financials.advanced.pe, fmt: v => v.toFixed(1) },
-        { key: "peg", label: "PEG", values: data.financials.advanced.peg, fmt: v => v.toFixed(2) },
+        { key: "evEbitda", label: "EV/EBITDA", values: (data.quarterly || data).financials.advanced.evEbitda, fmt: v => `${v.toFixed(1)}x` },
+        { key: "pe", label: "PER", values: (data.quarterly || data).financials.advanced.pe, fmt: v => v.toFixed(1) },
+        { key: "peg", label: "PEG", values: (data.quarterly || data).financials.advanced.peg, fmt: v => v.toFixed(2) },
       ]
     },
     {
       title: "📊 수익성",
       desc: "매출 대비 얼마나 효율적으로 이익을 내고 있는지 보여줍니다",
       rows: [
-        { key: "opMargin", label: "영업이익률", values: data.financials.advanced.opMargin, fmt: v => `${(v * 100).toFixed(1)}%` },
-        { key: "netMargin", label: "순이익률", values: data.financials.advanced.netMargin, fmt: v => `${(v * 100).toFixed(1)}%` },
+        { key: "opMargin", label: "영업이익률", values: (data.quarterly || data).financials.advanced.opMargin, fmt: v => `${(v * 100).toFixed(1)}%` },
+        { key: "netMargin", label: "순이익률", values: (data.quarterly || data).financials.advanced.netMargin, fmt: v => `${(v * 100).toFixed(1)}%` },
       ]
     },
     {
       title: "👥 주주환원",
       desc: "자사주 매입 등 주주 가치를 높이는 활동을 추적합니다",
       rows: [
-        { key: "sharesQ", label: "발행주식수 (분기)", values: data.financials.shares.quarterly, fmt: v => `${v.toLocaleString()}M` },
-        { key: "sharesY", label: "발행주식수 (연간)", values: data.financials.shares.yearly, fmt: v => `${v.toLocaleString()}M` },
+        { key: "sharesQ", label: "발행주식수 (분기)", values: (data.quarterly || data).financials.shares.quarterly, fmt: v => `${v.toLocaleString()}M` },
+        { key: "sharesY", label: "발행주식수 (연간)", values: (data.quarterly || data).financials.shares.yearly, fmt: v => `${v.toLocaleString()}M` },
       ]
     }
   ];
