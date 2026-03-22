@@ -1,155 +1,126 @@
-
-export async function POST(request) {
-  const KEY = process.env.FMP_API_KEY;
-  const body = await request.json();
-  const symbol = body.symbol || "AAPL";
-  try {
-    const url = `https://financialmodelingprep.com/stable/profile?symbol=${symbol}&apikey=${KEY}`;
-    const res = await fetch(url);
-    const text = await res.text();
-    return Response.json({ keyLen: KEY?.length, status: res.status, raw: text.substring(0, 300) });
-  } catch (err) {
-    return Response.json({ error: err.message, keyLen: KEY?.length });
-  }
-}
-
-
-
-// app/api/stock/route.js
 import {
-  getProfile, getQuote, getIncomeQuarterly, getBalanceQuarterly,
-  getCashflowQuarterly, getKeyMetrics, getRatios,
+  getProfile, getQuote,
+  getIncomeQuarterly, getBalanceQuarterly, getCashflowQuarterly,
+  getIncomeAnnual, getBalanceAnnual, getCashflowAnnual,
 } from "@/lib/fmp";
+
+export const dynamic = "force-dynamic";
 
 export async function GET(request) {
   const { searchParams } = new URL(request.url);
   const symbol = searchParams.get("symbol")?.toUpperCase();
 
-  if (symbol === "DEBUG") {
-    const K = process.env.FMP_API_KEY;
-    return Response.json({ keyLength: K ? K.length : 0, keyStart: K ? K.substring(0,4) : "NONE" });
-  }
-
-
-  if (symbol === "TEST") {
-    const K = process.env.FMP_API_KEY;
-    try {
-      const url = `https://financialmodelingprep.com/stable/profile?symbol=AAPL&apikey=${K}`;
-      const res = await fetch(url);
-      const text = await res.text();
-      return Response.json({ status: res.status, body: text.substring(0, 300) });
-    } catch (err) {
-      return Response.json({ error: err.message });
-    }
-  }
-
-
   if (!symbol) {
-    return Response.json({ error: "symbol 파라미터가 필요합니다" }, { status: 400 });
+    return Response.json({ error: "symbol required" }, { status: 400 });
   }
 
   try {
-    const [profile, quote, income, balance, cashflow, metrics, ratios] =
+    const [profile, quote, incQ, balQ, cfQ, incA, balA, cfA] =
       await Promise.all([
         getProfile(symbol),
         getQuote(symbol),
         getIncomeQuarterly(symbol),
         getBalanceQuarterly(symbol),
         getCashflowQuarterly(symbol),
-        getKeyMetrics(symbol),
-        getRatios(symbol),
+        getIncomeAnnual(symbol),
+        getBalanceAnnual(symbol),
+        getCashflowAnnual(symbol),
       ]);
 
     if (!profile && !quote) {
-      return Response.json({ error: `${symbol} 종목을 찾을 수 없습니다` }, { status: 404 });
+      return Response.json({ error: symbol + " not found" }, { status: 404 });
     }
 
     const safe = (v) => (typeof v === "number" && isFinite(v)) ? v : 0;
+    const price = safe(quote?.price || profile?.price);
+    const mktCap = safe(quote?.marketCap || profile?.marketCap);
+    const divYield = safe(profile?.lastDividend) / (price || 1) * 100;
 
-    const incR = (income || []).slice(0, 5).reverse();
-    const balR = (balance || []).slice(0, 5).reverse();
-    const cfR = (cashflow || []).slice(0, 5).reverse();
-    const metR = (metrics || []).slice(0, 5).reverse();
-    const ratR = (ratios || []).slice(0, 5).reverse();
+    const incQR = (incQ || []).slice(0, 5).reverse();
+    const balQR = (balQ || []).slice(0, 5).reverse();
+    const cfQR = (cfQ || []).slice(0, 5).reverse();
+    const incAR = (incA || []).slice(0, 5).reverse();
+    const balAR = (balA || []).slice(0, 5).reverse();
+    const cfAR = (cfA || []).slice(0, 5).reverse();
 
-    const makeLabel = (dateStr) => {
-      if (!dateStr) return "";
-      const d = new Date(dateStr);
-      const y = String(d.getFullYear()).slice(-2);
-      const q = Math.ceil((d.getMonth() + 1) / 3);
-      return `${y}Q${q}`;
-    };
+    const qLabel = (d) => { if (!d) return ""; const x = new Date(d); return String(x.getFullYear()).slice(-2) + "Q" + Math.ceil((x.getMonth()+1)/3); };
+    const yLabel = (d) => { if (!d) return ""; return String(new Date(d).getFullYear()); };
 
-    const labels = incR.map(r => makeLabel(r.date));
+    const labelsQ = incQR.map(r => qLabel(r.date));
+    const labelsA = incAR.map(r => yLabel(r.date));
 
-    const result = {
+    const calcPER = (inc, p, ann) => { const e = safe(inc?.epsdiluted || inc?.eps); return e !== 0 ? p / (ann ? e : e * 4) : 0; };
+    const calcPBR = (bal, mc) => { const eq = safe(bal?.totalStockholdersEquity); return eq !== 0 ? mc / eq : 0; };
+    const calcDE = (bal) => { const eq = safe(bal?.totalStockholdersEquity); const d = safe(bal?.totalDebt || bal?.longTermDebt); return eq !== 0 ? d / eq : 0; };
+    const calcROE = (inc, bal, ann) => { const ni = safe(inc?.netIncome); const eq = safe(bal?.totalStockholdersEquity); return eq !== 0 ? (ni * (ann?1:4) / eq) * 100 : 0; };
+    const calcOM = (inc) => { const r = safe(inc?.revenue); return r !== 0 ? safe(inc?.operatingIncome) / r : 0; };
+    const calcNM = (inc) => { const r = safe(inc?.revenue); return r !== 0 ? safe(inc?.netIncome) / r : 0; };
+    const calcEVE = (inc, mc, ann) => { const e = safe(inc?.ebitda); return e !== 0 ? mc / (e * (ann?1:4)) : 0; };
+
+    const build = (incArr, balArr, cfArr, labels, ann) => ({
+      labels,
+      coreMetrics: {
+        per: { value: calcPER(incArr[incArr.length-1], price, ann), trend: incArr.map(m => calcPER(m, price, ann)), meaning: "1\ub144 \uc774\uc775 \ub300\ube44 \uc8fc\uac00 \uc218\uc900" },
+        pbr: { value: calcPBR(balArr[balArr.length-1], mktCap), trend: balArr.map(m => calcPBR(m, mktCap)), meaning: "\uc21c\uc790\uc0b0 \ub300\ube44 \uc8fc\uac00 \uc218\uc900" },
+        eps: { value: safe((incArr[incArr.length-1]||{}).epsdiluted||(incArr[incArr.length-1]||{}).eps), trend: incArr.map(m => safe(m.epsdiluted||m.eps)), meaning: "\uc8fc\ub2f9 \uc21c\uc774\uc775" },
+        de: { value: calcDE(balArr[balArr.length-1]), trend: balArr.map(m => calcDE(m)), meaning: "\uc790\uae30\uc790\ubcf8 \ub300\ube44 \ubd80\ucc44" },
+        roe: { value: calcROE(incArr[incArr.length-1], balArr[balArr.length-1], ann), trend: incArr.map((m,i) => calcROE(m, balArr[i]||{}, ann)), meaning: "\uc790\uae30\uc790\ubcf8 \ub300\ube44 \uc774\uc775\ub960" },
+        div: { value: divYield, trend: incArr.map(() => divYield), meaning: "\ubc30\ub2f9 \uc218\uc775\ub960" },
+        ebitda: { value: safe((incArr[incArr.length-1]||{}).ebitda)/1e6, trend: incArr.map(m => safe(m.ebitda)/1e6), meaning: "\uc601\uc5c5 \ud604\uae08 \ucc3d\ucd9c\ub825" },
+      },
+      income: {
+        labels,
+        revenue: incArr.map(r => Math.round(safe(r.revenue)/1e6)),
+        grossProfit: incArr.map(r => Math.round(safe(r.grossProfit)/1e6)),
+        operatingIncome: incArr.map(r => Math.round(safe(r.operatingIncome)/1e6)),
+        netIncome: incArr.map(r => Math.round(safe(r.netIncome)/1e6)),
+      },
+      balance: {
+        labels,
+        totalAssets: balArr.map(r => Math.round(safe(r.totalAssets)/1e6)),
+        currentLiab: balArr.map(r => Math.round(safe(r.totalCurrentLiabilities)/1e6)),
+        equity: balArr.map(r => Math.round(safe(r.totalStockholdersEquity)/1e6)),
+      },
+      cashflow: {
+        labels,
+        fcf: cfArr.map(r => Math.round(safe(r.freeCashFlow)/1e6)),
+        opCash: cfArr.map(r => Math.round(safe(r.operatingCashFlow)/1e6)),
+        invCash: cfArr.map(r => Math.round(safe(r.netCashUsedForInvestingActivites)/1e6)),
+        finCash: cfArr.map(r => Math.round(safe(r.netCashUsedProvidedByFinancingActivities)/1e6)),
+        netChange: cfArr.map(r => Math.round(safe(r.netChangeInCash)/1e6)),
+      },
+      advanced: {
+        labels,
+        evEbitda: incArr.map(m => calcEVE(m, mktCap, ann)),
+        pe: incArr.map(m => calcPER(m, price, ann)),
+        peg: incArr.map(() => 0),
+        opMargin: incArr.map(m => calcOM(m)),
+        netMargin: incArr.map(m => calcNM(m)),
+      },
+      shares: {
+        quarterly: incArr.map(r => Math.round(safe(r.weightedAverageShsOutDil||r.weightedAverageShsOut)/1e6)),
+        yearly: incArr.map(r => Math.round(safe(r.weightedAverageShsOutDil||r.weightedAverageShsOut)/1e6)),
+      },
+    });
+
+    return Response.json({
       name: profile?.companyName || quote?.name || symbol,
       ticker: symbol,
-      exchange: profile?.exchangeShortName || "",
+      exchange: profile?.exchange || "",
       description: profile?.description ? profile.description.split(".")[0] + "." : "",
       sector: profile?.sector || "",
       industry: profile?.industry || "",
-
-      price: safe(quote?.price),
-      marketCap: safe(quote?.marketCap),
-      dailyChange: quote?.changesPercentage ? safe(quote.changesPercentage) / 100 : 0,
-      yearHigh: safe(quote?.yearHigh),
-      yearLow: safe(quote?.yearLow),
-      volume: safe(quote?.volume),
+      price,
+      marketCap: mktCap,
+      dailyChange: safe(quote?.changePercentage || profile?.changePercentage) / 100,
+      yearHigh: profile?.range ? safe(parseFloat(profile.range.split("-")[1])) : 0,
+      yearLow: profile?.range ? safe(parseFloat(profile.range.split("-")[0])) : 0,
+      volume: safe(quote?.volume || profile?.volume),
       beta: safe(profile?.beta),
-
-      labels,
-
-      coreMetrics: {
-        per: { value: safe(quote?.pe), trend: metR.map(m => safe(m.peRatio)), meaning: "회사가 1년에 버는 돈에 비해 주가가 얼마나 비싼지" },
-        pbr: { value: safe(ratR[ratR.length - 1]?.priceToBookRatio), trend: ratR.map(m => safe(m.priceToBookRatio)), meaning: "회사의 순자산에 비해 주가가 얼마나 비싼지" },
-        eps: { value: safe(incR[incR.length - 1]?.epsdiluted), trend: incR.map(m => safe(m.epsdiluted)), meaning: "주식 한 주당 회사가 벌어들이는 이익" },
-        de: { value: safe(metR[metR.length - 1]?.debtToEquity), trend: metR.map(m => safe(m.debtToEquity)), meaning: "자기자본 대비 빚의 비율" },
-        roe: { value: safe(ratR[ratR.length - 1]?.returnOnEquity) * 100, trend: ratR.map(m => safe(m.returnOnEquity) * 100), meaning: "자기자본으로 얼마나 효율적으로 이익을 냈는지" },
-        div: { value: safe(ratR[ratR.length - 1]?.dividendYield) * 100, trend: ratR.map(m => safe(m.dividendYield) * 100), meaning: "배당으로 받는 수익률" },
-        ebitda: { value: safe(incR[incR.length - 1]?.ebitda) / 1e6, trend: incR.map(m => safe(m.ebitda) / 1e6), meaning: "실제로 벌어들인 현금 흐름" },
-      },
-
-      financials: {
-        income: {
-          labels,
-          revenue: incR.map(r => Math.round(safe(r.revenue) / 1e6)),
-          grossProfit: incR.map(r => Math.round(safe(r.grossProfit) / 1e6)),
-          operatingIncome: incR.map(r => Math.round(safe(r.operatingIncome) / 1e6)),
-          netIncome: incR.map(r => Math.round(safe(r.netIncome) / 1e6)),
-        },
-        balance: {
-          labels,
-          totalAssets: balR.map(r => Math.round(safe(r.totalAssets) / 1e6)),
-          currentLiab: balR.map(r => Math.round(safe(r.totalCurrentLiabilities) / 1e6)),
-          equity: balR.map(r => Math.round(safe(r.totalStockholdersEquity) / 1e6)),
-        },
-        cashflow: {
-          labels,
-          fcf: cfR.map(r => Math.round(safe(r.freeCashFlow) / 1e6)),
-          opCash: cfR.map(r => Math.round(safe(r.operatingCashFlow) / 1e6)),
-          invCash: cfR.map(r => Math.round(safe(r.netCashUsedForInvestingActivites) / 1e6)),
-          finCash: cfR.map(r => Math.round(safe(r.netCashUsedProvidedByFinancingActivities) / 1e6)),
-          netChange: cfR.map(r => Math.round(safe(r.netChangeInCash) / 1e6)),
-        },
-        advanced: {
-          labels,
-          evEbitda: metR.map(m => safe(m.enterpriseValueOverEBITDA)),
-          pe: metR.map(m => safe(m.peRatio)),
-          peg: metR.map(m => safe(m.pegRatio)),
-          opMargin: ratR.map(m => safe(m.operatingProfitMargin)),
-          netMargin: ratR.map(m => safe(m.netProfitMargin)),
-        },
-        shares: {
-          quarterly: incR.map(r => Math.round(safe(r.weightedAverageShsOutDil) / 1e6)),
-          yearly: incR.map(r => Math.round(safe(r.weightedAverageShsOutDil) / 1e6)),
-        }
-      }
-    };
-
-    return Response.json(result);
+      quarterly: build(incQR, balQR, cfQR, labelsQ, false),
+      annual: build(incAR, balAR, cfAR, labelsA, true),
+    });
   } catch (err) {
-    console.error("Stock API error:", err);
-    return Response.json({ error: "데이터를 가져오는 중 오류가 발생했습니다: " + err.message }, { status: 500 });
+    return Response.json({ error: "Error: " + err.message }, { status: 500 });
   }
 }
