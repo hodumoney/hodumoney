@@ -2513,6 +2513,24 @@ export default function App() {
 
     return () => clearTimeout(timer);
   }, [searchQuery]);
+  const resolveTicker = async (query) => {
+    const raw = query.trim();
+    if (!raw) return "";
+
+    const normalized = raw.toUpperCase();
+    if (/^[A-Z.\-]{1,10}$/.test(normalized)) return normalized;
+
+    try {
+      const res = await fetch(`/api/search?q=${encodeURIComponent(raw)}`);
+      const list = await res.json();
+      if (Array.isArray(list) && list.length > 0) {
+        const first = list[0];
+        return (first?.s || first?.symbol || normalized || "").toUpperCase();
+      }
+    } catch (_) {}
+
+    return normalized;
+  };
 
   const handleSearch = async (e) => {
     if (e.key === "Enter" && searchQuery.trim()) {
