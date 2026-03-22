@@ -85,6 +85,37 @@ export async function GET(request) {
       return "Nano Cap";
     };
 
+    const capRank = await (async () => {
+      try {
+        const res = await fetch(
+          `https://stockanalysis.com/api/search?q=${encodeURIComponent(symbol)}`,
+          {
+            headers: { "User-Agent": "Mozilla/5.0" },
+            cache: "no-store",
+          }
+        );
+        if (!res.ok) return null;
+        const results = await res.json();
+        if (!Array.isArray(results)) return null;
+
+        const matched = results.find((item) => {
+          const itemSymbol = (item?.s || item?.symbol || "").toUpperCase();
+          return itemSymbol === symbol;
+        });
+        if (!matched) return null;
+
+        const rankRaw =
+          matched.rank ??
+          matched.marketCapRank ??
+          matched.market_cap_rank ??
+          null;
+        const rankNum = Number(rankRaw);
+        return Number.isFinite(rankNum) && rankNum > 0 ? `${Math.round(rankNum)}위` : null;
+      } catch {
+        return null;
+      }
+    })();
+
     return Response.json({
       name: overview.name,
       ticker: overview.ticker,
@@ -95,6 +126,7 @@ export async function GET(request) {
       price: overview.price,
       marketCap: overview.marketCap,
       capClass: capClass(overview.marketCap),
+      capRank,
       dailyChange: overview.dailyChange,
       yearHigh: overview.yearHigh,
       yearLow: overview.yearLow,

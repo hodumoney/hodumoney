@@ -111,6 +111,22 @@ const SAMPLE_COMPANY = {
   }
 };
 
+const LOCAL_COMPANY_ALIASES = [
+  { name: "삼성전자", ticker: "005930.KS" },
+  { name: "하이닉스", ticker: "000660.KS" },
+  { name: "SK하이닉스", ticker: "000660.KS" },
+  { name: "현대차", ticker: "005380.KS" },
+  { name: "네이버", ticker: "035420.KS" },
+  { name: "카카오", ticker: "035720.KS" },
+  { name: "LG에너지솔루션", ticker: "373220.KS" },
+  { name: "삼성바이오로직스", ticker: "207940.KS" },
+  { name: "엔비디아", ticker: "NVDA" },
+  { name: "애플", ticker: "AAPL" },
+  { name: "테슬라", ticker: "TSLA" },
+  { name: "마이크로소프트", ticker: "MSFT" },
+  { name: "알파벳", ticker: "GOOG" },
+];
+
 // ─── Styles ──────────────────────────────────────────────────────
 const styles = `
   @import url('https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css');
@@ -286,6 +302,7 @@ const styles = `
   }
 
   .search-box {
+    position: relative;
     display: flex;
     align-items: center;
     gap: 8px;
@@ -320,6 +337,52 @@ const styles = `
   .search-icon {
     color: var(--text-tertiary);
     font-size: 16px;
+  }
+
+  .search-suggest {
+    position: absolute;
+    top: calc(100% + 8px);
+    left: 0;
+    right: 0;
+    background: #fff;
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    box-shadow: var(--shadow-lg);
+    max-height: 280px;
+    overflow-y: auto;
+    z-index: 120;
+    padding: 6px;
+  }
+
+  .search-suggest-item {
+    width: 100%;
+    border: none;
+    background: transparent;
+    text-align: left;
+    border-radius: 8px;
+    padding: 10px 12px;
+    cursor: pointer;
+    font-family: inherit;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+  }
+
+  .search-suggest-item:hover {
+    background: var(--bg-hover);
+  }
+
+  .search-suggest-name {
+    font-size: 13px;
+    color: var(--text-primary);
+    font-weight: 600;
+  }
+
+  .search-suggest-ticker {
+    font-size: 12px;
+    color: var(--text-secondary);
+    font-weight: 600;
   }
 
   /* ── Content Area ── */
@@ -2110,7 +2173,7 @@ function PriceChart({ ticker, dailyChange }) {
             const dt = new Date(p.date);
             const yy = String(dt.getFullYear()).slice(-2);
             const mm = String(dt.getMonth() + 1).padStart(2, "0");
-            return { date: yy + "\ub144" + mm + "\uc6d4", price: p.price, fullDate: p.date };
+            return { date: `${yy}년 ${mm}월`, price: p.price, fullDate: p.date };
           }));
         }
       })
@@ -2251,8 +2314,8 @@ function CompanyPage({ searchTicker, onQuickSearch }) {
 
   const safeNum = (v, fallback = 0) => (typeof v === "number" && isFinite(v)) ? v : fallback;
 
-  // 시가총액 분류 (API에서 제공)
-  const capLabel = data.capClass || "N/A";
+  // 시가총액 순위 (API에서 제공, 없으면 분류 fallback)
+  const capLabel = data.capRank || data.capClass || "N/A";
 
   // 고점 대비 하락률
   const dropFromHigh = data.yearHigh > 0 ? ((data.price - data.yearHigh) / data.yearHigh * 100) : 0;
@@ -2359,12 +2422,96 @@ export default function App() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [searchedTicker, setSearchedTicker] = useState("");
+  const [suggestions, setSuggestions] = useState([]);
+  const [showSuggestions, setShowSuggestions] = useState(false);
+  const searchRequestIdRef = useRef(0);
 
-  const handleSearch = (e) => {
-    if (e.key === "Enter" && searchQuery.trim()) {
-      setSearchedTicker(searchQuery.trim().toUpperCase());
-      setActivePage("company");
+  const runTickerSearch = async (query) => {
+    const res = await fetch(`/api/search?q=${encodeURIComponent(query)}`);
+    const list = await res.json();
+    if (!Array.isArray(list)) return [];
+
+    return list
+      .map((item) => ({
+        name: item?.n || item?.name || item?.s || item?.symbol || "",
+        ticker: (item?.s || item?.symbol || "").toUpperCase(),
+      }))
+      .filter((item) => item.ticker);
+  };
+
+  const resolveTicker = async (query) => {
+    const raw = query.trim();
+    if (!raw) return "";
+
+    const normalized = raw.toUpperCase().replace(/\s+/g, "");
+    if (/^[0-9]{6}$/.test(normalized)) return `${normalized}.KS`;
+    if (/^[A-Z0-9.\-]{1,12}$/.test(normalized)) return normalized;
+
+    const localMatch = LOCAL_COMPANY_ALIASES.find((item) =>
+      item.name.toLowerCase() === raw.toLowerCase()
+    );
+    if (localMatch) return localMatch.ticker;
+
+    try {
+      const list = await runTickerSearch(raw);
+      const exactName = list.find((item) => item.name?.toLowerCase() === raw.toLowerCase());
+      if (exactName) return exactName.ticker;
+      if (list[0]) return list[0].ticker;
+    } catch (_) {}
+
+    return normalized;
+  };
+
+  useEffect(() => {
+    const q = searchQuery.trim();
+    if (q.length < 2) {
+      setSuggestions([]);
+      return;
     }
+
+    const requestId = ++searchRequestIdRef.current;
+    const timer = setTimeout(async () => {
+      const localResults = LOCAL_COMPANY_ALIASES
+        .filter((item) => item.name.toLowerCase().startsWith(q.toLowerCase()))
+        .slice(0, 5)
+        .map((item) => ({ name: item.name, ticker: item.ticker }));
+
+      try {
+        const remoteResults = await runTickerSearch(q);
+        if (requestId !== searchRequestIdRef.current) return;
+
+        const merged = [...localResults];
+        for (const item of remoteResults) {
+          if (!merged.some((m) => m.ticker === item.ticker)) {
+            merged.push(item);
+          }
+          if (merged.length >= 8) break;
+        }
+        setSuggestions(merged.slice(0, 8));
+      } catch (_) {
+        if (requestId !== searchRequestIdRef.current) return;
+        setSuggestions(localResults.slice(0, 8));
+      }
+    }, 180);
+
+    return () => clearTimeout(timer);
+  }, [searchQuery]);
+
+  const handleSearch = async (e) => {
+    if (e.key === "Enter" && searchQuery.trim()) {
+      const resolved = await resolveTicker(searchQuery);
+      setSearchedTicker(resolved);
+      setSearchQuery(resolved || searchQuery.trim());
+      setActivePage("company");
+      setShowSuggestions(false);
+    }
+  };
+
+  const handleSelectSuggestion = (item) => {
+    setSearchQuery(item.ticker);
+    setSearchedTicker(item.ticker);
+    setActivePage("company");
+    setShowSuggestions(false);
   };
 
   const handleQuickSearch = (ticker) => {
@@ -2447,7 +2594,23 @@ export default function App() {
               value={searchQuery}
               onChange={e => setSearchQuery(e.target.value)}
               onKeyDown={handleSearch}
+              onFocus={() => setShowSuggestions(true)}
+              onBlur={() => setTimeout(() => setShowSuggestions(false), 120)}
             />
+            {showSuggestions && suggestions.length > 0 && (
+              <div className="search-suggest">
+                {suggestions.map((item) => (
+                  <button
+                    key={`${item.ticker}-${item.name}`}
+                    className="search-suggest-item"
+                    onMouseDown={() => handleSelectSuggestion(item)}
+                  >
+                    <span className="search-suggest-name">{item.name}</span>
+                    <span className="search-suggest-ticker">{item.ticker}</span>
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
         </div>
 
