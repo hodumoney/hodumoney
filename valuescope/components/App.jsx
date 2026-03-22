@@ -2202,9 +2202,9 @@ function CompanyPage({ searchTicker, onQuickSearch }) {
           { label: "52주 최저", value: `$${safeNum(data.yearLow).toLocaleString()}` },
           { label: "거래량", value: safeNum(data.volume).toLocaleString() },
           { label: "변동성 (β)", value: safeNum(data.beta).toFixed(2), sub: "시장 대비 변동 배수" },
-          { label: "PER", value: safeNum(data.coreMetrics?.per?.value).toFixed(1) },
-          { label: "ROE", value: `${safeNum(data.coreMetrics?.roe?.value).toFixed(1)}%` },
-          { label: "부채비율 (D/E)", value: `${(safeNum(data.coreMetrics?.de?.value) * 100).toFixed(0)}%` },
+          { label: "PER", value: safeNum((data.quarterly || data).coreMetrics?.per?.value).toFixed(1) },
+          { label: "ROE", value: `${safeNum((data.quarterly || data).coreMetrics?.roe?.value).toFixed(1)}%` },
+          { label: "부채비율 (D/E)", value: `${(safeNum((data.quarterly || data).coreMetrics?.de?.value) * 100).toFixed(0)}%` },
         ].map((s, i) => (
           <div className="stat-item" key={i}>
             <div className="stat-label">{s.label}</div>
@@ -2237,17 +2237,17 @@ function CompanyPage({ searchTicker, onQuickSearch }) {
 
       {/* Core Valuations Section */}
       {activeSection === "overview" && (
-        <CoreValuations data={data} viewMode={viewMode} />
+        <CoreValuations data={viewMode === "quarterly" ? (data.quarterly || data) : (data.annual || data)} viewMode={viewMode} />
       )}
 
       {/* Financial Statements Section */}
       {activeSection === "financials" && (
-        <FinancialStatements data={data} />
+        <FinancialStatements data={viewMode === "quarterly" ? (data.quarterly || data) : (data.annual || data)} />
       )}
 
       {/* Advanced Metrics */}
       {activeSection === "advanced" && (
-        <AdvancedMetrics data={data} />
+        <AdvancedMetrics data={viewMode === "quarterly" ? (data.quarterly || data) : (data.annual || data)} />
       )}
 
       {/* Copyright */}

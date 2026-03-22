@@ -25,6 +25,7 @@ export async function getQuote(symbol) {
   return Array.isArray(d) ? d[0] || null : null;
 }
 
+// 분기
 export async function getIncomeQuarterly(symbol) {
   const d = await fmpFetch(`/income-statement?symbol=${symbol}&period=quarter&limit=5`);
   return Array.isArray(d) ? d : [];
@@ -40,13 +41,19 @@ export async function getCashflowQuarterly(symbol) {
   return Array.isArray(d) ? d : [];
 }
 
-export async function getKeyMetrics(symbol) {
-  const d = await fmpFetch(`/key-metrics?symbol=${symbol}&period=quarter&limit=5`);
+// 연간
+export async function getIncomeAnnual(symbol) {
+  const d = await fmpFetch(`/income-statement?symbol=${symbol}&period=annual&limit=5`);
   return Array.isArray(d) ? d : [];
 }
 
-export async function getRatios(symbol) {
-  const d = await fmpFetch(`/ratios?symbol=${symbol}&period=quarter&limit=5`);
+export async function getBalanceAnnual(symbol) {
+  const d = await fmpFetch(`/balance-sheet-statement?symbol=${symbol}&period=annual&limit=5`);
+  return Array.isArray(d) ? d : [];
+}
+
+export async function getCashflowAnnual(symbol) {
+  const d = await fmpFetch(`/cash-flow-statement?symbol=${symbol}&period=annual&limit=5`);
   return Array.isArray(d) ? d : [];
 }
 
