@@ -1624,7 +1624,7 @@ function CoreValuations({ data, viewMode }) {
         <div className="card-title">핵심 밸류에이션</div>
         <div className="card-description">회사의 가치를 평가하는 핵심 지표들입니다</div>
       </div>
-      {metrics.map(({ key, label, fmt: fmtFn }) => {
+      {metrics.map(({ key, label, fmt: fmtFn, desc }) => {
         const metric = data.coreMetrics?.[key];
         if (!metric) return null;
         const trendData = metric.trend || [0, 0, 0, 0, 0];
