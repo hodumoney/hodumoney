@@ -1,60 +1,39 @@
-import { getHistoricalPrice } from "@/lib/fmp";
+// app/api/price/route.js — StockAnalysis history (no API key!)
+import { getHistory } from "@/lib/stockanalysis";
 
 export const dynamic = "force-dynamic";
 
 export async function GET(request) {
   const { searchParams } = new URL(request.url);
   const symbol = searchParams.get("symbol")?.toUpperCase();
-  const period = searchParams.get("period") || "1Y";
+  const period = searchParams.get("period") || "6M";
 
   if (!symbol) {
     return Response.json({ error: "symbol required" }, { status: 400 });
   }
 
-  const now = new Date();
-  const to = now.toISOString().split("T")[0];
-
-  const periodMap = {
-    "1D": 1,
-    "1M": 30,
-    "3M": 90,
-    "6M": 180,
-    "1Y": 365,
-    "3Y": 365 * 3,
-    "5Y": 365 * 5,
-    "10Y": 365 * 10,
-    "MAX": 365 * 30,
-  };
-
-  const days = periodMap[period] || 365;
-  const fromDate = new Date(now.getTime() - days * 24 * 60 * 60 * 1000);
-  const from = fromDate.toISOString().split("T")[0];
-
   try {
-    const data = await getHistoricalPrice(symbol, from, to);
+    const data = await getHistory(symbol);
 
     if (!data || data.length === 0) {
       return Response.json({ error: "No price data" }, { status: 404 });
     }
 
-    // FMP returns newest first, reverse to oldest first
-    const sorted = [...data].sort((a, b) => new Date(a.date) - new Date(b.date));
+    // StockAnalysis default shows ~6 months of daily data
+    // For shorter periods, trim the data
+    const periodDays = { "1D":1, "1M":22, "3M":66, "6M":132, "1Y":252, "3Y":756, "5Y":1260, "10Y":2520, "MAX":99999 };
+    const days = periodDays[period] || 132;
+    const trimmed = data.slice(-Math.min(days, data.length));
 
-    // Thin out data for large periods
-    let thinned = sorted;
-    if (sorted.length > 200) {
-      const step = Math.ceil(sorted.length / 200);
-      thinned = sorted.filter((_, i) => i % step === 0);
-      // Always include the last point
-      if (thinned[thinned.length - 1] !== sorted[sorted.length - 1]) {
-        thinned.push(sorted[sorted.length - 1]);
+    // Thin for large datasets
+    let points = trimmed;
+    if (points.length > 150) {
+      const step = Math.ceil(points.length / 150);
+      points = trimmed.filter((_, i) => i % step === 0);
+      if (points[points.length - 1] !== trimmed[trimmed.length - 1]) {
+        points.push(trimmed[trimmed.length - 1]);
       }
     }
-
-    const points = thinned.map(d => ({
-      date: d.date,
-      price: d.close || d.adjClose || 0,
-    }));
 
     return Response.json({ symbol, period, points });
   } catch (err) {

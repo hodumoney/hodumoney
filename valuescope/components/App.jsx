@@ -1624,7 +1624,7 @@ function CoreValuations({ data, viewMode }) {
         <div className="card-title">핵심 밸류에이션</div>
         <div className="card-description">회사의 가치를 평가하는 핵심 지표들입니다</div>
       </div>
-      {metrics.map(({ key, label, fmt: fmtFn, desc }) => {
+      {metrics.map(({ key, label, fmt: fmtFn }) => {
         const metric = data.coreMetrics?.[key];
         if (!metric) return null;
         const trendData = metric.trend || [0, 0, 0, 0, 0];
@@ -2106,10 +2106,11 @@ function PriceChart({ ticker, dailyChange }) {
       .then(d => {
         if (d.points) {
           setChartData(d.points.map(p => {
+            // Handle various date formats: "Feb 12, 2026" or "2026-02-12"
             const dt = new Date(p.date);
             const yy = String(dt.getFullYear()).slice(-2);
             const mm = String(dt.getMonth() + 1).padStart(2, "0");
-            return { date: yy + "\ub144" + mm + "\uc6d4", price: p.price };
+            return { date: yy + "\ub144" + mm + "\uc6d4", price: p.price, fullDate: p.date };
           }));
         }
       })
