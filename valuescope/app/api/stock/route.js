@@ -1,3 +1,20 @@
+
+export async function POST(request) {
+  const KEY = process.env.FMP_API_KEY;
+  const body = await request.json();
+  const symbol = body.symbol || "AAPL";
+  try {
+    const url = `https://financialmodelingprep.com/stable/profile?symbol=${symbol}&apikey=${KEY}`;
+    const res = await fetch(url);
+    const text = await res.text();
+    return Response.json({ keyLen: KEY?.length, status: res.status, raw: text.substring(0, 300) });
+  } catch (err) {
+    return Response.json({ error: err.message, keyLen: KEY?.length });
+  }
+}
+
+
+
 // app/api/stock/route.js
 import {
   getProfile, getQuote, getIncomeQuarterly, getBalanceQuarterly,
