@@ -13,7 +13,7 @@ export async function GET(request) {
   }
 
   try {
-    const data = await getHistory(symbol);
+    const data = await getHistory(symbol, period);
 
     if (!data || data.length === 0) {
       return Response.json({ error: "No price data" }, { status: 404 });
