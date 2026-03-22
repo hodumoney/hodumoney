@@ -2097,6 +2097,78 @@ function MarketPage() {
   );
 }
 
+// ─── Price Chart with Period Tabs ────────────────────────────────
+function PriceChart({ ticker, dailyChange }) {
+  const [period, setPeriod] = useState("1Y");
+  const [chartData, setChartData] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    if (!ticker) return;
+    setLoading(true);
+    fetch(`/api/price?symbol=${ticker}&period=${period}`)
+      .then(r => r.json())
+      .then(d => {
+        if (d.points) {
+          setChartData(d.points.map(p => ({
+            date: p.date.length > 7 ? p.date.slice(5) : p.date,
+            price: p.price,
+          })));
+        }
+      })
+      .catch(() => {})
+      .finally(() => setLoading(false));
+  }, [ticker, period]);
+
+  const color = dailyChange >= 0 ? "#F04452" : "#3182F6";
+
+  return (
+    <div className="card fade-up" style={{ padding: "16px" }}>
+      <div style={{ display: "flex", gap: 4, marginBottom: 12, flexWrap: "wrap" }}>
+        {["1D", "1M", "3M", "6M", "1Y", "3Y", "5Y", "10Y", "MAX"].map(p => (
+          <button key={p} className={`chart-period-btn ${period === p ? "active" : ""}`}
+            onClick={() => setPeriod(p)} style={{ padding: "5px 10px" }}>
+            {p}
+          </button>
+        ))}
+      </div>
+      {loading ? (
+        <div style={{ height: 220, display: "flex", alignItems: "center", justifyContent: "center", color: "var(--text-tertiary)", fontSize: 13 }}>
+          Loading...
+        </div>
+      ) : chartData.length === 0 ? (
+        <div style={{ height: 220, display: "flex", alignItems: "center", justifyContent: "center", color: "var(--text-tertiary)", fontSize: 13 }}>
+          No data
+        </div>
+      ) : (
+        <ResponsiveContainer width="100%" height={220}>
+          <AreaChart data={chartData} margin={{ top: 8, right: 8, left: -10, bottom: 0 }}>
+            <defs>
+              <linearGradient id="priceGrad" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stopColor={color} stopOpacity={0.12} />
+                <stop offset="100%" stopColor={color} stopOpacity={0.01} />
+              </linearGradient>
+            </defs>
+            <CartesianGrid strokeDasharray="3 3" stroke="#F2F3F5" vertical={false} />
+            <XAxis dataKey="date" axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: "#8B95A1" }}
+              interval={Math.max(0, Math.floor(chartData.length / 6) - 1)} />
+            <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: "#8B95A1" }}
+              domain={["dataMin * 0.97", "dataMax * 1.03"]}
+              tickFormatter={v => `$${v >= 1000 ? Math.round(v).toLocaleString() : v.toFixed(1)}`} width={58} />
+            <Tooltip
+              contentStyle={{ background: "white", border: "1px solid #E5E8EB", borderRadius: 10, boxShadow: "0 4px 12px rgba(0,0,0,0.08)", padding: "8px 14px", fontSize: 13, fontWeight: 600 }}
+              formatter={(val) => [`$${typeof val === "number" ? val.toFixed(2) : val}`, ""]}
+              labelStyle={{ color: "#8B95A1", fontSize: 11 }}
+            />
+            <Area type="monotone" dataKey="price" stroke={color} strokeWidth={2} fill="url(#priceGrad)"
+              dot={false} activeDot={{ r: 4, stroke: color, strokeWidth: 2, fill: "white" }} />
+          </AreaChart>
+        </ResponsiveContainer>
+      )}
+    </div>
+  );
+}
+
 // ─── Company Analysis Page ───────────────────────────────────────
 function CompanyPage({ searchTicker, onQuickSearch }) {
   const [viewMode, setViewMode] = useState("quarterly");
@@ -2181,14 +2253,16 @@ function CompanyPage({ searchTicker, onQuickSearch }) {
 
   const safeNum = (v, fallback = 0) => (typeof v === "number" && isFinite(v)) ? v : fallback;
 
-  // 주가 차트 데이터 (분기 매출 데이터의 labels + price 기반 간이 차트)
-  const qData = data.quarterly || data;
-  const priceChartData = (qData.labels || []).map((label, i) => ({
-    label,
-    value: safeNum(data.price) * (0.7 + (i / ((qData.labels || []).length || 1)) * 0.3),
-  }));
-  // 마지막 값을 실제 price로
-  if (priceChartData.length > 0) priceChartData[priceChartData.length - 1].value = safeNum(data.price);
+  // 시가총액 순위 추정
+  const capRank = (mc) => {
+    if (mc >= 3e12) return "Top 5";
+    if (mc >= 1e12) return "Top 20";
+    if (mc >= 500e9) return "Top 50";
+    if (mc >= 100e9) return "Top 100";
+    if (mc >= 10e9) return "Large Cap";
+    if (mc >= 2e9) return "Mid Cap";
+    return "Small Cap";
+  };
 
   // 고점 대비 하락률
   const dropFromHigh = data.yearHigh > 0 ? ((data.price - data.yearHigh) / data.yearHigh * 100) : 0;
@@ -2210,41 +2284,18 @@ function CompanyPage({ searchTicker, onQuickSearch }) {
         </div>
       </div>
 
-      {/* Price Chart */}
-      <div className="card fade-up" style={{ padding: "20px 16px" }}>
-        <ResponsiveContainer width="100%" height={200}>
-          <AreaChart data={priceChartData} margin={{ top: 8, right: 8, left: -10, bottom: 0 }}>
-            <defs>
-              <linearGradient id="priceGrad" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0%" stopColor={data.dailyChange >= 0 ? "#F04452" : "#3182F6"} stopOpacity={0.15} />
-                <stop offset="100%" stopColor={data.dailyChange >= 0 ? "#F04452" : "#3182F6"} stopOpacity={0.02} />
-              </linearGradient>
-            </defs>
-            <CartesianGrid strokeDasharray="3 3" stroke="#F2F3F5" vertical={false} />
-            <XAxis dataKey="label" axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: "#8B95A1" }} />
-            <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: "#8B95A1" }} domain={["dataMin * 0.95", "dataMax * 1.05"]}
-              tickFormatter={v => `$${v >= 1000 ? Math.round(v).toLocaleString() : v.toFixed(1)}`} width={60} />
-            <Tooltip
-              contentStyle={{ background: "white", border: "1px solid #E5E8EB", borderRadius: 10, boxShadow: "0 4px 12px rgba(0,0,0,0.08)", padding: "8px 14px", fontSize: 13, fontWeight: 600 }}
-              formatter={(val) => [`$${typeof val === "number" ? val.toFixed(2) : val}`, ""]}
-              labelStyle={{ color: "#8B95A1", fontSize: 11 }}
-            />
-            <Area type="monotone" dataKey="value" stroke={data.dailyChange >= 0 ? "#F04452" : "#3182F6"} strokeWidth={2.5}
-              fill="url(#priceGrad)" dot={false}
-              activeDot={{ r: 5, stroke: data.dailyChange >= 0 ? "#F04452" : "#3182F6", strokeWidth: 2, fill: "white" }} />
-          </AreaChart>
-        </ResponsiveContainer>
-      </div>
+      {/* Price Chart with Period Tabs */}
+      <PriceChart ticker={data.ticker} dailyChange={data.dailyChange} />
 
       {/* Quick Stats — 6 items */}
       <div className="stats-grid fade-up fade-up-d1" style={{ gridTemplateColumns: "repeat(3, 1fr)" }}>
         {[
           { label: "시가총액", value: fmtCap(data.marketCap) },
+          { label: "시가총액 순위", value: capRank(data.marketCap) },
           { label: "거래량", value: safeNum(data.volume).toLocaleString() },
           { label: "52주 최고", value: `$${safeNum(data.yearHigh).toLocaleString()}` },
           { label: "고점대비 하락률", value: `${dropFromHigh.toFixed(1)}%`, color: dropFromHigh < 0 ? "var(--accent-blue)" : "var(--accent-green)" },
           { label: "변동성 (β)", value: safeNum(data.beta).toFixed(2), sub: "시장 대비 변동 배수" },
-          { label: "PER", value: safeNum((data.quarterly || data).coreMetrics?.per?.value).toFixed(1) },
         ].map((s, i) => (
           <div className="stat-item" key={i}>
             <div className="stat-label">{s.label}</div>

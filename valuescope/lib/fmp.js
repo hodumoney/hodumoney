@@ -59,3 +59,8 @@ export async function searchSymbol(query) {
   const d = await fmpFetch("/search?query=" + encodeURIComponent(query) + "&limit=10");
   return Array.isArray(d) ? d : [];
 }
+
+export async function getHistoricalPrice(symbol, from, to) {
+  const d = await fmpFetch("/historical-price-eod/full?symbol=" + symbol + "&from=" + from + "&to=" + to);
+  return Array.isArray(d) ? d : (d && d.historical ? d.historical : []);
+}
