@@ -125,6 +125,13 @@ const LOCAL_COMPANY_ALIASES = [
   { name: "테슬라", ticker: "TSLA" },
   { name: "마이크로소프트", ticker: "MSFT" },
   { name: "알파벳", ticker: "GOOG" },
+  { name: "NVIDIA", ticker: "NVDA" },
+  { name: "Apple", ticker: "AAPL" },
+  { name: "Tesla", ticker: "TSLA" },
+  { name: "Microsoft", ticker: "MSFT" },
+  { name: "Alphabet", ticker: "GOOG" },
+  { name: "Amazon", ticker: "AMZN" },
+  { name: "Meta", ticker: "META" },
 ];
 
 // ─── Styles ──────────────────────────────────────────────────────
@@ -2471,10 +2478,20 @@ export default function App() {
 
     const requestId = ++searchRequestIdRef.current;
     const timer = setTimeout(async () => {
-      const localResults = LOCAL_COMPANY_ALIASES
-        .filter((item) => item.name.toLowerCase().startsWith(q.toLowerCase()))
-        .slice(0, 5)
+      const qLower = q.toLowerCase();
+      const localStartsWith = LOCAL_COMPANY_ALIASES.filter((item) =>
+        item.name.toLowerCase().startsWith(qLower) || item.ticker.toLowerCase().startsWith(qLower)
+      );
+      const localIncludes = LOCAL_COMPANY_ALIASES.filter((item) =>
+        (item.name.toLowerCase().includes(qLower) || item.ticker.toLowerCase().includes(qLower)) &&
+        !localStartsWith.some((s) => s.name === item.name && s.ticker === item.ticker)
+      );
+      const localResults = [...localStartsWith, ...localIncludes]
+        .slice(0, 8)
         .map((item) => ({ name: item.name, ticker: item.ticker }));
+
+      // 네트워크 상태와 무관하게 드롭다운이 바로 보이도록 로컬 결과를 우선 반영
+      setSuggestions(localResults);
 
       try {
         const remoteResults = await runTickerSearch(q);
@@ -2592,7 +2609,10 @@ export default function App() {
               type="text"
               placeholder="티커 또는 기업명 검색 (예: NVDA, 삼성전자)"
               value={searchQuery}
-              onChange={e => setSearchQuery(e.target.value)}
+              onChange={e => {
+                setSearchQuery(e.target.value);
+                setShowSuggestions(true);
+              }}
               onKeyDown={handleSearch}
               onFocus={() => setShowSuggestions(true)}
               onBlur={() => setTimeout(() => setShowSuggestions(false), 120)}
