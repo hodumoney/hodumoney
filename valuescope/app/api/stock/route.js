@@ -25,6 +25,12 @@ export async function GET(request) {
   const { searchParams } = new URL(request.url);
   const symbol = searchParams.get("symbol")?.toUpperCase();
 
+  if (symbol === "DEBUG") {
+    const K = process.env.FMP_API_KEY;
+    return Response.json({ keyLength: K ? K.length : 0, keyStart: K ? K.substring(0,4) : "NONE" });
+  }
+
+
   if (!symbol) {
     return Response.json({ error: "symbol 파라미터가 필요합니다" }, { status: 400 });
   }
