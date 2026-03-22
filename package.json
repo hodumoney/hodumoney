@@ -1,0 +1,9 @@
+{
+  "name": "hodumoney-root",
+  "private": true,
+  "scripts": {
+    "dev": "npm --prefix valuescope run dev",
+    "build": "npm --prefix valuescope run build",
+    "start": "npm --prefix valuescope run start"
+  }
+}
