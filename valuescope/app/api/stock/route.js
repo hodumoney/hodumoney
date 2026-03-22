@@ -1,8 +1,8 @@
+// app/api/stock/route.js — Hybrid: FMP (profile/quote) + StockAnalysis (financials)
+import { getProfile, getQuote } from "@/lib/fmp";
 import {
-  getProfile, getQuote,
-  getIncomeQuarterly, getBalanceQuarterly, getCashflowQuarterly,
-  getIncomeAnnual, getBalanceAnnual, getCashflowAnnual,
-} from "@/lib/fmp";
+  getIncomeStatement, getBalanceSheet, getCashFlow, getRatios, getLabels
+} from "@/lib/stockanalysis";
 
 export const dynamic = "force-dynamic";
 
@@ -15,93 +15,92 @@ export async function GET(request) {
   }
 
   try {
-    const [profile, quote, incQ, balQ, cfQ, incA, balA, cfA] =
-      await Promise.all([
-        getProfile(symbol),
-        getQuote(symbol),
-        getIncomeQuarterly(symbol),
-        getBalanceQuarterly(symbol),
-        getCashflowQuarterly(symbol),
-        getIncomeAnnual(symbol),
-        getBalanceAnnual(symbol),
-        getCashflowAnnual(symbol),
-      ]);
+    // FMP: profile + quote (2 API calls only)
+    const [profile, quote] = await Promise.all([
+      getProfile(symbol),
+      getQuote(symbol),
+    ]);
 
     if (!profile && !quote) {
       return Response.json({ error: symbol + " not found" }, { status: 404 });
     }
 
+    // StockAnalysis: all financials (no API limit!)
+    const [incQ, balQ, cfQ, ratQ, labelsQ, incA, balA, cfA, ratA, labelsA] =
+      await Promise.all([
+        getIncomeStatement(symbol, true),
+        getBalanceSheet(symbol, true),
+        getCashFlow(symbol, true),
+        getRatios(symbol, true),
+        getLabels(symbol, true),
+        getIncomeStatement(symbol, false),
+        getBalanceSheet(symbol, false),
+        getCashFlow(symbol, false),
+        getRatios(symbol, false),
+        getLabels(symbol, false),
+      ]);
+
     const safe = (v) => (typeof v === "number" && isFinite(v)) ? v : 0;
     const price = safe(quote?.price || profile?.price);
     const mktCap = safe(quote?.marketCap || profile?.marketCap);
-    const divYield = safe(profile?.lastDividend) / (price || 1) * 100;
 
-    const incQR = (incQ || []).slice(0, 5).reverse();
-    const balQR = (balQ || []).slice(0, 5).reverse();
-    const cfQR = (cfQ || []).slice(0, 5).reverse();
-    const incAR = (incA || []).slice(0, 5).reverse();
-    const balAR = (balA || []).slice(0, 5).reverse();
-    const cfAR = (cfA || []).slice(0, 5).reverse();
+    const rev = (arr) => (arr || [0,0,0,0,0]).slice(0, 5).reverse();
 
-    const qLabel = (d) => { if (!d) return ""; const x = new Date(d); return String(x.getFullYear()).slice(-2) + "Q" + Math.ceil((x.getMonth()+1)/3); };
-    const yLabel = (d) => { if (!d) return ""; return String(new Date(d).getFullYear()); };
-
-    const labelsQ = incQR.map(r => qLabel(r.date));
-    const labelsA = incAR.map(r => yLabel(r.date));
-
-    const calcPER = (inc, p, ann) => { const e = safe(inc?.epsdiluted || inc?.eps); return e !== 0 ? p / (ann ? e : e * 4) : 0; };
-    const calcPBR = (bal, mc) => { const eq = safe(bal?.totalStockholdersEquity); return eq !== 0 ? mc / eq : 0; };
-    const calcDE = (bal) => { const eq = safe(bal?.totalStockholdersEquity); const d = safe(bal?.totalDebt || bal?.longTermDebt); return eq !== 0 ? d / eq : 0; };
-    const calcROE = (inc, bal, ann) => { const ni = safe(inc?.netIncome); const eq = safe(bal?.totalStockholdersEquity); return eq !== 0 ? (ni * (ann?1:4) / eq) * 100 : 0; };
-    const calcOM = (inc) => { const r = safe(inc?.revenue); return r !== 0 ? safe(inc?.operatingIncome) / r : 0; };
-    const calcNM = (inc) => { const r = safe(inc?.revenue); return r !== 0 ? safe(inc?.netIncome) / r : 0; };
-    const calcEVE = (inc, mc, ann) => { const e = safe(inc?.ebitda); return e !== 0 ? mc / (e * (ann?1:4)) : 0; };
-
-    const build = (incArr, balArr, cfArr, labels, ann) => ({
-      labels,
+    const buildData = (inc, bal, cf, rat, labels) => ({
+      labels: rev(labels.length > 0 ? labels : ["1","2","3","4","5"]),
       coreMetrics: {
-        per: { value: calcPER(incArr[incArr.length-1], price, ann), trend: incArr.map(m => calcPER(m, price, ann)), meaning: "1\ub144 \uc774\uc775 \ub300\ube44 \uc8fc\uac00 \uc218\uc900" },
-        pbr: { value: calcPBR(balArr[balArr.length-1], mktCap), trend: balArr.map(m => calcPBR(m, mktCap)), meaning: "\uc21c\uc790\uc0b0 \ub300\ube44 \uc8fc\uac00 \uc218\uc900" },
-        eps: { value: safe((incArr[incArr.length-1]||{}).epsdiluted||(incArr[incArr.length-1]||{}).eps), trend: incArr.map(m => safe(m.epsdiluted||m.eps)), meaning: "\uc8fc\ub2f9 \uc21c\uc774\uc775" },
-        de: { value: calcDE(balArr[balArr.length-1]), trend: balArr.map(m => calcDE(m)), meaning: "\uc790\uae30\uc790\ubcf8 \ub300\ube44 \ubd80\ucc44" },
-        roe: { value: calcROE(incArr[incArr.length-1], balArr[balArr.length-1], ann), trend: incArr.map((m,i) => calcROE(m, balArr[i]||{}, ann)), meaning: "\uc790\uae30\uc790\ubcf8 \ub300\ube44 \uc774\uc775\ub960" },
-        div: { value: divYield, trend: incArr.map(() => divYield), meaning: "\ubc30\ub2f9 \uc218\uc775\ub960" },
-        ebitda: { value: safe((incArr[incArr.length-1]||{}).ebitda)/1e6, trend: incArr.map(m => safe(m.ebitda)/1e6), meaning: "\uc601\uc5c5 \ud604\uae08 \ucc3d\ucd9c\ub825" },
+        per: { value: rev(rat.pe)[4] || 0, trend: rev(rat.pe), meaning: "\ud68c\uc0ac\uac00 1\ub144\uc5d0 \ubc84\ub294 \ub3c8\uc5d0 \ube44\ud574 \uc8fc\uac00\uac00 \uc5bc\ub9c8\ub098 \ube44\uc2fc\uc9c0" },
+        pbr: { value: rev(rat.pb)[4] || 0, trend: rev(rat.pb), meaning: "\ud68c\uc0ac\uc758 \uc21c\uc790\uc0b0(\uc790\ubcf8)\uc5d0 \ube44\ud574 \uc8fc\uac00\uac00 \uc5bc\ub9c8\ub098 \ube44\uc2fc\uc9c0" },
+        eps: { value: rev(inc.eps)[4] || 0, trend: rev(inc.eps), meaning: "\uc8fc\uc2dd \ud55c \uc8fc\ub2f9 \ud68c\uc0ac\uac00 1\ub144\uac04 \ubc8c\uc5b4\ub4e4\uc774\ub294 \uc774\uc775" },
+        de: { value: rev(rat.deRatio)[4] || 0, trend: rev(rat.deRatio), meaning: "\ud68c\uc0ac\uc758 \uc790\uae30\uc790\ubcf8\uc5d0 \ube44\ud574 \ube5a\uc774 \uc5bc\ub9c8\ub098 \uc788\ub294\uc9c0" },
+        roe: { value: rev(rat.roe)[4] || 0, trend: rev(rat.roe), meaning: "\uc8fc\uc8fc\uc758 \ub3c8(\uc790\ubcf8)\uc744 \uc6b4\uc6a9\ud574 \uc5f0 \uba87%\uc758 \uc774\uc775\uc744 \ub0c8\ub294\uc9c0" },
+        div: { value: rev(rat.divYield)[4] || 0, trend: rev(rat.divYield), meaning: "\ubc30\ub2f9\uc73c\ub85c \ubc1b\ub294 \uc218\uc775\ub960" },
+        ebitda: { value: rev(inc.ebitda)[4] || 0, trend: rev(inc.ebitda), meaning: "\uc138\uae08\u00b7\uc774\uc790\u00b7\uac10\uac00\uc0c1\uac01\uc744 \ube7c\uae30 \uc804 \uc2e4\uc81c\ub85c \ubc8c\uc5b4\ub4e4\uc778 \ud604\uae08 \ud750\ub984" },
       },
       income: {
-        labels,
-        revenue: incArr.map(r => Math.round(safe(r.revenue)/1e6)),
-        grossProfit: incArr.map(r => Math.round(safe(r.grossProfit)/1e6)),
-        operatingIncome: incArr.map(r => Math.round(safe(r.operatingIncome)/1e6)),
-        netIncome: incArr.map(r => Math.round(safe(r.netIncome)/1e6)),
+        labels: rev(labels.length > 0 ? labels : ["1","2","3","4","5"]),
+        revenue: rev(inc.revenue),
+        grossProfit: rev(inc.grossProfit),
+        operatingIncome: rev(inc.operatingIncome),
+        netIncome: rev(inc.netIncome),
       },
       balance: {
-        labels,
-        totalAssets: balArr.map(r => Math.round(safe(r.totalAssets)/1e6)),
-        currentLiab: balArr.map(r => Math.round(safe(r.totalCurrentLiabilities)/1e6)),
-        equity: balArr.map(r => Math.round(safe(r.totalStockholdersEquity)/1e6)),
+        labels: rev(labels.length > 0 ? labels : ["1","2","3","4","5"]),
+        totalAssets: rev(bal.totalAssets),
+        currentLiab: rev(bal.currentLiab),
+        equity: rev(bal.equity),
       },
       cashflow: {
-        labels,
-        fcf: cfArr.map(r => Math.round(safe(r.freeCashFlow)/1e6)),
-        opCash: cfArr.map(r => Math.round(safe(r.operatingCashFlow)/1e6)),
-        invCash: cfArr.map(r => Math.round(safe(r.netCashUsedForInvestingActivites)/1e6)),
-        finCash: cfArr.map(r => Math.round(safe(r.netCashUsedProvidedByFinancingActivities)/1e6)),
-        netChange: cfArr.map(r => Math.round(safe(r.netChangeInCash)/1e6)),
+        labels: rev(labels.length > 0 ? labels : ["1","2","3","4","5"]),
+        fcf: rev(cf.fcf),
+        opCash: rev(cf.opCash),
+        invCash: rev(cf.invCash),
+        finCash: rev(cf.finCash),
+        netChange: rev(cf.netChange),
       },
       advanced: {
-        labels,
-        evEbitda: incArr.map(m => calcEVE(m, mktCap, ann)),
-        pe: incArr.map(m => calcPER(m, price, ann)),
-        peg: incArr.map(() => 0),
-        opMargin: incArr.map(m => calcOM(m)),
-        netMargin: incArr.map(m => calcNM(m)),
+        labels: rev(labels.length > 0 ? labels : ["1","2","3","4","5"]),
+        evEbitda: rev(rat.evEbitda),
+        pe: rev(rat.pe),
+        peg: rev(rat.peg),
+        opMargin: rev(rat.opMargin),
+        netMargin: rev(rat.netMargin),
       },
       shares: {
-        quarterly: incArr.map(r => Math.round(safe(r.weightedAverageShsOutDil||r.weightedAverageShsOut)/1e6)),
-        yearly: incArr.map(r => Math.round(safe(r.weightedAverageShsOutDil||r.weightedAverageShsOut)/1e6)),
+        quarterly: rev(inc.sharesOut),
+        yearly: rev(inc.sharesOut),
       },
     });
+
+    // Cap classification
+    const capClass = (mc) => {
+      if (mc >= 200e9) return "Mega Cap";
+      if (mc >= 10e9) return "Large Cap";
+      if (mc >= 2e9) return "Mid Cap";
+      if (mc >= 300e6) return "Small Cap";
+      if (mc >= 50e6) return "Micro Cap";
+      return "Nano Cap";
+    };
 
     return Response.json({
       name: profile?.companyName || quote?.name || symbol,
@@ -112,13 +111,14 @@ export async function GET(request) {
       industry: profile?.industry || "",
       price,
       marketCap: mktCap,
+      capClass: capClass(mktCap),
       dailyChange: safe(quote?.changePercentage || profile?.changePercentage) / 100,
       yearHigh: profile?.range ? safe(parseFloat(profile.range.split("-")[1])) : 0,
       yearLow: profile?.range ? safe(parseFloat(profile.range.split("-")[0])) : 0,
       volume: safe(quote?.volume || profile?.volume),
       beta: safe(profile?.beta),
-      quarterly: build(incQR, balQR, cfQR, labelsQ, false),
-      annual: build(incAR, balAR, cfAR, labelsA, true),
+      quarterly: buildData(incQ, balQ, cfQ, ratQ, labelsQ),
+      annual: buildData(incA, balA, cfA, ratA, labelsA),
     });
   } catch (err) {
     return Response.json({ error: "Error: " + err.message }, { status: 500 });

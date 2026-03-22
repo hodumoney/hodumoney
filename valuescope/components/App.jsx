@@ -1596,23 +1596,21 @@ function InlineChart({ item, onClose }) {
 // ─── Core Valuations with Expandable Charts ─────────────────────
 function CoreValuations({ data, viewMode }) {
   const [expandedKey, setExpandedKey] = useState(null);
-  const [chartPeriod, setChartPeriod] = useState("1Y");
 
   const safeVal = (v) => (typeof v === "number" && isFinite(v)) ? v : 0;
 
   const metrics = [
-    { key: "per", label: "PER", fmt: v => safeVal(v).toFixed(2) },
-    { key: "pbr", label: "PBR", fmt: v => safeVal(v).toFixed(2) },
-    { key: "eps", label: "EPS ($)", fmt: v => safeVal(v).toFixed(2) },
-    { key: "de", label: "부채비율 (D/E)", fmt: v => `${(safeVal(v) * 100).toFixed(0)}%` },
-    { key: "roe", label: "ROE (%)", fmt: v => `${safeVal(v).toFixed(1)}%` },
-    { key: "div", label: "배당수익률 (%)", fmt: v => `${safeVal(v).toFixed(2)}%` },
-    { key: "ebitda", label: "EBITDA ($M)", fmt: v => `$${Math.round(safeVal(v)).toLocaleString()}M` },
+    { key: "per", label: "PER", fmt: v => safeVal(v).toFixed(2), desc: "회사가 1년에 버는 돈에 비해 주가가 얼마나 비싼지" },
+    { key: "pbr", label: "PBR", fmt: v => safeVal(v).toFixed(2), desc: "회사의 순자산(자본)에 비해 주가가 얼마나 비싼지" },
+    { key: "eps", label: "EPS ($)", fmt: v => safeVal(v).toFixed(2), desc: "주식 한 주당 회사가 1년간 벌어들이는 이익" },
+    { key: "de", label: "부채비율 (D/E)", fmt: v => `${(safeVal(v) * 100).toFixed(0)}%`, desc: "회사의 자기자본에 비해 빚이 얼마나 있는지" },
+    { key: "roe", label: "ROE (%)", fmt: v => `${safeVal(v).toFixed(1)}%`, desc: "주주의 돈(자본)을 운용해 연 몇%의 이익을 냈는지" },
+    { key: "div", label: "배당수익률 (%)", fmt: v => `${safeVal(v).toFixed(2)}%`, desc: "배당으로 받는 수익률" },
+    { key: "ebitda", label: "EBITDA ($M)", fmt: v => `$${Math.round(safeVal(v)).toLocaleString()}M`, desc: "세금·이자·감가상각을 빼기 전 실제로 벌어들인 현금 흐름" },
   ];
 
   const toggle = (key) => {
     setExpandedKey(expandedKey === key ? null : key);
-    setChartPeriod("1Y");
   };
 
   // 라벨: API에서 가져온 labels 사용, 없으면 기본값
@@ -1644,7 +1642,7 @@ function CoreValuations({ data, viewMode }) {
                 <div className="metric-card-name">{label}</div>
                 <div className="metric-card-value">{fmtFn(metric.value)}</div>
               </div>
-              <div className="metric-card-desc">{metric.meaning}</div>
+              <div className="metric-card-desc">{desc || metric.meaning}</div>
               <div className="metric-card-mini">
                 {trendData.map((v, i) => (
                   <div key={i} className="m-bar"
@@ -1656,13 +1654,7 @@ function CoreValuations({ data, viewMode }) {
 
             {isOpen && (
               <div className="metric-card-expand" onClick={e => e.stopPropagation()}>
-                <div className="metric-card-expand-periods">
-                  {["1M", "3M", "6M", "1Y", "5Y", "10Y"].map(p => (
-                    <button key={p} className={`chart-period-btn ${chartPeriod === p ? "active" : ""}`} onClick={() => setChartPeriod(p)}>
-                      {p}
-                    </button>
-                  ))}
-                </div>
+
                 <div className="metric-card-expand-body">
                   <ResponsiveContainer width="100%" height={200}>
                     <AreaChart data={chartData} margin={{ top: 8, right: 8, left: -10, bottom: 0 }}>
@@ -1699,7 +1691,7 @@ function CoreValuations({ data, viewMode }) {
 }
 
 // ─── Reusable Financial Row Card ─────────────────────────────────
-function FinRowCard({ label, values, labels, expanded, onToggle, fmtFn, allowNeg }) {
+function FinRowCard({ label, values, labels, expanded, onToggle, fmtFn, allowNeg, desc }) {
   const lastVal = values[values.length - 1];
   const vMin = Math.min(...values);
   const vMax = Math.max(...values);
@@ -1716,6 +1708,7 @@ function FinRowCard({ label, values, labels, expanded, onToggle, fmtFn, allowNeg
             {fmtFn ? fmtFn(lastVal) : (isNeg ? `(${Math.abs(lastVal).toLocaleString()})` : lastVal.toLocaleString())}
           </div>
         </div>
+        {desc && <div className="metric-card-desc">{desc}</div>}
         <div className="metric-card-mini">
           {values.map((v, i) => (
             <div key={i} className="m-bar" style={{
@@ -1772,10 +1765,10 @@ function FinancialStatements({ data }) {
       subtitle: "단위: 백만 달러 ($M)",
       desc: "회사가 얼마나 벌고, 얼마나 남겼는지 보여주는 성적표입니다",
       rows: [
-        { key: "revenue", label: "총 매출", values: data.income.revenue },
-        { key: "grossProfit", label: "매출 총이익", values: data.income.grossProfit },
-        { key: "opIncome", label: "영업이익", values: data.income.operatingIncome },
-        { key: "netIncome", label: "순이익", values: data.income.netIncome },
+        { key: "revenue", label: "총 매출", values: data.income.revenue, desc: "회사가 물건이나 서비스를 팔아서 벌어들인 총 수입" },
+        { key: "grossProfit", label: "매출 총이익", values: data.income.grossProfit, desc: "매출에서 원가(재료비, 인건비 등)를 뺀 이익" },
+        { key: "opIncome", label: "영업이익", values: data.income.operatingIncome, desc: "영업활동(핵심사업)으로 벌어들인 순이익" },
+        { key: "netIncome", label: "순이익", values: data.income.netIncome, desc: "최종 이익 (모든 비용, 세금, 이자 제외 후)" },
       ]
     },
     {
@@ -1783,9 +1776,9 @@ function FinancialStatements({ data }) {
       subtitle: "단위: 백만 달러 ($M)",
       desc: "회사가 가진 자산과 빚, 순자산을 보여주는 재무 건강 진단서입니다",
       rows: [
-        { key: "totalAssets", label: "총 자산", values: data.balance.totalAssets },
-        { key: "currentLiab", label: "유동 부채", values: data.balance.currentLiab },
-        { key: "equity", label: "자본 총계", values: data.balance.equity },
+        { key: "totalAssets", label: "총 자산", values: data.balance.totalAssets, desc: "회사가 소유한 모든 자산 (현금, 건물, 재고 등)" },
+        { key: "currentLiab", label: "유동 부채", values: data.balance.currentLiab, desc: "1년 이내로 갚아야 하는 부채 (외상, 단기 대출 등)" },
+        { key: "equity", label: "자본 총계", values: data.balance.equity, desc: "회사의 순가치 (자산-부채)" },
       ]
     },
     {
@@ -1793,11 +1786,11 @@ function FinancialStatements({ data }) {
       subtitle: "단위: 백만 달러 ($M)",
       desc: "실제로 현금이 어디서 들어오고 어디로 나갔는지 추적합니다",
       rows: [
-        { key: "fcf", label: "자유현금흐름", values: data.cashflow.fcf },
-        { key: "opCash", label: "영업활동 현금흐름", values: data.cashflow.opCash },
-        { key: "invCash", label: "투자활동 현금흐름", values: data.cashflow.invCash, allowNeg: true },
-        { key: "finCash", label: "재무활동 현금흐름", values: data.cashflow.finCash, allowNeg: true },
-        { key: "netChange", label: "현금 증감액", values: data.cashflow.netChange, allowNeg: true },
+        { key: "fcf", label: "자유현금흐름", values: data.cashflow.fcf, desc: "진짜 자유롭게 쓸 수 있는 돈" },
+        { key: "opCash", label: "영업활동 현금흐름", values: data.cashflow.opCash, desc: "본업으로 실제 벌어들인 현금" },
+        { key: "invCash", label: "투자활동 현금흐름", values: data.cashflow.invCash, allowNeg: true, desc: "설비 투자(기계, 건물 등)를 위해 지출한 돈" },
+        { key: "finCash", label: "재무활동 현금흐름", values: data.cashflow.finCash, allowNeg: true, desc: "대출, 주식 발행, 배당, 자사주 매입 등" },
+        { key: "netChange", label: "현금 증감액", values: data.cashflow.netChange, allowNeg: true, desc: "일정 기간 동안 현금의 순증가/순감소" },
       ]
     }
   ];
@@ -1819,6 +1812,7 @@ function FinancialStatements({ data }) {
               expanded={expandedKey === row.key}
               onToggle={() => toggle(row.key)}
               allowNeg={row.allowNeg}
+              desc={row.desc}
             />
           ))}
         </div>
@@ -1838,25 +1832,25 @@ function AdvancedMetrics({ data }) {
       title: "📐 밸류에이션 심화",
       desc: "기업의 적정 가치를 다각도로 평가하는 심화 지표입니다",
       rows: [
-        { key: "evEbitda", label: "EV/EBITDA", values: data.advanced.evEbitda, fmt: v => `${v.toFixed(1)}x` },
-        { key: "pe", label: "PER", values: data.advanced.pe, fmt: v => v.toFixed(1) },
-        { key: "peg", label: "PEG", values: data.advanced.peg, fmt: v => v.toFixed(2) },
+        { key: "evEbitda", label: "EV/EBITDA", values: data.advanced.evEbitda, fmt: v => `${v.toFixed(1)}x`, desc: "현금으로 이 회사를 사려면 몇 년치 이익이 필요한지" },
+        { key: "pe", label: "PER", values: data.advanced.pe, fmt: v => v.toFixed(1), desc: "회사가 1년에 버는 돈에 비해 주가가 얼마나 비싼지" },
+        { key: "peg", label: "PEG", values: data.advanced.peg, fmt: v => v.toFixed(2), desc: "성장률을 감안한 밸류에이션 지표 (고성장 섹터에서 유용)" },
       ]
     },
     {
       title: "📊 수익성",
       desc: "매출 대비 얼마나 효율적으로 이익을 내고 있는지 보여줍니다",
       rows: [
-        { key: "opMargin", label: "영업이익률", values: data.advanced.opMargin, fmt: v => `${(v * 100).toFixed(1)}%` },
-        { key: "netMargin", label: "순이익률", values: data.advanced.netMargin, fmt: v => `${(v * 100).toFixed(1)}%` },
+        { key: "opMargin", label: "영업이익률", values: data.advanced.opMargin, fmt: v => `${(v * 100).toFixed(1)}%`, desc: "핵심 영업의 효율성을 나타내는 지표" },
+        { key: "netMargin", label: "순이익률", values: data.advanced.netMargin, fmt: v => `${(v * 100).toFixed(1)}%`, desc: "세금, 이자 등을 모두 뺀 최종 이익 비율" },
       ]
     },
     {
       title: "👥 주주환원",
       desc: "자사주 매입 등 주주 가치를 높이는 활동을 추적합니다",
       rows: [
-        { key: "sharesQ", label: "발행주식수 (분기)", values: data.shares.quarterly, fmt: v => `${v.toLocaleString()}M` },
-        { key: "sharesY", label: "발행주식수 (연간)", values: data.shares.yearly, fmt: v => `${v.toLocaleString()}M` },
+        { key: "sharesQ", label: "발행주식수 (분기)", values: data.shares.quarterly, fmt: v => `${v.toLocaleString()}M`, desc: "시장에 유통되고 있는 기업의 총 주식 수량" },
+        { key: "sharesY", label: "발행주식수 (연간)", values: data.shares.yearly, fmt: v => `${v.toLocaleString()}M`, desc: "주식 수가 줄어드는 기업이 주주 친화적인 기업" },
       ]
     }
   ];
@@ -1878,6 +1872,7 @@ function AdvancedMetrics({ data }) {
               expanded={expandedKey === row.key}
               onToggle={() => toggle(row.key)}
               fmtFn={row.fmt}
+              desc={row.desc}
             />
           ))}
         </div>
@@ -2110,10 +2105,12 @@ function PriceChart({ ticker, dailyChange }) {
       .then(r => r.json())
       .then(d => {
         if (d.points) {
-          setChartData(d.points.map(p => ({
-            date: p.date.length > 7 ? p.date.slice(5) : p.date,
-            price: p.price,
-          })));
+          setChartData(d.points.map(p => {
+            const dt = new Date(p.date);
+            const yy = String(dt.getFullYear()).slice(-2);
+            const mm = String(dt.getMonth() + 1).padStart(2, "0");
+            return { date: yy + "\ub144" + mm + "\uc6d4", price: p.price };
+          }));
         }
       })
       .catch(() => {})
@@ -2253,16 +2250,8 @@ function CompanyPage({ searchTicker, onQuickSearch }) {
 
   const safeNum = (v, fallback = 0) => (typeof v === "number" && isFinite(v)) ? v : fallback;
 
-  // 시가총액 순위 추정
-  const capRank = (mc) => {
-    if (mc >= 3e12) return "Top 5";
-    if (mc >= 1e12) return "Top 20";
-    if (mc >= 500e9) return "Top 50";
-    if (mc >= 100e9) return "Top 100";
-    if (mc >= 10e9) return "Large Cap";
-    if (mc >= 2e9) return "Mid Cap";
-    return "Small Cap";
-  };
+  // 시가총액 분류 (API에서 제공)
+  const capLabel = data.capClass || "N/A";
 
   // 고점 대비 하락률
   const dropFromHigh = data.yearHigh > 0 ? ((data.price - data.yearHigh) / data.yearHigh * 100) : 0;
@@ -2291,7 +2280,7 @@ function CompanyPage({ searchTicker, onQuickSearch }) {
       <div className="stats-grid fade-up fade-up-d1" style={{ gridTemplateColumns: "repeat(3, 1fr)" }}>
         {[
           { label: "시가총액", value: fmtCap(data.marketCap) },
-          { label: "시가총액 순위", value: capRank(data.marketCap) },
+          { label: "시가총액 분류", value: capLabel },
           { label: "거래량", value: safeNum(data.volume).toLocaleString() },
           { label: "52주 최고", value: `$${safeNum(data.yearHigh).toLocaleString()}` },
           { label: "고점대비 하락률", value: `${dropFromHigh.toFixed(1)}%`, color: dropFromHigh < 0 ? "var(--accent-blue)" : "var(--accent-green)" },
@@ -2404,10 +2393,10 @@ export default function App() {
       {/* Sidebar */}
       <aside className={`sidebar ${sidebarOpen ? "open" : ""}`}>
         <div className="sidebar-logo">
-          <div className="logo-icon">V</div>
+          <div className="logo-icon">H</div>
           <div>
-            <div className="logo-text">ValueScope</div>
-            <div style={{ fontSize: 10, color: "var(--text-tertiary)", fontWeight: 500, marginTop: 1, letterSpacing: "-0.2px" }}>by 호두머니</div>
+            <div className="logo-text">호두머니</div>
+            <div style={{ fontSize: 10, color: "var(--text-tertiary)", fontWeight: 500, marginTop: 1, letterSpacing: "-0.2px" }}>©호두머니</div>
           </div>
         </div>
 
