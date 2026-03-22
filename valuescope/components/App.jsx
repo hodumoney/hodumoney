@@ -2110,7 +2110,7 @@ function PriceChart({ ticker, dailyChange }) {
             const dt = new Date(p.date);
             const yy = String(dt.getFullYear()).slice(-2);
             const mm = String(dt.getMonth() + 1).padStart(2, "0");
-            return { date: yy + "\ub144" + mm + "\uc6d4", price: p.price, fullDate: p.date };
+            return { date: `${yy}년 ${mm}월`, price: p.price, fullDate: p.date };
           }));
         }
       })
@@ -2251,8 +2251,8 @@ function CompanyPage({ searchTicker, onQuickSearch }) {
 
   const safeNum = (v, fallback = 0) => (typeof v === "number" && isFinite(v)) ? v : fallback;
 
-  // 시가총액 분류 (API에서 제공)
-  const capLabel = data.capClass || "N/A";
+  // 시가총액 순위 (API에서 제공, 없으면 분류 fallback)
+  const capLabel = data.capRank || data.capClass || "N/A";
 
   // 고점 대비 하락률
   const dropFromHigh = data.yearHigh > 0 ? ((data.price - data.yearHigh) / data.yearHigh * 100) : 0;
@@ -2360,9 +2360,30 @@ export default function App() {
   const [searchQuery, setSearchQuery] = useState("");
   const [searchedTicker, setSearchedTicker] = useState("");
 
-  const handleSearch = (e) => {
+  const resolveTicker = async (query) => {
+    const raw = query.trim();
+    if (!raw) return "";
+
+    const normalized = raw.toUpperCase();
+    if (/^[A-Z.\-]{1,10}$/.test(normalized)) return normalized;
+
+    try {
+      const res = await fetch(`/api/search?q=${encodeURIComponent(raw)}`);
+      const list = await res.json();
+      if (Array.isArray(list) && list.length > 0) {
+        const first = list[0];
+        return (first?.s || first?.symbol || normalized || "").toUpperCase();
+      }
+    } catch (_) {}
+
+    return normalized;
+  };
+
+  const handleSearch = async (e) => {
     if (e.key === "Enter" && searchQuery.trim()) {
-      setSearchedTicker(searchQuery.trim().toUpperCase());
+      const resolved = await resolveTicker(searchQuery);
+      setSearchedTicker(resolved);
+      setSearchQuery(resolved || searchQuery.trim());
       setActivePage("company");
     }
   };

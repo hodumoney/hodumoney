@@ -288,7 +288,50 @@ export async function getRatios(ticker, quarterly) {
   };
 }
 
-export async function getHistory(ticker) {
+export async function getHistory(ticker, period = "1Y") {
+  const rangeMap = {
+    "1D": "5d",
+    "1M": "1mo",
+    "3M": "3mo",
+    "6M": "6mo",
+    "1Y": "1y",
+    "3Y": "3y",
+    "5Y": "5y",
+    "10Y": "10y",
+    "MAX": "max",
+  };
+
+  const range = rangeMap[period] || "1y";
+
+  try {
+    const yahooUrl = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(
+      ticker
+    )}?range=${range}&interval=1d`;
+    const yahooRes = await fetch(yahooUrl, { headers: UA, cache: "no-store" });
+
+    if (yahooRes.ok) {
+      const json = await yahooRes.json();
+      const result = json?.chart?.result?.[0];
+      const timestamps = result?.timestamp || [];
+      const closes = result?.indicators?.quote?.[0]?.close || [];
+
+      const points = timestamps
+        .map((ts, i) => {
+          const close = closes[i];
+          if (typeof close !== "number" || !isFinite(close)) return null;
+          return {
+            date: new Date(ts * 1000).toISOString().slice(0, 10),
+            price: close,
+          };
+        })
+        .filter(Boolean);
+
+      if (points.length > 0) return points;
+    }
+  } catch {
+    // Fall through to StockAnalysis parsing fallback
+  }
+
   const html = await fetchPage(ticker, "history/", false);
   if (!html) return [];
 
@@ -304,9 +347,7 @@ export async function getHistory(ticker) {
     if (cells.length < 5) continue;
 
     const date = stripHtml(cells[0][1]);
-    const close = parseFloat(
-      stripHtml(cells[4][1]).replace(/,/g, "")
-    );
+    const close = parseFloat(stripHtml(cells[4][1]).replace(/,/g, ""));
 
     if (date && !Number.isNaN(close)) {
       rows.push({ date, price: close });
