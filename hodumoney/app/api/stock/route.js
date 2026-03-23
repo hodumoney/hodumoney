@@ -1,6 +1,6 @@
 // app/api/stock/route.js — 100% StockAnalysis
 import {
-  getOverview, getIncome, getBalance, getCashFlow, getRatios
+  getOverview, getIncome, getBalance, getCashFlow, getRatios, getHistory
 } from "@/lib/stockanalysis";
 
 export const dynamic = "force-dynamic";
@@ -11,13 +11,14 @@ export async function GET(request) {
   if (!symbol) return Response.json({ error: "symbol required" }, { status: 400 });
 
   try {
-    const [overview, incQ, balQ, cfQ, ratQ, incA, balA, cfA, ratA] =
+    const [overview, incQ, balQ, cfQ, ratQ, incA, balA, cfA, ratA, history1y] =
       await Promise.all([
         getOverview(symbol),
         getIncome(symbol, true),  getBalance(symbol, true),
         getCashFlow(symbol, true), getRatios(symbol, true),
         getIncome(symbol, false), getBalance(symbol, false),
         getCashFlow(symbol, false), getRatios(symbol, false),
+        getHistory(symbol, "1Y"),
       ]);
 
     if (!overview) return Response.json({ error: symbol + " not found" }, { status: 404 });
@@ -115,6 +116,23 @@ export async function GET(request) {
       }
     })();
 
+    const histPrices = Array.isArray(history1y)
+      ? history1y.map((p) => Number(p?.price)).filter((v) => Number.isFinite(v) && v > 0)
+      : [];
+    const histYearHigh = histPrices.length > 0 ? Math.max(...histPrices) : 0;
+    const histYearLow = histPrices.length > 0 ? Math.min(...histPrices) : 0;
+
+    let yearHigh = histYearHigh || overview.yearHigh || 0;
+    let yearLow = histYearLow || overview.yearLow || 0;
+
+    // 비정상 스냅샷 방지: 현재가 대비 52주고가가 과도하게 작으면 히스토리 기반으로 보정
+    if (overview.price > 0 && yearHigh > 0 && yearHigh < overview.price * 0.5) {
+      yearHigh = Math.max(histYearHigh || 0, overview.price);
+    }
+    if (overview.price > 0 && yearLow > overview.price * 1.5) {
+      yearLow = Math.min(histYearLow || overview.price, overview.price);
+    }
+
     return Response.json({
       name: overview.name,
       ticker: overview.ticker,
@@ -127,8 +145,8 @@ export async function GET(request) {
       capClass: capClass(overview.marketCap),
       capRank,
       dailyChange: overview.dailyChange,
-      yearHigh: overview.yearHigh,
-      yearLow: overview.yearLow,
+      yearHigh,
+      yearLow,
       volume: overview.volume,
       beta: overview.beta,
       quarterly: buildData(incQ, balQ, cfQ, ratQ),
