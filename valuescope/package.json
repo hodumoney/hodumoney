@@ -2,8 +2,11 @@
   "name": "hodumoney-valuescope-compat",
   "private": true,
   "scripts": {
+    "predev": "npm --prefix ../hodumoney install",
     "dev": "npm --prefix ../hodumoney run dev",
+    "prebuild": "npm --prefix ../hodumoney install",
     "build": "npm --prefix ../hodumoney run build",
+    "prestart": "npm --prefix ../hodumoney install",
     "start": "npm --prefix ../hodumoney run start"
   },
   "dependencies": {
