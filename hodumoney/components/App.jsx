@@ -1989,6 +1989,8 @@ function MarketPage() {
   const showKR = marketTab === "전체" || marketTab === "국내";
   const indicesUS = marketData?.indicesUS?.length ? marketData.indicesUS : INDICES_US;
   const indicesKR = marketData?.indicesKR?.length ? marketData.indicesKR : INDICES_KR;
+  const econUS = marketData?.econUS?.length ? marketData.econUS : ECON_INDICATORS_US;
+  const econKR = marketData?.econKR?.length ? marketData.econKR : ECON_INDICATORS_KR;
   const exchangeRate = (typeof marketData?.exchangeRate === "number" && isFinite(marketData.exchangeRate))
     ? marketData.exchangeRate
     : 1386.93;
@@ -2075,7 +2077,7 @@ function MarketPage() {
         <div className="fade-up fade-up-d2">
           <div className="country-label"><span className="country-flag">🇺🇸</span> 미국</div>
           <div className="econ-grid">
-            {ECON_INDICATORS_US.map((ind, i) => (
+            {econUS.map((ind, i) => (
               <div className={`econ-card clickable ${isSelected("econUS", ind.name) ? "selected" : ""}`} key={i} onClick={() => toggle("econUS", ind)}>
                 <span className="click-hint">{isSelected("econUS", ind.name) ? "닫기" : "차트"}</span>
                 <div className="econ-name">{ind.name}</div>
@@ -2101,7 +2103,7 @@ function MarketPage() {
         <div className="fade-up fade-up-d3" style={{ marginTop: showUS ? 4 : 0 }}>
           <div className="country-label"><span className="country-flag">🇰🇷</span> 한국</div>
           <div className="econ-grid">
-            {ECON_INDICATORS_KR.map((ind, i) => (
+            {econKR.map((ind, i) => (
               <div className={`econ-card clickable ${isSelected("econKR", ind.name) ? "selected" : ""}`} key={i} onClick={() => toggle("econKR", ind)}>
                 <span className="click-hint">{isSelected("econKR", ind.name) ? "닫기" : "차트"}</span>
                 <div className="econ-name">{ind.name}</div>
