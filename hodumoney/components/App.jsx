@@ -2180,7 +2180,7 @@ function MarketPage() {
 }
 
 // ─── Price Chart with Period Tabs ────────────────────────────────
-function PriceChart({ ticker, dailyChange }) {
+function PriceChart({ ticker, dailyChange, onPeriodStats }) {
   const [period, setPeriod] = useState("1Y");
   const [chartData, setChartData] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -2192,6 +2192,16 @@ function PriceChart({ ticker, dailyChange }) {
       .then(r => r.json())
       .then(d => {
         if (d.points) {
+          const rawPrices = d.points
+            .map((p) => (typeof p.price === "number" && isFinite(p.price) ? p.price : null))
+            .filter((p) => p !== null);
+          if (onPeriodStats && rawPrices.length > 0) {
+            onPeriodStats({
+              period,
+              high: Math.max(...rawPrices),
+              low: Math.min(...rawPrices),
+            });
+          }
           setChartData(d.points.map(p => {
             // Handle various date formats: "Feb 12, 2026" or "2026-02-12"
             const dt = new Date(p.date);
@@ -2203,7 +2213,7 @@ function PriceChart({ ticker, dailyChange }) {
       })
       .catch(() => {})
       .finally(() => setLoading(false));
-  }, [ticker, period]);
+  }, [ticker, period, onPeriodStats]);
 
   const color = dailyChange >= 0 ? "#F04452" : "#3182F6";
 
@@ -2261,6 +2271,7 @@ function CompanyPage({ searchTicker, onQuickSearch }) {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+  const [chart1yStats, setChart1yStats] = useState(null);
 
   useEffect(() => {
     if (!searchTicker) { setData(null); return; }
@@ -2277,6 +2288,10 @@ function CompanyPage({ searchTicker, onQuickSearch }) {
       .catch(() => !cancelled && setError("데이터를 불러올 수 없습니다"))
       .finally(() => !cancelled && setLoading(false));
     return () => { cancelled = true; };
+  }, [searchTicker]);
+
+  useEffect(() => {
+    setChart1yStats(null);
   }, [searchTicker]);
 
   if (!searchTicker) {
@@ -2342,7 +2357,8 @@ function CompanyPage({ searchTicker, onQuickSearch }) {
   const capLabel = data.capRank || data.capClass || "N/A";
 
   // 52주 고가/고점 대비 하락률 (비정상 데이터 방어)
-  const validYearHigh = safeNum(data.yearHigh);
+  const apiYearHigh = safeNum(data.yearHigh);
+  const validYearHigh = chart1yStats?.high || apiYearHigh;
   const safePrice = safeNum(data.price);
   const hasValidYearHigh = validYearHigh > 0 && safePrice > 0 && validYearHigh >= safePrice * 0.5;
   const dropFromHigh = hasValidYearHigh
@@ -2367,7 +2383,15 @@ function CompanyPage({ searchTicker, onQuickSearch }) {
       </div>
 
       {/* Price Chart with Period Tabs */}
-      <PriceChart ticker={data.ticker} dailyChange={data.dailyChange} />
+      <PriceChart
+        ticker={data.ticker}
+        dailyChange={data.dailyChange}
+        onPeriodStats={(stats) => {
+          if (stats?.period === "1Y") {
+            setChart1yStats({ high: stats.high, low: stats.low });
+          }
+        }}
+      />
 
       {/* Quick Stats — 6 items */}
       <div className="stats-grid fade-up fade-up-d1" style={{ gridTemplateColumns: "repeat(3, 1fr)" }}>
