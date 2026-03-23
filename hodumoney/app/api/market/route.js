@@ -6,15 +6,15 @@ export const dynamic = "force-dynamic";
 const MARKET_SYMBOLS = {
   us: [
     // 지수 직접 심볼보다 데이터 안정성이 높은 대표 ETF 프록시 사용
-    { name: "S&P 500", candidates: ["^GSPC", "SPX", "SPY"] },
-    { name: "나스닥", candidates: ["^IXIC", "IXIC", "QQQ"] },
-    { name: "다우존스", candidates: ["^DJI", "DJIA", "DIA"] },
-    { name: "러셀 2000", candidates: ["^RUT", "RUT", "IWM"] },
+    { name: "S&P 500", stooq: "^spx", candidates: ["^GSPC", "SPX", "SPY"] },
+    { name: "나스닥", stooq: "^ixic", candidates: ["^IXIC", "IXIC", "QQQ"] },
+    { name: "다우존스", stooq: "^dji", candidates: ["^DJI", "DJIA", "DIA"] },
+    { name: "러셀 2000", stooq: "^rut", candidates: ["^RUT", "RUT", "IWM"] },
   ],
   kr: [
-    { name: "코스피", candidates: ["^KS11", "KOSPI", "EWY"] },
-    { name: "코스닥", candidates: ["^KQ11", "KOSDAQ", "KORU"] },
-    { name: "코스피 200", candidates: ["^KS200", "069500.KS"] },
+    { name: "코스피", stooq: "^kospi", candidates: ["^KS11", "KOSPI", "EWY"] },
+    { name: "코스닥", stooq: "^kosdaq", candidates: ["^KQ11", "KOSDAQ", "KORU"] },
+    { name: "코스피 200", stooq: "^ks200", candidates: ["^KS200", "069500.KS"] },
   ],
   econUS: [
     { symbol: "^TNX", name: "10년물 국채금리", valueType: "yield" },
@@ -41,7 +41,68 @@ function toHistoryPoints(rows = []) {
   });
 }
 
+async function fetchStooqCsv(url) {
+  const res = await fetch(url, {
+    cache: "no-store",
+    headers: { "User-Agent": "Mozilla/5.0" },
+  });
+  if (!res.ok) return [];
+  const text = await res.text();
+  return text.trim().split("\n").filter(Boolean);
+}
+
+async function fetchStooqQuote(symbol) {
+  const lines = await fetchStooqCsv(`https://stooq.com/q/l/?s=${encodeURIComponent(symbol)}&f=sd2t2ohlcv&h&e=csv`);
+  if (lines.length < 2) return null;
+  const [sym, date, , open, high, low, close] = lines[1].split(",");
+  const p = Number(close);
+  if (!Number.isFinite(p) || p <= 0) return null;
+  return {
+    symbol: sym,
+    price: p,
+    date,
+    open: Number(open) || p,
+    high: Number(high) || p,
+    low: Number(low) || p,
+  };
+}
+
+async function fetchStooqHistory(symbol) {
+  const lines = await fetchStooqCsv(`https://stooq.com/q/d/l/?s=${encodeURIComponent(symbol)}&i=d`);
+  if (lines.length < 2) return [];
+  return lines.slice(-252).map((line) => {
+    const [date, , , , close] = line.split(",");
+    return { date, price: Number(close) || 0 };
+  }).filter((r) => Number.isFinite(r.price) && r.price > 0);
+}
+
 async function buildItem(cfg) {
+  if (cfg.stooq) {
+    try {
+      const [q, stooqHist] = await Promise.all([
+        fetchStooqQuote(cfg.stooq),
+        fetchStooqHistory(cfg.stooq),
+      ]);
+      if (q && stooqHist.length > 5) {
+        const hist = toHistoryPoints(stooqHist);
+        const prev = stooqHist.length >= 2 ? stooqHist[stooqHist.length - 2].price : q.price;
+        const chg = q.price - prev;
+        const pct = prev > 0 ? (chg / prev) * 100 : 0;
+        return {
+          name: cfg.name,
+          value: q.price.toLocaleString(undefined, { maximumFractionDigits: 2 }),
+          numValue: q.price,
+          change: fmtSigned(chg, 2),
+          pct: `${fmtSigned(pct, 2)}%`,
+          up: chg >= 0,
+          history: hist.length > 0 ? hist : [{ label: "N/A", value: q.price }],
+        };
+      }
+    } catch {
+      // fallback to stockanalysis candidates
+    }
+  }
+
   let ov = null;
   let hist = [];
   const candidates = cfg.candidates && cfg.candidates.length > 0 ? cfg.candidates : [cfg.symbol];
@@ -117,7 +178,11 @@ export async function GET() {
       Promise.all(MARKET_SYMBOLS.kr.map((c) => buildItem(c))),
     ]);
 
-    const exchangeRate = 1386.93;
+    let exchangeRate = 1386.93;
+    try {
+      const fx = await fetchStooqQuote("usdkrw");
+      if (fx?.price) exchangeRate = fx.price;
+    } catch {}
     const [econUS, econKR] = await Promise.all([
       Promise.all(MARKET_SYMBOLS.econUS.map((c) => buildEconItem(c, exchangeRate))),
       Promise.all(MARKET_SYMBOLS.econKR.map((c) => buildEconItem(c, exchangeRate))),
