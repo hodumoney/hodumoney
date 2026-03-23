@@ -119,65 +119,20 @@ function latestPoint(series) {
   return series.length ? series[series.length - 1] : null;
 }
 
-async function fetchGoldSpotFromFred() {
-  const series = await fetchFredSeries("GOLDAMGBD228NLBM");
-  if (!series.length) return null;
-
-  const latest = series[series.length - 1];
-  const prev = series.length > 1 ? series[series.length - 2] : latest;
-  const change = latest.value - prev.value;
-  const changePct = prev.value ? (change / prev.value) * 100 : 0;
-
-  const recent = series.slice(-365);
-  const step = Math.max(1, Math.floor(recent.length / 12));
-  const history = [];
-  for (let i = 0; i < recent.length; i += step) {
-    const point = recent[i];
-    if (!point) continue;
-    const d = new Date(point.date);
-    history.push({
-      label: `${String(d.getFullYear()).slice(-2)}.${String(d.getMonth() + 1).padStart(2, "0")}`,
-      value: Math.round(point.value * 100) / 100,
-    });
-  }
-  const lastPoint = recent[recent.length - 1];
-  if (lastPoint) {
-    const d = new Date(lastPoint.date);
-    const label = `${String(d.getFullYear()).slice(-2)}.${String(d.getMonth() + 1).padStart(2, "0")}`;
-    if (!history.length || history[history.length - 1].label !== label) {
-      history.push({ label, value: Math.round(lastPoint.value * 100) / 100 });
-    }
-  }
-
-  const values = series.map((p) => p.value);
-  return {
-    price: latest.value,
-    prevClose: prev.value,
-    change,
-    changePct,
-    history,
-    yearHigh: Math.max(...values),
-    yearLow: Math.min(...values),
-  };
-}
-
 async function buildMacroIndicators() {
   const [
     usRateLowSeries,
     usRateHighSeries,
     usRateFallback,
-    krRateSeries,
   ] = await Promise.all([
     fetchFredSeries("DFEDTARL"), // Fed Target Lower Bound
     fetchFredSeries("DFEDTARU"), // Fed Target Upper Bound
     fetchFredSeries("DFF"),
-    fetchFredSeries("INTDSRKRM193N"),
   ]);
 
   const usLow = latestPoint(usRateLowSeries);
   const usHigh = latestPoint(usRateHighSeries);
   const usFallback = latestPoint(usRateFallback);
-  const krRate = latestPoint(krRateSeries);
 
   const usRateValue = (usLow && usHigh)
     ? `${usLow.value.toFixed(2)}% - ${usHigh.value.toFixed(2)}%`
@@ -197,8 +152,8 @@ async function buildMacroIndicators() {
     kr: [
       {
         name: "한국 기준금리",
-        value: krRate ? `${krRate.value.toFixed(2)}%` : "N/A",
-        status: krRate ? `${toYm(krRate.date)} 발표` : "데이터 없음",
+        value: "2.75%",
+        status: "2026.03 기준",
         statusColor: "var(--text-tertiary)",
         isStatic: true,
       },
@@ -217,14 +172,13 @@ export async function GET() {
       { sym: "^TNX", name: "10년물 국채금리", group: "econUS", suffix: "%", dec: 3 },
       { sym: "^FVX", name: "2년물 국채금리", group: "econUS", suffix: "%", dec: 3 },
       { sym: "DX-Y.NYB", name: "달러 인덱스 (DXY)", group: "econUS" },
-      { sym: "FRED:GOLD", name: "금 현물 (XAU/USD)", group: "econUS", source: "fred_gold" },
       { sym: "USDKRW=X", name: "원/달러 환율", group: "econKR" },
       { sym: "JPYKRW=X", name: "원/엔 환율 (100엔)", group: "econKR", mult: 100 },
       { sym: "^VIX", name: "VIX 공포 지수", group: "vix" },
     ];
 
     const [results, macro] = await Promise.all([
-      Promise.all(defs.map((d) => (d.source === "fred_gold" ? fetchGoldSpotFromFred() : fetchYahoo(d.sym)))),
+      Promise.all(defs.map((d) => fetchYahoo(d.sym))),
       buildMacroIndicators(),
     ]);
 
