@@ -1,0 +1,9 @@
+{
+  "name": "hodumoney-valuescope-compat",
+  "private": true,
+  "scripts": {
+    "dev": "npm --prefix ../hodumoney run dev",
+    "build": "npm --prefix ../hodumoney run build",
+    "start": "npm --prefix ../hodumoney run start"
+  }
+}
