@@ -5,20 +5,32 @@ const UA = { "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKi
 
 async function fetchYahoo(symbol) {
   try {
-    const [res5d, res1y] = await Promise.all([
-      fetch(`https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(symbol)}?range=5d&interval=1d`, { headers: UA, cache: "no-store" }),
+    const [res1d, res1y] = await Promise.all([
+      fetch(`https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(symbol)}?range=1d&interval=5m`, { headers: UA, cache: "no-store" }),
       fetch(`https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(symbol)}?range=1y&interval=1d`, { headers: UA, cache: "no-store" }),
     ]);
 
     let price = 0, prevClose = 0, change = 0, changePct = 0;
-    if (res5d.ok) {
-      const r = (await res5d.json())?.chart?.result?.[0];
+
+    if (res1d.ok) {
+      const r = (await res1d.json())?.chart?.result?.[0];
       if (r) {
         const m = r.meta || {};
-        price = m.regularMarketPrice || 0;
-        prevClose = m.chartPreviousClose || m.previousClose || 0;
-        change = price - prevClose;
-        changePct = prevClose ? (change / prevClose) * 100 : 0;
+        const closes = (r.indicators?.quote?.[0]?.close || []).filter((v) => typeof v === "number" && isFinite(v));
+        const first = closes.length ? closes[0] : 0;
+        const last = closes.length ? closes[closes.length - 1] : 0;
+
+        price = m.regularMarketPrice || last || 0;
+        prevClose = first || m.chartPreviousClose || m.previousClose || 0;
+
+        if (first && last) {
+          change = last - first;
+          changePct = first ? (change / first) * 100 : 0;
+        } else {
+          const base = m.chartPreviousClose || m.previousClose || 0;
+          change = price - base;
+          changePct = base ? (change / base) * 100 : 0;
+        }
       }
     }
 
@@ -36,10 +48,10 @@ async function fetchYahoo(symbol) {
 
         const c = r.indicators?.quote?.[0]?.close || [];
         const ts = r.timestamp || [];
-        const v = c.filter((x) => typeof x === "number" && isFinite(x));
+        const valid = c.filter((x) => typeof x === "number" && isFinite(x));
 
-        yearHigh = v.length ? Math.max(...v) : 0;
-        yearLow = v.length ? Math.min(...v) : 0;
+        yearHigh = valid.length ? Math.max(...valid) : 0;
+        yearLow = valid.length ? Math.min(...valid) : 0;
 
         const step = Math.max(1, Math.floor(c.length / 12));
         for (let i = 0; i < c.length; i += step) {
@@ -107,76 +119,35 @@ function latestPoint(series) {
   return series.length ? series[series.length - 1] : null;
 }
 
-function findPointAtOrBefore(series, targetDate) {
-  if (!series.length) return null;
-  const t = new Date(targetDate).getTime();
-  if (!Number.isFinite(t)) return null;
-  for (let i = series.length - 1; i >= 0; i--) {
-    const dt = new Date(series[i].date).getTime();
-    if (Number.isFinite(dt) && dt <= t) return series[i];
-  }
-  return null;
-}
-
 async function buildMacroIndicators() {
   const [
-    usRateSeries,
-    usCpiIndex,
-    usUnempSeries,
+    usRateLowSeries,
+    usRateHighSeries,
+    usRateFallback,
     krRateSeries,
-    krCpiIndex,
-    krUnempSeries,
   ] = await Promise.all([
-    fetchFredSeries("DFF"), // Effective Federal Funds Rate
-    fetchFredSeries("CPIAUCSL"),
-    fetchFredSeries("UNRATE"),
-    fetchFredSeries("INTDSRKRM193N"), // Korea Discount Rate
-    fetchFredSeries("KORCPIALLMINMEI"),
-    fetchFredSeries("LRHUTTTTKRM156S"),
+    fetchFredSeries("DFEDTARL"), // Fed Target Lower Bound
+    fetchFredSeries("DFEDTARU"), // Fed Target Upper Bound
+    fetchFredSeries("DFF"),
+    fetchFredSeries("INTDSRKRM193N"),
   ]);
 
-  const usRate = latestPoint(usRateSeries);
-  const usUnemp = latestPoint(usUnempSeries);
+  const usLow = latestPoint(usRateLowSeries);
+  const usHigh = latestPoint(usRateHighSeries);
+  const usFallback = latestPoint(usRateFallback);
   const krRate = latestPoint(krRateSeries);
-  const krUnemp = latestPoint(krUnempSeries);
 
-  const usCpiNow = latestPoint(usCpiIndex);
-  const krCpiNow = latestPoint(krCpiIndex);
-
-  const usCpiPrevYear = usCpiNow
-    ? findPointAtOrBefore(usCpiIndex, `${new Date(usCpiNow.date).getFullYear() - 1}-${String(new Date(usCpiNow.date).getMonth() + 1).padStart(2, "0")}-28`)
-    : null;
-  const krCpiPrevYear = krCpiNow
-    ? findPointAtOrBefore(krCpiIndex, `${new Date(krCpiNow.date).getFullYear() - 1}-${String(new Date(krCpiNow.date).getMonth() + 1).padStart(2, "0")}-28`)
-    : null;
-
-  const usCpiYoY = usCpiNow && usCpiPrevYear && usCpiPrevYear.value > 0
-    ? ((usCpiNow.value - usCpiPrevYear.value) / usCpiPrevYear.value) * 100
-    : null;
-  const krCpiYoY = krCpiNow && krCpiPrevYear && krCpiPrevYear.value > 0
-    ? ((krCpiNow.value - krCpiPrevYear.value) / krCpiPrevYear.value) * 100
-    : null;
+  const usRateValue = (usLow && usHigh)
+    ? `${usLow.value.toFixed(2)}% - ${usHigh.value.toFixed(2)}%`
+    : (usFallback ? `${usFallback.value.toFixed(2)}%` : "N/A");
+  const usRateDate = usHigh?.date || usLow?.date || usFallback?.date || "";
 
   return {
     us: [
       {
         name: "미국 기준금리 (FFR)",
-        value: usRate ? `${usRate.value.toFixed(2)}%` : "N/A",
-        status: usRate ? `${toYm(usRate.date)} 발표` : "데이터 없음",
-        statusColor: "var(--text-tertiary)",
-        isStatic: true,
-      },
-      {
-        name: "CPI (전년비)",
-        value: usCpiYoY !== null ? `${usCpiYoY.toFixed(1)}%` : "N/A",
-        status: usCpiNow ? `${toYm(usCpiNow.date)} 발표` : "데이터 없음",
-        statusColor: "var(--text-tertiary)",
-        isStatic: true,
-      },
-      {
-        name: "실업률",
-        value: usUnemp ? `${usUnemp.value.toFixed(1)}%` : "N/A",
-        status: usUnemp ? `${toYm(usUnemp.date)} 발표` : "데이터 없음",
+        value: usRateValue,
+        status: usRateDate ? `${toYm(usRateDate)} 발표` : "데이터 없음",
         statusColor: "var(--text-tertiary)",
         isStatic: true,
       },
@@ -186,20 +157,6 @@ async function buildMacroIndicators() {
         name: "한국 기준금리",
         value: krRate ? `${krRate.value.toFixed(2)}%` : "N/A",
         status: krRate ? `${toYm(krRate.date)} 발표` : "데이터 없음",
-        statusColor: "var(--text-tertiary)",
-        isStatic: true,
-      },
-      {
-        name: "한국 CPI (전년비)",
-        value: krCpiYoY !== null ? `${krCpiYoY.toFixed(1)}%` : "N/A",
-        status: krCpiNow ? `${toYm(krCpiNow.date)} 발표` : "데이터 없음",
-        statusColor: "var(--text-tertiary)",
-        isStatic: true,
-      },
-      {
-        name: "한국 실업률",
-        value: krUnemp ? `${krUnemp.value.toFixed(1)}%` : "N/A",
-        status: krUnemp ? `${toYm(krUnemp.date)} 발표` : "데이터 없음",
         statusColor: "var(--text-tertiary)",
         isStatic: true,
       },
@@ -218,6 +175,7 @@ export async function GET() {
       { sym: "^TNX", name: "10년물 국채금리", group: "econUS", suffix: "%", dec: 3 },
       { sym: "^FVX", name: "2년물 국채금리", group: "econUS", suffix: "%", dec: 3 },
       { sym: "DX-Y.NYB", name: "달러 인덱스 (DXY)", group: "econUS" },
+      { sym: "GC=F", name: "금 선물", group: "econUS" },
       { sym: "USDKRW=X", name: "원/달러 환율", group: "econKR" },
       { sym: "JPYKRW=X", name: "원/엔 환율 (100엔)", group: "econKR", mult: 100 },
       { sym: "^VIX", name: "VIX 공포 지수", group: "vix" },

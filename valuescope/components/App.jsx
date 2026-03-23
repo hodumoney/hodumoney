@@ -176,6 +176,8 @@ const styles = `
   .index-card-lg .index-name { font-size: 13px; margin-bottom: 8px; }
   .index-card-lg .index-value { font-size: 22px; font-weight: 800; margin-bottom: 4px; }
   .index-card-lg .index-change { font-size: 13px; }
+  .index-strip-three { justify-content: flex-start; }
+  .index-card-fixed { flex: 0 0 calc((100% - 32px) / 3); max-width: calc((100% - 32px) / 3); }
   .index-name { font-size: 13px; color: var(--text-tertiary); font-weight: 500; margin-bottom: 8px; }
   .index-value { font-size: 24px; font-weight: 700; letter-spacing: -0.3px; margin-bottom: 4px; }
   .index-change { font-size: 13px; font-weight: 600; }
@@ -264,6 +266,7 @@ const styles = `
     .main-content { margin-left: 0; }
     .mobile-menu-btn { display: block; }
     .stats-grid { grid-template-columns: repeat(2, 1fr); }
+    .index-card-fixed { flex: 1 1 0; max-width: none; }
     .company-hero { flex-direction: column; }
     .price-block { text-align: left; }
     .search-wrapper { width: 220px; }
@@ -517,7 +520,7 @@ function SentimentGaugeVisual({ value, reversed }) {
 
 // ─── Inline Chart Panel (period-aware) ───────────────────────────
 function InlineChart({ item, onClose }) {
-  const [period, setPeriod] = useState("1Y");
+  const [period, setPeriod] = useState("1D");
   const [chartData, setChartData] = useState(item?.history || []);
   const [chartLoading, setChartLoading] = useState(false);
   const [periodChange, setPeriodChange] = useState({ change: item?.change || "-", pct: item?.pct || "-", up: item?.up || false });
@@ -600,7 +603,12 @@ function InlineChart({ item, onClose }) {
               </defs>
               <CartesianGrid strokeDasharray="3 3" stroke="#F2F3F5" vertical={false} />
               <XAxis dataKey="label" axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: "#8B95A1" }} interval={Math.max(0, Math.floor(data.length / 6) - 1)} />
-              <YAxis domain={[min - padding, max + padding]} axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: "#8B95A1" }} tickFormatter={(v) => v >= 1000 ? `${(v/1000).toFixed(1)}k` : v.toFixed(v < 10 ? 2 : 1)} width={52} />
+              <YAxis domain={[min - padding, max + padding]} axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: "#8B95A1" }} tickFormatter={(v) => {
+                if (Math.abs(v) >= 1000) {
+                  return `${(v / 1000).toFixed(2).replace(/\.00$/, "").replace(/(\.\d)0$/, "$1")}k`;
+                }
+                return v.toFixed(v < 10 ? 2 : 1);
+              }} width={58} />
               <Tooltip contentStyle={{ background: "white", border: "1px solid #E5E8EB", borderRadius: 10, boxShadow: "0 4px 12px rgba(0,0,0,0.08)", padding: "8px 14px", fontSize: 13, fontWeight: 600 }} formatter={(val) => [typeof val === "number" ? val.toLocaleString(undefined, { maximumFractionDigits: 2 }) : val, ""]} labelStyle={{ color: "#8B95A1", fontSize: 11, marginBottom: 2 }} />
               <Area type="monotone" dataKey="value" stroke={color} strokeWidth={2.5} fill={`url(#${gradId})`} dot={false} activeDot={{ r: 5, stroke: color, strokeWidth: 2, fill: "white" }} />
             </AreaChart>
@@ -883,9 +891,9 @@ function MarketPage() {
       {showKR && liveIdxKR.length > 0 && (
         <div className="fade-up fade-up-d1" style={{ marginTop: showUS ? 8 : 0 }}>
           <div className="country-label"><span className="country-flag">🇰🇷</span> 한국</div>
-          <div className="index-strip">
+          <div className="index-strip index-strip-three">
             {liveIdxKR.map((idx, i) => (
-              <div className={`index-card index-card-lg clickable ${isSelected("idxKR", idx.name) ? "selected" : ""}`} key={i} onClick={() => toggle("idxKR", idx)}>
+              <div className={`index-card index-card-lg index-card-fixed clickable ${isSelected("idxKR", idx.name) ? "selected" : ""}`} key={i} onClick={() => toggle("idxKR", idx)}>
                 <span className="click-hint">{isSelected("idxKR", idx.name) ? "닫기" : "차트"}</span>
                 <div className="index-name">{idx.name}</div>
                 <div className="index-value">{idx.value}</div>
@@ -898,7 +906,7 @@ function MarketPage() {
       )}
 
       <div className="section-header fade-up fade-up-d2" style={{ marginTop: 20 }}>
-        <div><div className="section-title">경제 지표</div><div className="section-subtitle">주요 금리·통화·물가 지표</div></div>
+        <div><div className="section-title">경제 지표</div><div className="section-subtitle">주요 금리·통화·원자재 지표</div></div>
       </div>
 
       {showUS && liveEconUS.length > 0 && (
