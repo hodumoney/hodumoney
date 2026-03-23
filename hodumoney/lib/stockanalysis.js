@@ -24,6 +24,32 @@ async function fetchPage(ticker, path, quarterly) {
   }
 }
 
+async function fetchYahooQuote(ticker) {
+  try {
+    const url = `https://query1.finance.yahoo.com/v7/finance/quote?symbols=${encodeURIComponent(
+      ticker
+    )}`;
+    const res = await fetch(url, { headers: UA, cache: "no-store" });
+    if (!res.ok) return null;
+    const json = await res.json();
+    const q = json?.quoteResponse?.result?.[0];
+    if (!q) return null;
+    return {
+      price: Number(q.regularMarketPrice) || 0,
+      prevClose: Number(q.regularMarketPreviousClose) || 0,
+      yearHigh: Number(q.fiftyTwoWeekHigh) || 0,
+      yearLow: Number(q.fiftyTwoWeekLow) || 0,
+      marketCap: Number(q.marketCap) || 0,
+      volume: Number(q.averageDailyVolume3Month || q.regularMarketVolume) || 0,
+      beta: Number(q.beta) || 0,
+      exchange: q.fullExchangeName || q.exchange || "",
+      name: q.longName || q.shortName || "",
+    };
+  } catch {
+    return null;
+  }
+}
+
 function stripHtml(text) {
   return (text || "")
     .replace(/<[^>]*>/g, "")
@@ -129,9 +155,10 @@ function parseStatsTables(html) {
 }
 
 export async function getOverview(ticker) {
-  const [statsHtml, overviewHtml] = await Promise.all([
+  const [statsHtml, overviewHtml, yahooQuote] = await Promise.all([
     fetchPage(ticker, "statistics/", false),
     fetchPage(ticker, "", false),
+    fetchYahooQuote(ticker),
   ]);
 
   if (!statsHtml && !overviewHtml) return null;
@@ -174,9 +201,9 @@ export async function getOverview(ticker) {
   const exMatch = html.match(/(NASDAQ|NYSE|AMEX|TSX|LSE)\s*:\s*[A-Z]+/);
   if (exMatch) exchange = exMatch[1];
 
-  const marketCap = parseNum(stats["Market Cap"] || "0");
-  const volume = parseNum(stats["Average Volume (20 Days)"] || "0");
-  const beta = parseFloat(stats["Beta (5Y)"]?.replace(/,/g, "") || "0") || 0;
+  let marketCap = parseNum(stats["Market Cap"] || "0");
+  let volume = parseNum(stats["Average Volume (20 Days)"] || "0");
+  let beta = parseFloat(stats["Beta (5Y)"]?.replace(/,/g, "") || "0") || 0;
 
   let yearLow = 0;
   let yearHigh = 0;
@@ -219,8 +246,21 @@ export async function getOverview(ticker) {
     yearLow = Math.min(statYearLow || price, price);
   }
 
+  // Yahoo quote 데이터를 우선 반영 (신뢰도 높은 원시 숫자)
+  if (yahooQuote) {
+    if (yahooQuote.price > 0) price = yahooQuote.price;
+    if (yahooQuote.marketCap > 0) marketCap = yahooQuote.marketCap;
+    if (yahooQuote.volume > 0) volume = yahooQuote.volume;
+    if (yahooQuote.beta > 0) beta = yahooQuote.beta;
+    if (yahooQuote.yearHigh > 0) yearHigh = yahooQuote.yearHigh;
+    if (yahooQuote.yearLow > 0) yearLow = yahooQuote.yearLow;
+    if (yahooQuote.exchange) exchange = yahooQuote.exchange;
+  }
+
   const prevClose =
-    parseFloat(overviewStats["Previous Close"]?.replace(/,/g, "") || "0") || 0;
+    (yahooQuote?.prevClose && yahooQuote.prevClose > 0)
+      ? yahooQuote.prevClose
+      : (parseFloat(overviewStats["Previous Close"]?.replace(/,/g, "") || "0") || 0);
   const dailyChange = price && prevClose ? (price - prevClose) / prevClose : 0;
 
   let description = "";
@@ -243,7 +283,7 @@ export async function getOverview(ticker) {
   );
 
   return {
-    name: companyName,
+    name: yahooQuote?.name || companyName,
     ticker: ticker.toUpperCase(),
     exchange,
     description,
