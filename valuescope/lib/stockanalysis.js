@@ -1,4 +1,4 @@
-// lib/stockanalysis.js — 100% StockAnalysis.com (no API key)
+// lib/stockanalysis.js — StockAnalysis + Yahoo Finance hybrid
 
 const SA = "https://stockanalysis.com/stocks";
 const UA = {
@@ -128,90 +128,168 @@ function parseStatsTables(html) {
   return data;
 }
 
+/**
+ * Fetch reliable quote data from Yahoo Finance v8 chart API
+ * This gives us: price, yearHigh, yearLow, volume, marketCap etc.
+ */
+async function getYahooQuote(ticker) {
+  try {
+    // Use chart API for 1y range to get 52-week high/low
+    const chartUrl = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(
+      ticker
+    )}?range=1y&interval=1d`;
+
+    const res = await fetch(chartUrl, { headers: UA, cache: "no-store" });
+    if (!res.ok) return null;
+
+    const json = await res.json();
+    const result = json?.chart?.result?.[0];
+    if (!result) return null;
+
+    const meta = result.meta || {};
+    const closes = result.indicators?.quote?.[0]?.close || [];
+    const highs = result.indicators?.quote?.[0]?.high || [];
+    const lows = result.indicators?.quote?.[0]?.low || [];
+    const volumes = result.indicators?.quote?.[0]?.volume || [];
+
+    // Current price from meta
+    const price = meta.regularMarketPrice || 0;
+
+    // Calculate 52-week high/low from actual data
+    const validHighs = highs.filter((v) => typeof v === "number" && isFinite(v));
+    const validLows = lows.filter((v) => typeof v === "number" && isFinite(v));
+
+    const yearHigh = validHighs.length > 0 ? Math.max(...validHighs) : 0;
+    const yearLow = validLows.length > 0 ? Math.min(...validLows) : 0;
+
+    // Previous close for daily change
+    const previousClose = meta.chartPreviousClose || meta.previousClose || 0;
+    const dailyChange = price && previousClose ? (price - previousClose) / previousClose : 0;
+
+    // Average volume (last 20 days)
+    const recentVolumes = volumes.slice(-20).filter((v) => typeof v === "number" && v > 0);
+    const avgVolume =
+      recentVolumes.length > 0
+        ? Math.round(recentVolumes.reduce((a, b) => a + b, 0) / recentVolumes.length)
+        : 0;
+
+    return {
+      price,
+      yearHigh,
+      yearLow,
+      dailyChange,
+      volume: avgVolume,
+      exchange: meta.exchangeName || "",
+      currency: meta.currency || "USD",
+    };
+  } catch (e) {
+    console.error("Yahoo quote error:", e.message);
+    return null;
+  }
+}
+
 export async function getOverview(ticker) {
-  const [statsHtml, overviewHtml] = await Promise.all([
+  // Fetch StockAnalysis page + Yahoo quote in parallel
+  const [statsHtml, overviewHtml, yahooQuote] = await Promise.all([
     fetchPage(ticker, "statistics/", false),
     fetchPage(ticker, "", false),
+    getYahooQuote(ticker),
   ]);
 
-  if (!statsHtml && !overviewHtml) return null;
+  if (!statsHtml && !overviewHtml && !yahooQuote) return null;
 
   const stats = parseStatsTables(statsHtml || "");
   const html = overviewHtml || statsHtml || "";
 
+  // Company name from StockAnalysis
   const nameMatch = html.match(/<h1[^>]*>([^<]+)/);
   const companyName = nameMatch
     ? nameMatch[1].replace(/\s*\([^)]*\)\s*$/, "").trim()
     : ticker;
 
-  let price = 0;
-
-  const pricePatterns = [
-    />([\d]{1,5}\.[\d]{2})<\/[^>]*>\s*<[^>]*>[^<]*[+-][\d]/g,
-    />([\d]{1,5}\.[\d]{2})<\/span>/g,
-  ];
-
-  for (const rawPattern of pricePatterns) {
-    if (price > 0) break;
-
-    const pat = toGlobalRegex(rawPattern);
-    const matches = [...html.matchAll(pat)];
-
-    for (const m of matches) {
-      const p = parseFloat(m[1]);
-      if (p > 1 && p < 100000) {
-        price = p;
-        break;
-      }
-    }
-  }
-
-  if (!price && stats["Last Close Price"]) {
-    price = parseFloat(stats["Last Close Price"].replace(/,/g, "")) || 0;
-  }
-
-  let exchange = "";
-  const exMatch = html.match(/(NASDAQ|NYSE|AMEX|TSX|LSE)\s*:\s*[A-Z]+/);
-  if (exMatch) exchange = exMatch[1];
-
+  // Market cap from StockAnalysis stats (more reliable text)
   const marketCap = parseNum(stats["Market Cap"] || "0");
-  const volume = parseNum(stats["Average Volume (20 Days)"] || "0");
+
+  // Beta from StockAnalysis
   const beta = parseFloat(stats["Beta (5Y)"]?.replace(/,/g, "") || "0") || 0;
 
-  let yearLow = 0;
-  let yearHigh = 0;
-
-  const overviewStats = parseStatsTables(html);
-  const range52 = overviewStats["52-Week Range"] || "";
-  const rangeMatch = range52.match(/([\d.]+)\s*-\s*([\d.]+)/);
-
-  if (rangeMatch) {
-    yearLow = parseFloat(rangeMatch[1]) || 0;
-    yearHigh = parseFloat(rangeMatch[2]) || 0;
-  }
-
-  const prevClose =
-    parseFloat(overviewStats["Previous Close"]?.replace(/,/g, "") || "0") || 0;
-  const dailyChange = price && prevClose ? (price - prevClose) / prevClose : 0;
-
+  // Description
   let description = "";
   const descPatterns = [
     /class="[^"]*"[^>]*>([A-Z][^<]{20,200}\.)\s*</,
     />((?:[A-Z][a-z]+\s(?:Inc|Corp|Co|Ltd|LLC)?\.?\s)?(?:designs|develops|operates|provides|manufactures|engages|is a)[^<]{10,200}\.)/,
   ];
-
   for (const dp of descPatterns) {
     if (description) break;
     const dm = html.match(dp);
     if (dm) description = dm[1].split(".")[0] + ".";
   }
 
+  // Sector / Industry
   const sectorMatch = html.match(
     /Sector\s*<\/[^>]+>\s*<[^>]+>\s*(?:<a[^>]*>)?([^<]+)/
   );
   const industryMatch = html.match(
     /Industry\s*<\/[^>]+>\s*<[^>]+>\s*(?:<a[^>]*>)?([^<]+)/
   );
+
+  // Use Yahoo data for price, yearHigh, yearLow, dailyChange, volume
+  // Fall back to StockAnalysis if Yahoo fails
+  let price = yahooQuote?.price || 0;
+  let yearHigh = yahooQuote?.yearHigh || 0;
+  let yearLow = yahooQuote?.yearLow || 0;
+  let dailyChange = yahooQuote?.dailyChange || 0;
+  let volume = yahooQuote?.volume || 0;
+  let exchange = yahooQuote?.exchange || "";
+
+  // Fallback: try StockAnalysis for price if Yahoo failed
+  if (!price) {
+    const pricePatterns = [
+      />([\d]{1,5}\.[\d]{2})<\/[^>]*>\s*<[^>]*>[^<]*[+-][\d]/g,
+      />([\d]{1,5}\.[\d]{2})<\/span>/g,
+    ];
+    for (const rawPattern of pricePatterns) {
+      if (price > 0) break;
+      const pat = toGlobalRegex(rawPattern);
+      const matches = [...html.matchAll(pat)];
+      for (const m of matches) {
+        const p = parseFloat(m[1]);
+        if (p > 1 && p < 100000) {
+          price = p;
+          break;
+        }
+      }
+    }
+  }
+
+  // Fallback: StockAnalysis 52-week range
+  if (!yearHigh || !yearLow) {
+    const overviewStats = parseStatsTables(html);
+    const range52 = overviewStats["52-Week Range"] || stats["52-Week Range"] || "";
+    const rangeMatch = range52.match(/([\d,.]+)\s*-\s*([\d,.]+)/);
+    if (rangeMatch) {
+      yearLow = yearLow || parseFloat(rangeMatch[1].replace(/,/g, "")) || 0;
+      yearHigh = yearHigh || parseFloat(rangeMatch[2].replace(/,/g, "")) || 0;
+    }
+  }
+
+  // Fallback: volume from StockAnalysis
+  if (!volume) {
+    volume = parseNum(stats["Average Volume (20 Days)"] || "0");
+  }
+
+  // Fallback: exchange from StockAnalysis
+  if (!exchange) {
+    const exMatch = html.match(/(NASDAQ|NYSE|AMEX|TSX|LSE)\s*:\s*[A-Z]+/);
+    if (exMatch) exchange = exMatch[1];
+  }
+
+  // Fallback: daily change from StockAnalysis
+  if (!dailyChange) {
+    const prevClose =
+      parseFloat(parseStatsTables(html)["Previous Close"]?.replace(/,/g, "") || "0") || 0;
+    if (price && prevClose) dailyChange = (price - prevClose) / prevClose;
+  }
 
   return {
     name: companyName,
