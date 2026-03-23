@@ -1,9 +1,73 @@
-// app/api/market/chart/route.js — Period-specific chart data from Yahoo Finance
+// app/api/market/chart/route.js — Period-specific chart data
 export const dynamic = "force-dynamic";
 
 const UA = {
   "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
 };
+
+async function fetchFredSeries(seriesId) {
+  try {
+    const url = `https://fred.stlouisfed.org/graph/fredgraph.csv?id=${encodeURIComponent(seriesId)}`;
+    const res = await fetch(url, { cache: "no-store" });
+    if (!res.ok) return [];
+
+    const text = await res.text();
+    const lines = text.trim().split("\n");
+    if (lines.length < 2) return [];
+
+    return lines
+      .slice(1)
+      .map((line) => {
+        const [date, value] = line.split(",");
+        const n = Number(value);
+        if (!date || !Number.isFinite(n)) return null;
+        return { date, value: n };
+      })
+      .filter(Boolean);
+  } catch {
+    return [];
+  }
+}
+
+function buildFredGoldPoints(series, range) {
+  const rangeDays = {
+    "1d": 2,
+    "5d": 5,
+    "1wk": 7,
+    "1mo": 30,
+    "3mo": 90,
+    "6mo": 180,
+    "1y": 365,
+    "5y": 365 * 5,
+    "10y": 365 * 10,
+    "max": 365 * 100,
+  };
+
+  const days = rangeDays[range] || 365;
+  const now = Date.now();
+  const from = now - days * 24 * 60 * 60 * 1000;
+
+  let filtered = series.filter((p) => new Date(p.date).getTime() >= from);
+  if ((range === "1d" || range === "5d") && filtered.length < 2) {
+    filtered = series.slice(-2);
+  }
+
+  return filtered.map((p) => {
+    const d = new Date(p.date);
+    const yy = String(d.getFullYear()).slice(-2);
+    const mm = String(d.getMonth() + 1).padStart(2, "0");
+    const dd = String(d.getDate()).padStart(2, "0");
+
+    let label;
+    if (range === "1d" || range === "5d" || range === "1wk" || range === "1mo" || range === "3mo") {
+      label = `${mm}.${dd}`;
+    } else {
+      label = `${yy}.${mm}`;
+    }
+
+    return { label, value: Math.round(p.value * 100) / 100 };
+  });
+}
 
 export async function GET(request) {
   const { searchParams } = new URL(request.url);
@@ -12,6 +76,25 @@ export async function GET(request) {
 
   if (!symbol) {
     return Response.json({ error: "symbol required" }, { status: 400 });
+  }
+
+  if (symbol === "FRED:GOLD") {
+    const series = await fetchFredSeries("GOLDAMGBD228NLBM");
+    if (!series.length) {
+      return Response.json({ error: "No data" }, { status: 404 });
+    }
+
+    let points = buildFredGoldPoints(series, range);
+    if (points.length > 80) {
+      const step = Math.ceil(points.length / 80);
+      const thinned = points.filter((_, i) => i % step === 0);
+      if (thinned[thinned.length - 1] !== points[points.length - 1]) {
+        thinned.push(points[points.length - 1]);
+      }
+      points = thinned;
+    }
+
+    return Response.json({ symbol, range, points });
   }
 
   // Choose interval based on range
