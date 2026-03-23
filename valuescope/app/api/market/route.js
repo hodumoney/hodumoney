@@ -118,6 +118,8 @@ export async function GET() {
         history: hist,
         yearHigh: def.mult ? (data.yearHigh || 0) * def.mult : data.yearHigh || 0,
         yearLow: def.mult ? (data.yearLow || 0) * def.mult : data.yearLow || 0,
+        yahooSymbol: def.sym,
+        chartMult: def.mult || 1,
       };
     };
 
