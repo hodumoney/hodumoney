@@ -175,7 +175,7 @@ export async function GET() {
       { sym: "^TNX", name: "10년물 국채금리", group: "econUS", suffix: "%", dec: 3 },
       { sym: "^FVX", name: "2년물 국채금리", group: "econUS", suffix: "%", dec: 3 },
       { sym: "DX-Y.NYB", name: "달러 인덱스 (DXY)", group: "econUS" },
-      { sym: "GC=F", name: "금 선물", group: "econUS" },
+      { sym: "XAUUSD=X", name: "금 현물 (XAU/USD)", group: "econUS" },
       { sym: "USDKRW=X", name: "원/달러 환율", group: "econKR" },
       { sym: "JPYKRW=X", name: "원/엔 환율 (100엔)", group: "econKR", mult: 100 },
       { sym: "^VIX", name: "VIX 공포 지수", group: "vix" },
