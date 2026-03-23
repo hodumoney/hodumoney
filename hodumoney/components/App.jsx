@@ -2193,8 +2193,8 @@ function PriceChart({ ticker, dailyChange, onPeriodStats }) {
       .then(d => {
         if (d.points) {
           const rawPrices = d.points
-            .map((p) => (typeof p.price === "number" && isFinite(p.price) ? p.price : null))
-            .filter((p) => p !== null);
+            .map((p) => Number(p.price))
+            .filter((p) => Number.isFinite(p) && p > 0);
           if (onPeriodStats && rawPrices.length > 0) {
             onPeriodStats({
               period,
@@ -2207,7 +2207,7 @@ function PriceChart({ ticker, dailyChange, onPeriodStats }) {
             const dt = new Date(p.date);
             const yy = String(dt.getFullYear()).slice(-2);
             const mm = String(dt.getMonth() + 1).padStart(2, "0");
-            return { date: `${yy}년 ${mm}월`, price: p.price, fullDate: p.date };
+            return { date: `${yy}년 ${mm}월`, price: Number(p.price), fullDate: p.date };
           }));
         }
       })
