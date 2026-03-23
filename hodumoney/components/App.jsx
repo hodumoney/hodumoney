@@ -1972,9 +1972,26 @@ function AdvancedMetrics({ data }) {
 function MarketPage() {
   const [marketTab, setMarketTab] = useState("전체");
   const [selectedIndex, setSelectedIndex] = useState(null); // { group: "idxUS"|"idxKR"|"econUS"|"econKR", name: string }
+  const [marketData, setMarketData] = useState(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    fetch("/api/market")
+      .then((r) => r.json())
+      .then((d) => {
+        if (!cancelled && !d.error) setMarketData(d);
+      })
+      .catch(() => {});
+    return () => { cancelled = true; };
+  }, []);
 
   const showUS = marketTab === "전체" || marketTab === "해외";
   const showKR = marketTab === "전체" || marketTab === "국내";
+  const indicesUS = marketData?.indicesUS?.length ? marketData.indicesUS : INDICES_US;
+  const indicesKR = marketData?.indicesKR?.length ? marketData.indicesKR : INDICES_KR;
+  const exchangeRate = (typeof marketData?.exchangeRate === "number" && isFinite(marketData.exchangeRate))
+    ? marketData.exchangeRate
+    : 1386.93;
 
   const toggle = (group, item) => {
     if (selectedIndex && selectedIndex.group === group && selectedIndex.name === item.name) {
@@ -1995,7 +2012,7 @@ function MarketPage() {
           </button>
         ))}
         <div style={{ marginLeft: "auto" }}>
-          <span className="exchange-badge">💱 달러 환율 1,386.93 원</span>
+          <span className="exchange-badge">💱 달러 환율 {exchangeRate.toLocaleString(undefined, { maximumFractionDigits: 2 })} 원</span>
         </div>
       </div>
 
@@ -2008,7 +2025,7 @@ function MarketPage() {
         <div className="fade-up fade-up-d1">
           <div className="country-label"><span className="country-flag">🇺🇸</span> 미국</div>
           <div className="index-strip">
-            {INDICES_US.map((idx, i) => (
+            {indicesUS.map((idx, i) => (
               <div className={`index-card clickable ${isSelected("idxUS", idx.name) ? "selected" : ""}`} key={i} onClick={() => toggle("idxUS", idx)}>
                 <span className="click-hint">{isSelected("idxUS", idx.name) ? "닫기" : "차트"}</span>
                 <div className="index-name">{idx.name}</div>
@@ -2029,7 +2046,7 @@ function MarketPage() {
         <div className="fade-up fade-up-d1" style={{ marginTop: showUS ? 8 : 0 }}>
           <div className="country-label"><span className="country-flag">🇰🇷</span> 한국</div>
           <div className="index-strip">
-            {INDICES_KR.map((idx, i) => (
+            {indicesKR.map((idx, i) => (
               <div className={`index-card clickable ${isSelected("idxKR", idx.name) ? "selected" : ""}`} key={i} onClick={() => toggle("idxKR", idx)}>
                 <span className="click-hint">{isSelected("idxKR", idx.name) ? "닫기" : "차트"}</span>
                 <div className="index-name">{idx.name}</div>
