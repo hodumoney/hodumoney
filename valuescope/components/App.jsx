@@ -776,6 +776,18 @@ function AdvancedMetrics({ data }) {
 function MarketPage() {
   const [marketTab, setMarketTab] = useState("전체");
   const [selectedIndex, setSelectedIndex] = useState(null);
+  const [marketData, setMarketData] = useState(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    setLoading(true);
+    fetch("/api/market")
+      .then(r => r.json())
+      .then(d => { if (!d.error) setMarketData(d); })
+      .catch(() => {})
+      .finally(() => setLoading(false));
+  }, []);
+
   const showUS = marketTab === "전체" || marketTab === "해외";
   const showKR = marketTab === "전체" || marketTab === "국내";
   const toggle = (group, item) => {
@@ -784,13 +796,26 @@ function MarketPage() {
   };
   const isSelected = (group, name) => selectedIndex && selectedIndex.group === group && selectedIndex.name === name;
 
+  const liveIdxUS = marketData?.indicesUS || INDICES_US;
+  const liveIdxKR = marketData?.indicesKR || INDICES_KR;
+  const liveEconUS = marketData?.econUS || ECON_INDICATORS_US;
+  const liveEconKR = marketData?.econKR || ECON_INDICATORS_KR;
+  const liveVix = marketData?.vix || null;
+  const exchangeRate = marketData?.exchangeRate || "N/A";
+
+  // VIX gauge value (0-100 scale, max around 80)
+  const vixGauge = liveVix ? Math.min(100, Math.round((liveVix.numValue / 80) * 100)) : 33;
+
   return (
     <div className="content-area">
       <div className="market-tabs">
         {["전체", "국내", "해외"].map(t => (
           <button key={t} className={`market-tab ${marketTab === t ? "active" : ""}`} onClick={() => { setMarketTab(t); setSelectedIndex(null); }}>{t}</button>
         ))}
-        <div style={{ marginLeft: "auto" }}><span className="exchange-badge">💱 달러 환율 1,386.93 원</span></div>
+        <div style={{ marginLeft: "auto" }}>
+          <span className="exchange-badge">💱 달러 환율 {exchangeRate} 원</span>
+          {loading && <span style={{ fontSize: 11, color: "var(--text-tertiary)", marginLeft: 8 }}>로딩중...</span>}
+        </div>
       </div>
 
       <div className="section-header fade-up"><div className="section-title">주가지수</div></div>
@@ -799,7 +824,7 @@ function MarketPage() {
         <div className="fade-up fade-up-d1">
           <div className="country-label"><span className="country-flag">🇺🇸</span> 미국</div>
           <div className="index-strip">
-            {INDICES_US.map((idx, i) => (
+            {liveIdxUS.map((idx, i) => (
               <div className={`index-card clickable ${isSelected("idxUS", idx.name) ? "selected" : ""}`} key={i} onClick={() => toggle("idxUS", idx)}>
                 <span className="click-hint">{isSelected("idxUS", idx.name) ? "닫기" : "차트"}</span>
                 <div className="index-name">{idx.name}</div>
@@ -816,7 +841,7 @@ function MarketPage() {
         <div className="fade-up fade-up-d1" style={{ marginTop: showUS ? 8 : 0 }}>
           <div className="country-label"><span className="country-flag">🇰🇷</span> 한국</div>
           <div className="index-strip">
-            {INDICES_KR.map((idx, i) => (
+            {liveIdxKR.map((idx, i) => (
               <div className={`index-card clickable ${isSelected("idxKR", idx.name) ? "selected" : ""}`} key={i} onClick={() => toggle("idxKR", idx)}>
                 <span className="click-hint">{isSelected("idxKR", idx.name) ? "닫기" : "차트"}</span>
                 <div className="index-name">{idx.name}</div>
@@ -833,11 +858,11 @@ function MarketPage() {
         <div><div className="section-title">경제 지표</div><div className="section-subtitle">주요 금리·통화·물가 지표</div></div>
       </div>
 
-      {showUS && (
+      {showUS && liveEconUS.length > 0 && (
         <div className="fade-up fade-up-d2">
           <div className="country-label"><span className="country-flag">🇺🇸</span> 미국</div>
           <div className="econ-grid">
-            {ECON_INDICATORS_US.map((ind, i) => (
+            {liveEconUS.map((ind, i) => (
               <div className={`econ-card clickable ${isSelected("econUS", ind.name) ? "selected" : ""}`} key={i} onClick={() => toggle("econUS", ind)}>
                 <span className="click-hint">{isSelected("econUS", ind.name) ? "닫기" : "차트"}</span>
                 <div className="econ-name">{ind.name}</div>
@@ -851,11 +876,11 @@ function MarketPage() {
         </div>
       )}
 
-      {showKR && (
+      {showKR && liveEconKR.length > 0 && (
         <div className="fade-up fade-up-d3" style={{ marginTop: showUS ? 4 : 0 }}>
           <div className="country-label"><span className="country-flag">🇰🇷</span> 한국</div>
           <div className="econ-grid">
-            {ECON_INDICATORS_KR.map((ind, i) => (
+            {liveEconKR.map((ind, i) => (
               <div className={`econ-card clickable ${isSelected("econKR", ind.name) ? "selected" : ""}`} key={i} onClick={() => toggle("econKR", ind)}>
                 <span className="click-hint">{isSelected("econKR", ind.name) ? "닫기" : "차트"}</span>
                 <div className="econ-name">{ind.name}</div>
@@ -873,43 +898,28 @@ function MarketPage() {
         <div><div className="section-title">심리 지표</div><div className="section-subtitle">시장 공포·탐욕 수준을 한눈에</div></div>
       </div>
       <div className="sentiment-grid fade-up fade-up-d3">
-        <div className={`sentiment-card ${isSelected("sentiment", SENTIMENT_FEARGREED.name) ? "selected" : ""}`} style={{ cursor: "pointer", border: isSelected("sentiment", SENTIMENT_FEARGREED.name) ? "2px solid var(--accent-blue)" : undefined }} onClick={() => toggle("sentiment", SENTIMENT_FEARGREED)}>
-          <div className="sentiment-card-label">CNN Fear & Greed Index</div>
-          <SentimentGaugeVisual value={15} />
-          <div className="sentiment-value" style={{ color: "#F04452" }}>15</div>
-          <div className="sentiment-status" style={{ color: "#F04452" }}>극심한 공포 (Extreme Fear)</div>
-          <div className="sentiment-desc">투자자 심리가 극도로 위축된 상태입니다.</div>
-          <div className="sentiment-sub-values"><span>1주 전: <strong>28</strong></span><span>1개월 전: <strong>42</strong></span></div>
-        </div>
-        <div className={`sentiment-card ${isSelected("sentiment", SENTIMENT_VIX.name) ? "selected" : ""}`} style={{ cursor: "pointer", border: isSelected("sentiment", SENTIMENT_VIX.name) ? "2px solid var(--accent-blue)" : undefined }} onClick={() => toggle("sentiment", SENTIMENT_VIX)}>
-          <div className="sentiment-card-label">VIX 공포 지수</div>
-          <SentimentGaugeVisual value={Math.min(100, Math.round((26.78 / 80) * 100))} reversed />
-          <div className="sentiment-value" style={{ color: "#F59E0B" }}>26.78</div>
-          <div className="sentiment-status" style={{ color: "#F59E0B" }}>보통~높음</div>
-          <div className="sentiment-desc">시장 불확실성이 다소 높습니다</div>
-          <div className="sentiment-sub-values"><span>전일대비: <strong style={{ color: "var(--accent-red)" }}>+2.72 (+11.31%)</strong></span><span>52주 최고: <strong>60.13</strong></span><span>52주 최저: <strong>13.38</strong></span></div>
-        </div>
+        {liveVix && (
+          <div className={`sentiment-card ${isSelected("sentiment", liveVix.name) ? "selected" : ""}`} style={{ cursor: "pointer", border: isSelected("sentiment", liveVix.name) ? "2px solid var(--accent-blue)" : undefined }} onClick={() => toggle("sentiment", liveVix)}>
+            <div className="sentiment-card-label">VIX 공포 지수</div>
+            <SentimentGaugeVisual value={vixGauge} reversed />
+            <div className="sentiment-value" style={{ color: liveVix.statusColor || "#F59E0B" }}>{liveVix.value}</div>
+            <div className="sentiment-status" style={{ color: liveVix.statusColor || "#F59E0B" }}>{liveVix.status || "보통"}</div>
+            <div className="sentiment-desc">전일대비 변동폭을 기반으로 시장 불안 수준을 측정합니다</div>
+            <div className="sentiment-sub-values">
+              <span>전일대비: <strong style={{ color: liveVix.up ? "var(--accent-red)" : "var(--accent-blue)" }}>{liveVix.change} ({liveVix.pct})</strong></span>
+              {liveVix.yearHigh > 0 && <span>52주 최고: <strong>{liveVix.yearHigh.toFixed(2)}</strong></span>}
+              {liveVix.yearLow > 0 && <span>52주 최저: <strong>{liveVix.yearLow.toFixed(2)}</strong></span>}
+            </div>
+          </div>
+        )}
       </div>
       {selectedIndex && selectedIndex.group === "sentiment" && <InlineChart item={selectedIndex} onClose={() => setSelectedIndex(null)} />}
 
-      <div className="section-header fade-up fade-up-d3" style={{ marginTop: 8 }}>
-        <div><div className="section-title">주요 뉴스</div><div className="section-subtitle">실시간 금융 뉴스</div></div>
-      </div>
-      <div className="news-grid fade-up fade-up-d4">
-        {[
-          { tag: "시장", title: "코스피 상승 전환... 2730선 돌파 시도", icon: "📈" },
-          { tag: "기업", title: "엔비디아, AI 신규 칩셋 발표 임박... 시장 기대감 고조", icon: "🤖" },
-          { tag: "글로벌", title: "연준 의장 '금리 인하 신중론' 재강조... 시장 반응은?", icon: "🏛️" },
-        ].map((n, i) => (
-          <div className="news-card" key={i}>
-            <div className="news-thumb">{n.icon}</div>
-            <div className="news-body">
-              <div className="news-tag">{n.tag}</div>
-              <div className="news-title-text">{n.title}</div>
-            </div>
-          </div>
-        ))}
-      </div>
+      {marketData?.updatedAt && (
+        <div style={{ textAlign: "right", fontSize: 11, color: "var(--text-tertiary)", marginTop: 8 }}>
+          마지막 업데이트: {new Date(marketData.updatedAt).toLocaleString("ko-KR")}
+        </div>
+      )}
     </div>
   );
 }
