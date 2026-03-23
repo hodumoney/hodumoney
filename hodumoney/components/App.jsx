@@ -379,6 +379,9 @@ const styles = `
   .search-suggest-item:hover {
     background: var(--bg-hover);
   }
+  .search-suggest-item.active {
+    background: var(--accent-blue-light);
+  }
 
   .search-suggest-name {
     font-size: 13px;
@@ -2445,6 +2448,7 @@ export default function App() {
   const [searchedTicker, setSearchedTicker] = useState("");
   const [suggestions, setSuggestions] = useState([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
+  const [highlightedIndex, setHighlightedIndex] = useState(-1);
   const searchRequestIdRef = useRef(0);
 
   const runTickerSearch = async (query) => {
@@ -2487,6 +2491,7 @@ export default function App() {
     const q = searchQuery.trim();
     if (q.length < 2) {
       setSuggestions([]);
+      setHighlightedIndex(-1);
       return;
     }
 
@@ -2501,27 +2506,35 @@ export default function App() {
         !localStartsWith.some((s) => s.name === item.name && s.ticker === item.ticker)
       );
       const localResults = [...localStartsWith, ...localIncludes]
-        .slice(0, 8)
+        .slice(0, 12)
         .map((item) => ({ name: item.name, ticker: item.ticker }));
-
-      // 네트워크 상태와 무관하게 드롭다운이 바로 보이도록 로컬 결과를 우선 반영
-      setSuggestions(localResults);
 
       try {
         const remoteResults = await runTickerSearch(q);
         if (requestId !== searchRequestIdRef.current) return;
 
-        const merged = [...localResults];
+        const merged = [];
         for (const item of remoteResults) {
           if (!merged.some((m) => m.ticker === item.ticker)) {
             merged.push(item);
           }
-          if (merged.length >= 8) break;
+          if (merged.length >= 12) break;
         }
-        setSuggestions(merged.slice(0, 8));
+        for (const item of localResults) {
+          if (!merged.some((m) => m.ticker === item.ticker)) {
+            merged.push(item);
+          }
+          if (merged.length >= 12) break;
+        }
+        setSuggestions(merged.slice(0, 12));
+        setHighlightedIndex((prev) => {
+          if (merged.length === 0) return -1;
+          return prev >= 0 && prev < merged.length ? prev : 0;
+        });
       } catch (_) {
         if (requestId !== searchRequestIdRef.current) return;
-        setSuggestions(localResults.slice(0, 8));
+        setSuggestions(localResults.slice(0, 12));
+        setHighlightedIndex(localResults.length > 0 ? 0 : -1);
       }
     }, 180);
 
@@ -2529,12 +2542,42 @@ export default function App() {
   }, [searchQuery]);
 
   const handleSearch = async (e) => {
+    if (e.key === "ArrowDown") {
+      e.preventDefault();
+      if (!showSuggestions) setShowSuggestions(true);
+      setHighlightedIndex((prev) => {
+        if (suggestions.length === 0) return -1;
+        return prev < suggestions.length - 1 ? prev + 1 : 0;
+      });
+      return;
+    }
+    if (e.key === "ArrowUp") {
+      e.preventDefault();
+      if (!showSuggestions) setShowSuggestions(true);
+      setHighlightedIndex((prev) => {
+        if (suggestions.length === 0) return -1;
+        return prev > 0 ? prev - 1 : suggestions.length - 1;
+      });
+      return;
+    }
+    if (e.key === "Escape") {
+      setShowSuggestions(false);
+      setHighlightedIndex(-1);
+      return;
+    }
+
     if (e.key === "Enter" && searchQuery.trim()) {
+      if (showSuggestions && highlightedIndex >= 0 && suggestions[highlightedIndex]) {
+        e.preventDefault();
+        handleSelectSuggestion(suggestions[highlightedIndex]);
+        return;
+      }
       const resolved = await resolveTicker(searchQuery);
       setSearchedTicker(resolved);
       setSearchQuery(resolved || searchQuery.trim());
       setActivePage("company");
       setShowSuggestions(false);
+      setHighlightedIndex(-1);
     }
   };
 
@@ -2543,6 +2586,7 @@ export default function App() {
     setSearchedTicker(item.ticker);
     setActivePage("company");
     setShowSuggestions(false);
+    setHighlightedIndex(-1);
   };
 
   const handleQuickSearch = (ticker) => {
@@ -2626,6 +2670,7 @@ export default function App() {
               onChange={e => {
                 setSearchQuery(e.target.value);
                 setShowSuggestions(true);
+                setHighlightedIndex(-1);
               }}
               onKeyDown={handleSearch}
               onFocus={() => setShowSuggestions(true)}
@@ -2633,10 +2678,10 @@ export default function App() {
             />
             {showSuggestions && suggestions.length > 0 && (
               <div className="search-suggest">
-                {suggestions.map((item) => (
+                {suggestions.map((item, idx) => (
                   <button
                     key={`${item.ticker}-${item.name}`}
-                    className="search-suggest-item"
+                    className={`search-suggest-item ${idx === highlightedIndex ? "active" : ""}`}
                     onMouseDown={() => handleSelectSuggestion(item)}
                   >
                     <span className="search-suggest-name">{item.name}</span>

@@ -77,12 +77,11 @@ export async function GET(request) {
     };
 
     const capClass = (mc) => {
-      if (mc >= 200e9) return "Mega Cap";
-      if (mc >= 10e9) return "Large Cap";
-      if (mc >= 2e9) return "Mid Cap";
-      if (mc >= 300e6) return "Small Cap";
-      if (mc >= 50e6) return "Micro Cap";
-      return "Nano Cap";
+      if (mc >= 200e9) return "Mega Cap : 초대형주";
+      if (mc >= 10e9) return "Large Cap : 대형주";
+      if (mc >= 2e9) return "Mid Cap : 중형주";
+      if (mc >= 300e6) return "Small Cap : 소형주";
+      return "Small Cap : 소형주";
     };
 
     const capRank = await (async () => {

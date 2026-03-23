@@ -1,4 +1,4 @@
-# ValueScope by 호두머니
+# HoduMoney by 호두머니
 
 > 숫자로 기업의 가치를 해석하다
 
@@ -17,32 +17,32 @@
 ### 2단계: GitHub에 코드 올리기 (5분)
 
 1. https://github.com 에서 **New repository** 클릭
-2. 이름: `valuescope` → **Create repository**
+2. 이름: `hodumoney` → **Create repository**
 3. 터미널(명령 프롬프트)에서:
 
 ```bash
 # 이 프로젝트 폴더로 이동
-cd valuescope
+cd hodumoney
 
 # Git 초기화 및 푸시
 git init
 git add .
 git commit -m "first commit"
 git branch -M main
-git remote add origin https://github.com/내아이디/valuescope.git
+git remote add origin https://github.com/내아이디/hodumoney.git
 git push -u origin main
 ```
 
 ### 3단계: Vercel에 배포 (3분)
 
 1. https://vercel.com 접속 → **Sign up with GitHub**
-2. **Add New Project** → `valuescope` 레포 선택 → **Import**
+2. **Add New Project** → `hodumoney` 레포 선택 → **Import**
 3. **Environment Variables** 섹션에서:
    - Name: `FMP_API_KEY`
    - Value: 1단계에서 복사한 API 키
 4. **Deploy** 클릭!
 
-✅ 완료! `https://valuescope.vercel.app` 같은 주소로 접속 가능합니다.
+✅ 완료! `https://hodumoney.vercel.app` 같은 주소로 접속 가능합니다.
 
 ---
 
@@ -67,7 +67,7 @@ npm run dev
 ## 📁 프로젝트 구조
 
 ```
-valuescope/
+hodumoney/
 ├── app/
 │   ├── layout.js          # HTML 레이아웃, 폰트 설정
 │   ├── page.js             # 메인 페이지

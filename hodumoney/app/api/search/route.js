@@ -29,7 +29,7 @@ export async function GET(request) {
     (item.n.toLowerCase().includes(qLower) || item.s.toLowerCase().includes(qLower)) &&
     !localStartsWith.some((s) => s.s === item.s)
   );
-  const localResults = [...localStartsWith, ...localIncludes].slice(0, 8);
+  const localResults = [...localStartsWith, ...localIncludes].slice(0, 20);
 
   try {
     const [stockAnalysisRes, yahooRes] = await Promise.allSettled([
@@ -73,16 +73,23 @@ export async function GET(request) {
       }))
       .filter((item) => item.s && item.n);
 
-    const merged = [...localResults];
-    for (const item of [...saList, ...yahooList]) {
+    const merged = [];
+    for (const item of [...yahooList, ...saList]) {
       if (!item.s) continue;
       if (!merged.some((m) => m.s === item.s)) {
         merged.push(item);
       }
-      if (merged.length >= 8) break;
+      if (merged.length >= 12) break;
     }
 
-    if (merged.length > 0) return Response.json(merged.slice(0, 8));
+    for (const item of localResults) {
+      if (!merged.some((m) => m.s === item.s)) {
+        merged.push(item);
+      }
+      if (merged.length >= 12) break;
+    }
+
+    if (merged.length > 0) return Response.json(merged.slice(0, 12));
 
     // 최후 폴백: 기존 StockAnalysis 단일 요청
     const res = await fetch(`https://stockanalysis.com/api/search?q=${encodeURIComponent(q)}`, {
@@ -91,8 +98,8 @@ export async function GET(request) {
     });
     if (!res.ok) return Response.json([]);
     const data = await res.json();
-    return Response.json(Array.isArray(data) ? data.slice(0, 8) : []);
+    return Response.json(Array.isArray(data) ? data.slice(0, 12) : []);
   } catch (err) {
-    return Response.json(localResults.slice(0, 8));
+    return Response.json(localResults.slice(0, 12));
   }
 }
