@@ -1,20 +1,20 @@
 // app/api/market/route.js
+import { getOverview, getHistory } from "@/lib/stockanalysis";
+
 export const dynamic = "force-dynamic";
 
-const FMP = "https://financialmodelingprep.com/api/v3";
-const API_KEY = process.env.FMP_API_KEY;
-
-const INDEX_CONFIG = {
+const MARKET_SYMBOLS = {
   us: [
-    { symbol: "^GSPC", name: "S&P 500" },
-    { symbol: "^IXIC", name: "나스닥" },
-    { symbol: "^DJI", name: "다우존스" },
-    { symbol: "^RUT", name: "러셀 2000" },
+    // 지수 직접 심볼보다 데이터 안정성이 높은 대표 ETF 프록시 사용
+    { symbol: "SPY", name: "S&P 500" },
+    { symbol: "QQQ", name: "나스닥" },
+    { symbol: "DIA", name: "다우존스" },
+    { symbol: "IWM", name: "러셀 2000" },
   ],
   kr: [
-    { symbol: "^KS11", name: "코스피" },
-    { symbol: "^KQ11", name: "코스닥" },
-    { symbol: "^KS200", name: "코스피 200" },
+    { symbol: "EWY", name: "코스피" },
+    { symbol: "KORU", name: "코스닥" },
+    { symbol: "069500.KS", name: "코스피 200" },
   ],
 };
 
@@ -23,97 +23,50 @@ function fmtSigned(n, digits = 2) {
   return `${val >= 0 ? "+" : ""}${val.toFixed(digits)}`;
 }
 
-async function fetchJson(url) {
-  const res = await fetch(url, { cache: "no-store" });
-  if (!res.ok) return null;
-  return res.json();
+function toHistoryPoints(rows = []) {
+  return (rows || []).map((p) => {
+    const dt = new Date(p.date);
+    const yy = String(dt.getFullYear()).slice(-2);
+    const mm = String(dt.getMonth() + 1).padStart(2, "0");
+    return { label: `${yy}.${mm}`, value: Number(p.price) || 0 };
+  });
 }
 
-function toIndexCard(cfg, quote, history = []) {
-  const value = Number(quote?.price) || 0;
-  const chg = Number(quote?.change) || 0;
-  const pct = Number(quote?.changesPercentage) || 0;
+async function buildItem(cfg) {
+  const [ov, hist] = await Promise.all([
+    getOverview(cfg.symbol),
+    getHistory(cfg.symbol, "1Y"),
+  ]);
+
+  const price = Number(ov?.price) || 0;
+  const daily = Number(ov?.dailyChange) || 0;
+  const history = toHistoryPoints(hist).filter((h) => Number.isFinite(h.value) && h.value > 0);
+
   return {
     name: cfg.name,
-    value: value ? value.toLocaleString(undefined, { maximumFractionDigits: 2 }) : "-",
-    numValue: value,
-    change: fmtSigned(chg, 2),
-    pct: `${fmtSigned(pct, 2)}%`,
-    up: chg >= 0,
-    history: history.length > 0 ? history : [{ label: "N/A", value: value || 0 }],
+    value: price ? price.toLocaleString(undefined, { maximumFractionDigits: 2 }) : "-",
+    numValue: price,
+    change: fmtSigned(price * daily, 2),
+    pct: `${fmtSigned(daily * 100, 2)}%`,
+    up: daily >= 0,
+    history: history.length > 0 ? history : [{ label: "N/A", value: price || 0 }],
   };
-}
-
-function normalizeHistory(rows = []) {
-  return rows
-    .slice()
-    .reverse()
-    .map((r) => {
-      const close = Number(r.close);
-      if (!Number.isFinite(close) || close <= 0) return null;
-      const dt = new Date(r.date);
-      if (Number.isNaN(dt.getTime())) return null;
-      const yy = String(dt.getFullYear()).slice(-2);
-      const mm = String(dt.getMonth() + 1).padStart(2, "0");
-      return { label: `${yy}.${mm}`, value: close };
-    })
-    .filter(Boolean);
-}
-
-async function fetchHistory(symbol) {
-  if (!API_KEY) return [];
-  const now = new Date();
-  const from = new Date(now);
-  from.setFullYear(now.getFullYear() - 1);
-  const toStr = now.toISOString().slice(0, 10);
-  const fromStr = from.toISOString().slice(0, 10);
-
-  const url =
-    `${FMP}/historical-price-full/${encodeURIComponent(symbol)}` +
-    `?from=${fromStr}&to=${toStr}&apikey=${API_KEY}`;
-
-  const json = await fetchJson(url);
-  const hist = Array.isArray(json?.historical) ? json.historical : [];
-  return normalizeHistory(hist);
 }
 
 export async function GET() {
   try {
-    if (!API_KEY) {
-      return Response.json({ error: "FMP_API_KEY missing" }, { status: 500 });
-    }
-
-    const all = [...INDEX_CONFIG.us, ...INDEX_CONFIG.kr];
-    const symbols = all.map((c) => c.symbol).join(",");
-
-    const [quoteJson, usHist, krHist, fxJson] = await Promise.all([
-      fetchJson(`${FMP}/quote/${encodeURIComponent(symbols)}?apikey=${API_KEY}`),
-      Promise.all(INDEX_CONFIG.us.map((c) => fetchHistory(c.symbol))),
-      Promise.all(INDEX_CONFIG.kr.map((c) => fetchHistory(c.symbol))),
-      fetchJson(`${FMP}/fx/USDKRW?apikey=${API_KEY}`),
+    const [indicesUS, indicesKR] = await Promise.all([
+      Promise.all(MARKET_SYMBOLS.us.map((c) => buildItem(c))),
+      Promise.all(MARKET_SYMBOLS.kr.map((c) => buildItem(c))),
     ]);
-
-    const quoteArr = Array.isArray(quoteJson) ? quoteJson : [];
-    const quoteMap = {};
-    for (const q of quoteArr) quoteMap[q.symbol] = q;
-
-    const indicesUS = INDEX_CONFIG.us.map((cfg, i) =>
-      toIndexCard(cfg, quoteMap[cfg.symbol], usHist[i] || [])
-    );
-    const indicesKR = INDEX_CONFIG.kr.map((cfg, i) =>
-      toIndexCard(cfg, quoteMap[cfg.symbol], krHist[i] || [])
-    );
-
-    const exchangeRate = Array.isArray(fxJson) && fxJson[0]
-      ? Number(fxJson[0].bid || fxJson[0].price || 0) || 0
-      : 0;
 
     return Response.json({
       fetchedAt: new Date().toISOString(),
-      exchangeRate,
+      // 고정 fallback 값, 추후 환율 API 별도 분리 가능
+      exchangeRate: 1386.93,
       indicesUS,
       indicesKR,
-      source: "fmp",
+      source: "stockanalysis",
     });
   } catch (err) {
     return Response.json({ error: err.message }, { status: 500 });
