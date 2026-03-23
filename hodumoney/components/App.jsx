@@ -1573,7 +1573,10 @@ function InlineChart({ item, onClose }) {
   const [period, setPeriod] = useState("1Y");
   if (!item) return null;
 
-  const data = item.history || [];
+  const allData = item.history || [];
+  const periodCount = { "1M": 22, "3M": 66, "6M": 132, "1Y": 252, "5Y": 1260, "10Y": 2520 };
+  const take = periodCount[period] || 252;
+  const data = allData.length > take ? allData.slice(-take) : allData;
   const values = data.map(d => d.value);
   const min = Math.min(...values);
   const max = Math.max(...values);

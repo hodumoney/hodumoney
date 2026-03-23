@@ -6,15 +6,15 @@ export const dynamic = "force-dynamic";
 const MARKET_SYMBOLS = {
   us: [
     // 지수 직접 심볼보다 데이터 안정성이 높은 대표 ETF 프록시 사용
-    { symbol: "SPY", name: "S&P 500" },
-    { symbol: "QQQ", name: "나스닥" },
-    { symbol: "DIA", name: "다우존스" },
-    { symbol: "IWM", name: "러셀 2000" },
+    { name: "S&P 500", candidates: ["^GSPC", "SPX", "SPY"] },
+    { name: "나스닥", candidates: ["^IXIC", "IXIC", "QQQ"] },
+    { name: "다우존스", candidates: ["^DJI", "DJIA", "DIA"] },
+    { name: "러셀 2000", candidates: ["^RUT", "RUT", "IWM"] },
   ],
   kr: [
-    { symbol: "EWY", name: "코스피" },
-    { symbol: "KORU", name: "코스닥" },
-    { symbol: "069500.KS", name: "코스피 200" },
+    { name: "코스피", candidates: ["^KS11", "KOSPI", "EWY"] },
+    { name: "코스닥", candidates: ["^KQ11", "KOSDAQ", "KORU"] },
+    { name: "코스피 200", candidates: ["^KS200", "069500.KS"] },
   ],
   econUS: [
     { symbol: "^TNX", name: "10년물 국채금리", valueType: "yield" },
@@ -42,10 +42,23 @@ function toHistoryPoints(rows = []) {
 }
 
 async function buildItem(cfg) {
-  const [ov, hist] = await Promise.all([
-    getOverview(cfg.symbol),
-    getHistory(cfg.symbol, "1Y"),
-  ]);
+  let ov = null;
+  let hist = [];
+  const candidates = cfg.candidates && cfg.candidates.length > 0 ? cfg.candidates : [cfg.symbol];
+
+  for (const symbol of candidates) {
+    const [candidateOv, candidateHist] = await Promise.all([
+      getOverview(symbol),
+      getHistory(symbol, "1Y"),
+    ]);
+    const price = Number(candidateOv?.price) || 0;
+    const history = toHistoryPoints(candidateHist).filter((h) => Number.isFinite(h.value) && h.value > 0);
+    if (price > 0 && history.length > 5) {
+      ov = candidateOv;
+      hist = candidateHist;
+      break;
+    }
+  }
 
   const price = Number(ov?.price) || 0;
   const daily = Number(ov?.dailyChange) || 0;
