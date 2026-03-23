@@ -514,15 +514,43 @@ function SentimentGaugeVisual({ value, reversed }) {
 // ─── Inline Chart Panel ──────────────────────────────────────────
 function InlineChart({ item, onClose }) {
   const [period, setPeriod] = useState("1Y");
+  const [chartData, setChartData] = useState(item?.history || []);
+  const [chartLoading, setChartLoading] = useState(false);
+
+  // Fetch period-specific data when period changes and item has a yahooSymbol
+  useEffect(() => {
+    if (!item?.yahooSymbol) {
+      setChartData(item?.history || []);
+      return;
+    }
+    const rangeMap = { "1M": "1mo", "3M": "3mo", "6M": "6mo", "1Y": "1y", "5Y": "5y", "10Y": "10y" };
+    const range = rangeMap[period] || "1y";
+    const mult = item.chartMult || 1;
+
+    setChartLoading(true);
+    fetch(`/api/market/chart?symbol=${encodeURIComponent(item.yahooSymbol)}&range=${range}`)
+      .then(r => r.json())
+      .then(d => {
+        if (d.points && d.points.length > 0) {
+          setChartData(d.points.map(p => ({
+            label: p.label,
+            value: Math.round(p.value * mult * 100) / 100,
+          })));
+        }
+      })
+      .catch(() => {})
+      .finally(() => setChartLoading(false));
+  }, [period, item?.yahooSymbol]);
+
   if (!item) return null;
-  const data = item.history || [];
+  const data = chartData;
   const values = data.map(d => d.value);
-  const min = Math.min(...values);
-  const max = Math.max(...values);
+  const min = values.length > 0 ? Math.min(...values) : 0;
+  const max = values.length > 0 ? Math.max(...values) : 1;
   const padding = (max - min) * 0.1 || 1;
   const isUp = values.length >= 2 && values[values.length - 1] >= values[0];
   const color = isUp ? "#F04452" : "#3182F6";
-  const gradId = `grad-${item.name.replace(/[^a-zA-Z]/g, "")}-${isUp ? "u" : "d"}`;
+  const gradId = `grad-${item.name.replace(/[^a-zA-Z]/g, "")}-${period}-${isUp ? "u" : "d"}`;
 
   return (
     <div className="inline-chart-panel">
@@ -549,21 +577,27 @@ function InlineChart({ item, onClose }) {
         ))}
       </div>
       <div className="inline-chart-body">
-        <ResponsiveContainer width="100%" height={220}>
-          <AreaChart data={data} margin={{ top: 8, right: 8, left: -10, bottom: 0 }}>
-            <defs>
-              <linearGradient id={gradId} x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0%" stopColor={color} stopOpacity={0.15} />
-                <stop offset="100%" stopColor={color} stopOpacity={0.02} />
-              </linearGradient>
-            </defs>
-            <CartesianGrid strokeDasharray="3 3" stroke="#F2F3F5" vertical={false} />
-            <XAxis dataKey="label" axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: "#8B95A1" }} interval={Math.max(0, Math.floor(data.length / 6) - 1)} />
-            <YAxis domain={[min - padding, max + padding]} axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: "#8B95A1" }} tickFormatter={(v) => v >= 1000 ? `${(v/1000).toFixed(1)}k` : v.toFixed(v < 10 ? 2 : 1)} width={52} />
-            <Tooltip contentStyle={{ background: "white", border: "1px solid #E5E8EB", borderRadius: 10, boxShadow: "0 4px 12px rgba(0,0,0,0.08)", padding: "8px 14px", fontSize: 13, fontWeight: 600 }} formatter={(val) => [typeof val === "number" ? val.toLocaleString(undefined, { maximumFractionDigits: 2 }) : val, ""]} labelStyle={{ color: "#8B95A1", fontSize: 11, marginBottom: 2 }} />
-            <Area type="monotone" dataKey="value" stroke={color} strokeWidth={2.5} fill={`url(#${gradId})`} dot={false} activeDot={{ r: 5, stroke: color, strokeWidth: 2, fill: "white" }} />
-          </AreaChart>
-        </ResponsiveContainer>
+        {chartLoading ? (
+          <div style={{ height: 220, display: "flex", alignItems: "center", justifyContent: "center", color: "var(--text-tertiary)", fontSize: 13 }}>로딩중...</div>
+        ) : data.length === 0 ? (
+          <div style={{ height: 220, display: "flex", alignItems: "center", justifyContent: "center", color: "var(--text-tertiary)", fontSize: 13 }}>데이터 없음</div>
+        ) : (
+          <ResponsiveContainer width="100%" height={220}>
+            <AreaChart data={data} margin={{ top: 8, right: 8, left: -10, bottom: 0 }}>
+              <defs>
+                <linearGradient id={gradId} x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stopColor={color} stopOpacity={0.15} />
+                  <stop offset="100%" stopColor={color} stopOpacity={0.02} />
+                </linearGradient>
+              </defs>
+              <CartesianGrid strokeDasharray="3 3" stroke="#F2F3F5" vertical={false} />
+              <XAxis dataKey="label" axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: "#8B95A1" }} interval={Math.max(0, Math.floor(data.length / 6) - 1)} />
+              <YAxis domain={[min - padding, max + padding]} axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: "#8B95A1" }} tickFormatter={(v) => v >= 1000 ? `${(v/1000).toFixed(1)}k` : v.toFixed(v < 10 ? 2 : 1)} width={52} />
+              <Tooltip contentStyle={{ background: "white", border: "1px solid #E5E8EB", borderRadius: 10, boxShadow: "0 4px 12px rgba(0,0,0,0.08)", padding: "8px 14px", fontSize: 13, fontWeight: 600 }} formatter={(val) => [typeof val === "number" ? val.toLocaleString(undefined, { maximumFractionDigits: 2 }) : val, ""]} labelStyle={{ color: "#8B95A1", fontSize: 11, marginBottom: 2 }} />
+              <Area type="monotone" dataKey="value" stroke={color} strokeWidth={2.5} fill={`url(#${gradId})`} dot={false} activeDot={{ r: 5, stroke: color, strokeWidth: 2, fill: "white" }} />
+            </AreaChart>
+          </ResponsiveContainer>
+        )}
       </div>
     </div>
   );
