@@ -527,7 +527,7 @@ function InlineChart({ item, onClose }) {
       setChartData(item?.history || []);
       return;
     }
-    const rangeMap = { "1D": "5d", "1W": "5d", "1M": "1mo", "3M": "3mo", "6M": "6mo", "1Y": "1y", "5Y": "5y", "10Y": "10y", "MAX": "max" };
+    const rangeMap = { "1D": "1d", "1W": "5d", "1M": "1mo", "3M": "3mo", "6M": "6mo", "1Y": "1y", "5Y": "5y", "10Y": "10y", "MAX": "max" };
     const range = rangeMap[period] || "1y";
     const mult = item.chartMult || 1;
 

@@ -16,7 +16,8 @@ export async function GET(request) {
 
   // Choose interval based on range
   const intervalMap = {
-    "5d": "5m",
+    "1d": "5m",
+    "5d": "15m",
     "5d_daily": "1d",
     "1wk": "15m",
     "1mo": "1d",
@@ -61,7 +62,7 @@ export async function GET(request) {
 
       // Label format depends on range
       let label;
-      if (range === "5d" || range === "1wk") {
+      if (range === "1d" || range === "5d" || range === "1wk") {
         const hh = String(d.getHours()).padStart(2, "0");
         const mi = String(d.getMinutes()).padStart(2, "0");
         label = `${mm}.${dd} ${hh}:${mi}`;
