@@ -1663,6 +1663,16 @@ function InlineChart({ item, onClose }) {
   );
 }
 
+function getPaddedDomain(values, { minPadRatio = 0.1, minAbsPad = 1 } = {}) {
+  const nums = (values || []).filter((v) => typeof v === "number" && isFinite(v));
+  if (nums.length === 0) return ["auto", "auto"];
+  const min = Math.min(...nums);
+  const max = Math.max(...nums);
+  const range = max - min;
+  const pad = Math.max(range * minPadRatio, minAbsPad);
+  return [min - pad, max + pad];
+}
+
 // ─── Core Valuations with Expandable Charts ─────────────────────
 function CoreValuations({ data, viewMode }) {
   const [expandedKey, setExpandedKey] = useState(null);
@@ -1702,6 +1712,7 @@ function CoreValuations({ data, viewMode }) {
         const trendMin = Math.min(...trendData.map(v => safeVal(v)));
         const trendMax = Math.max(...trendData.map(v => safeVal(v)));
         const trendRange = trendMax - trendMin || 1;
+        const trendDomain = getPaddedDomain(trendData.map((v) => safeVal(v)), { minPadRatio: 0.12, minAbsPad: 0.5 });
 
         const chartData = trendData.map((v, i) => ({ label: trendLabels[i] || `Q${i+1}`, value: safeVal(v) }));
 
@@ -1737,6 +1748,7 @@ function CoreValuations({ data, viewMode }) {
                       <CartesianGrid strokeDasharray="3 3" stroke="#F2F3F5" vertical={false} />
                       <XAxis dataKey="label" axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: "#8B95A1" }} />
                       <YAxis
+                        domain={trendDomain}
                         axisLine={false} tickLine={false}
                         tick={{ fontSize: 11, fill: "#8B95A1" }}
                         tickFormatter={v => v >= 1000 ? `${(v/1000).toFixed(1)}k` : v.toFixed(v < 10 ? 2 : 0)}
@@ -1766,6 +1778,7 @@ function FinRowCard({ label, values, labels, expanded, onToggle, fmtFn, allowNeg
   const vMin = Math.min(...values);
   const vMax = Math.max(...values);
   const vRange = vMax - vMin || 1;
+  const valueDomain = getPaddedDomain(values, { minPadRatio: 0.12, minAbsPad: Math.max(1, Math.abs(vMax) * 0.01) });
   const chartData = values.map((v, i) => ({ label: labels[i], value: v }));
   const isNeg = allowNeg && lastVal < 0;
 
@@ -1804,6 +1817,7 @@ function FinRowCard({ label, values, labels, expanded, onToggle, fmtFn, allowNeg
                 <CartesianGrid strokeDasharray="3 3" stroke="#F2F3F5" vertical={false} />
                 <XAxis dataKey="label" axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: "#8B95A1" }} />
                 <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: "#8B95A1" }}
+                  domain={valueDomain}
                   tickFormatter={v => Math.abs(v) >= 1000 ? `${(v/1000).toFixed(0)}k` : v.toFixed(v < 10 && v > -10 ? 2 : 0)} width={52} />
                 <Tooltip
                   contentStyle={{ background: "white", border: "1px solid #E5E8EB", borderRadius: 10, boxShadow: "0 4px 12px rgba(0,0,0,0.08)", padding: "8px 14px", fontSize: 13, fontWeight: 600 }}
