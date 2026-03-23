@@ -28,13 +28,11 @@ const INDICES_US = [
   { name: "S&P 500", value: "5,307.01", numValue: 5307.01, change: "-14.4", pct: "-0.2%", up: false, history: genHistory(5307, 12, 0.015, 0.008) },
   { name: "나스닥", value: "16,801.54", numValue: 16801.54, change: "-31.08", pct: "-0.1%", up: false, history: genHistory(16801, 12, 0.02, 0.012) },
   { name: "다우존스", value: "39,671.04", numValue: 39671.04, change: "-201.95", pct: "-0.5%", up: false, history: genHistory(39671, 12, 0.012, 0.006) },
-  { name: "러셀 2000", value: "2,003.17", numValue: 2003.17, change: "+8.42", pct: "+0.4%", up: true, history: genHistory(2003, 12, 0.025, 0.003) },
 ];
 
 const INDICES_KR = [
   { name: "코스피", value: "2,726.68", numValue: 2726.68, change: "+3.22", pct: "+0.1%", up: true, history: genHistory(2726, 12, 0.015, 0.002) },
   { name: "코스닥", value: "847.12", numValue: 847.12, change: "+1.40", pct: "+0.2%", up: true, history: genHistory(847, 12, 0.02, 0.001) },
-  { name: "코스피 200", value: "362.45", numValue: 362.45, change: "+0.87", pct: "+0.2%", up: true, history: genHistory(362, 12, 0.015, 0.002) },
 ];
 
 const ECON_INDICATORS_US = [
@@ -172,11 +170,15 @@ const styles = `
   .content-area { padding: 28px 32px 60px; max-width: 1200px; }
 
   .index-strip { display: flex; gap: 16px; overflow-x: auto; padding-bottom: 4px; margin-bottom: 28px; }
-  .index-card { flex: 0 0 auto; min-width: 160px; background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius-md); padding: 14px 18px; cursor: pointer; transition: all 0.2s ease; }
+  .index-card { flex: 1 1 0; min-width: 200px; background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius-md); padding: 20px 24px; cursor: pointer; transition: all 0.2s ease; }
   .index-card:hover { box-shadow: var(--shadow-md); transform: translateY(-1px); }
-  .index-name { font-size: 12px; color: var(--text-tertiary); font-weight: 500; margin-bottom: 6px; }
-  .index-value { font-size: 18px; font-weight: 700; letter-spacing: -0.3px; margin-bottom: 2px; }
-  .index-change { font-size: 12px; font-weight: 600; }
+  .index-card-lg { min-width: 200px; padding: 18px 22px; }
+  .index-card-lg .index-name { font-size: 13px; margin-bottom: 8px; }
+  .index-card-lg .index-value { font-size: 22px; font-weight: 800; margin-bottom: 4px; }
+  .index-card-lg .index-change { font-size: 13px; }
+  .index-name { font-size: 13px; color: var(--text-tertiary); font-weight: 500; margin-bottom: 8px; }
+  .index-value { font-size: 24px; font-weight: 700; letter-spacing: -0.3px; margin-bottom: 4px; }
+  .index-change { font-size: 13px; font-weight: 600; }
   .index-change.up { color: var(--accent-red); }
   .index-change.down { color: var(--accent-blue); }
 
@@ -512,18 +514,20 @@ function SentimentGaugeVisual({ value, reversed }) {
 }
 
 // ─── Inline Chart Panel ──────────────────────────────────────────
+
+// ─── Inline Chart Panel (period-aware) ───────────────────────────
 function InlineChart({ item, onClose }) {
   const [period, setPeriod] = useState("1Y");
   const [chartData, setChartData] = useState(item?.history || []);
   const [chartLoading, setChartLoading] = useState(false);
+  const [periodChange, setPeriodChange] = useState({ change: item?.change || "-", pct: item?.pct || "-", up: item?.up || false });
 
-  // Fetch period-specific data when period changes and item has a yahooSymbol
   useEffect(() => {
     if (!item?.yahooSymbol) {
       setChartData(item?.history || []);
       return;
     }
-    const rangeMap = { "1D": "5d", "1W": "1wk", "1M": "1mo", "3M": "3mo", "6M": "6mo", "1Y": "1y", "5Y": "5y", "10Y": "10y", "MAX": "max" };
+    const rangeMap = { "1D": "5d", "1W": "5d", "1M": "1mo", "3M": "3mo", "6M": "6mo", "1Y": "1y", "5Y": "5y", "10Y": "10y", "MAX": "max" };
     const range = rangeMap[period] || "1y";
     const mult = item.chartMult || 1;
 
@@ -532,10 +536,18 @@ function InlineChart({ item, onClose }) {
       .then(r => r.json())
       .then(d => {
         if (d.points && d.points.length > 0) {
-          setChartData(d.points.map(p => ({
-            label: p.label,
-            value: Math.round(p.value * mult * 100) / 100,
-          })));
+          const pts = d.points.map(p => ({ label: p.label, value: Math.round(p.value * mult * 100) / 100 }));
+          setChartData(pts);
+          const first = pts[0].value;
+          const last = pts[pts.length - 1].value;
+          const chg = last - first;
+          const pctVal = first !== 0 ? (chg / first) * 100 : 0;
+          const up = chg >= 0;
+          setPeriodChange({
+            change: `${up ? "+" : ""}${Math.abs(chg) >= 100 ? Math.round(chg).toLocaleString() : chg.toFixed(2)}`,
+            pct: `${up ? "+" : ""}${pctVal.toFixed(1)}%`,
+            up,
+          });
         }
       })
       .catch(() => {})
@@ -548,9 +560,8 @@ function InlineChart({ item, onClose }) {
   const min = values.length > 0 ? Math.min(...values) : 0;
   const max = values.length > 0 ? Math.max(...values) : 1;
   const padding = (max - min) * 0.1 || 1;
-  const isUp = values.length >= 2 && values[values.length - 1] >= values[0];
-  const color = isUp ? "#F04452" : "#3182F6";
-  const gradId = `grad-${item.name.replace(/[^a-zA-Z]/g, "")}-${period}-${isUp ? "u" : "d"}`;
+  const color = periodChange.up ? "#F04452" : "#3182F6";
+  const gradId = `grad-${item.name.replace(/[^a-zA-Z]/g, "")}-${period}-${periodChange.up ? "u" : "d"}`;
 
   return (
     <div className="inline-chart-panel">
@@ -560,12 +571,9 @@ function InlineChart({ item, onClose }) {
             <div className="inline-chart-title">{item.name}</div>
             <div style={{ display: "flex", alignItems: "baseline", gap: 10, marginTop: 4 }}>
               <span className="inline-chart-val">{item.value}</span>
-              {item.change && (
-                <span className="inline-chart-chg" style={{ color }}>
-                  {item.up ? "▲" : "▼"} {item.change}{item.pct ? ` (${item.pct})` : ""}
-                </span>
-              )}
-              {item.status && <span className="econ-status" style={{ color: item.statusColor }}>{item.status}</span>}
+              <span className="inline-chart-chg" style={{ color }}>
+                {periodChange.up ? "▲" : "▼"} {periodChange.change} ({periodChange.pct})
+              </span>
             </div>
           </div>
         </div>
@@ -602,6 +610,7 @@ function InlineChart({ item, onClose }) {
     </div>
   );
 }
+
 
 // ─── Core Valuations ─────────────────────────────────────────────
 function CoreValuations({ data }) {
@@ -807,6 +816,8 @@ function AdvancedMetrics({ data }) {
 }
 
 // ─── Market Overview Page ────────────────────────────────────────
+
+// ─── Market Overview Page (live data) ────────────────────────────
 function MarketPage() {
   const [marketTab, setMarketTab] = useState("전체");
   const [selectedIndex, setSelectedIndex] = useState(null);
@@ -830,14 +841,12 @@ function MarketPage() {
   };
   const isSelected = (group, name) => selectedIndex && selectedIndex.group === group && selectedIndex.name === name;
 
-  const liveIdxUS = marketData?.indicesUS || INDICES_US;
-  const liveIdxKR = marketData?.indicesKR || INDICES_KR;
-  const liveEconUS = marketData?.econUS || ECON_INDICATORS_US;
-  const liveEconKR = marketData?.econKR || ECON_INDICATORS_KR;
+  const liveIdxUS = marketData?.indicesUS || [];
+  const liveIdxKR = marketData?.indicesKR || [];
+  const liveEconUS = marketData?.econUS || [];
+  const liveEconKR = marketData?.econKR || [];
   const liveVix = marketData?.vix || null;
   const exchangeRate = marketData?.exchangeRate || "N/A";
-
-  // VIX gauge value (0-100 scale, max around 80)
   const vixGauge = liveVix ? Math.min(100, Math.round((liveVix.numValue / 80) * 100)) : 33;
 
   return (
@@ -854,12 +863,12 @@ function MarketPage() {
 
       <div className="section-header fade-up"><div className="section-title">주가지수</div></div>
 
-      {showUS && (
+      {showUS && liveIdxUS.length > 0 && (
         <div className="fade-up fade-up-d1">
           <div className="country-label"><span className="country-flag">🇺🇸</span> 미국</div>
           <div className="index-strip">
             {liveIdxUS.map((idx, i) => (
-              <div className={`index-card clickable ${isSelected("idxUS", idx.name) ? "selected" : ""}`} key={i} onClick={() => toggle("idxUS", idx)}>
+              <div className={`index-card index-card-lg clickable ${isSelected("idxUS", idx.name) ? "selected" : ""}`} key={i} onClick={() => toggle("idxUS", idx)}>
                 <span className="click-hint">{isSelected("idxUS", idx.name) ? "닫기" : "차트"}</span>
                 <div className="index-name">{idx.name}</div>
                 <div className="index-value">{idx.value}</div>
@@ -871,12 +880,12 @@ function MarketPage() {
         </div>
       )}
 
-      {showKR && (
+      {showKR && liveIdxKR.length > 0 && (
         <div className="fade-up fade-up-d1" style={{ marginTop: showUS ? 8 : 0 }}>
           <div className="country-label"><span className="country-flag">🇰🇷</span> 한국</div>
           <div className="index-strip">
             {liveIdxKR.map((idx, i) => (
-              <div className={`index-card clickable ${isSelected("idxKR", idx.name) ? "selected" : ""}`} key={i} onClick={() => toggle("idxKR", idx)}>
+              <div className={`index-card index-card-lg clickable ${isSelected("idxKR", idx.name) ? "selected" : ""}`} key={i} onClick={() => toggle("idxKR", idx)}>
                 <span className="click-hint">{isSelected("idxKR", idx.name) ? "닫기" : "차트"}</span>
                 <div className="index-name">{idx.name}</div>
                 <div className="index-value">{idx.value}</div>
@@ -897,12 +906,12 @@ function MarketPage() {
           <div className="country-label"><span className="country-flag">🇺🇸</span> 미국</div>
           <div className="econ-grid">
             {liveEconUS.map((ind, i) => (
-              <div className={`econ-card clickable ${isSelected("econUS", ind.name) ? "selected" : ""}`} key={i} onClick={() => toggle("econUS", ind)}>
-                <span className="click-hint">{isSelected("econUS", ind.name) ? "닫기" : "차트"}</span>
+              <div className={`econ-card ${ind.isStatic ? "" : "clickable"} ${isSelected("econUS", ind.name) ? "selected" : ""}`} key={i} onClick={() => { if (!ind.isStatic) toggle("econUS", ind); }}>
+                {!ind.isStatic && <span className="click-hint">{isSelected("econUS", ind.name) ? "닫기" : "차트"}</span>}
                 <div className="econ-name">{ind.name}</div>
                 <div className="econ-value">{ind.value}</div>
-                {ind.change && <div className={`econ-change ${ind.up ? "up" : "down"}`}>{ind.up ? "▲" : "▼"} {ind.change}{ind.pct ? ` (${ind.pct})` : ""}</div>}
-                {ind.status && <span className="econ-status" style={{ color: ind.statusColor }}>{ind.status}</span>}
+                {ind.change && !ind.isStatic && <div className={`econ-change ${ind.up ? "up" : "down"}`}>{ind.up ? "▲" : "▼"} {ind.change}{ind.pct ? ` (${ind.pct})` : ""}</div>}
+                {ind.status && <span className="econ-status" style={{ color: ind.statusColor || "var(--text-tertiary)" }}>{ind.status}</span>}
               </div>
             ))}
           </div>
@@ -915,12 +924,12 @@ function MarketPage() {
           <div className="country-label"><span className="country-flag">🇰🇷</span> 한국</div>
           <div className="econ-grid">
             {liveEconKR.map((ind, i) => (
-              <div className={`econ-card clickable ${isSelected("econKR", ind.name) ? "selected" : ""}`} key={i} onClick={() => toggle("econKR", ind)}>
-                <span className="click-hint">{isSelected("econKR", ind.name) ? "닫기" : "차트"}</span>
+              <div className={`econ-card ${ind.isStatic ? "" : "clickable"} ${isSelected("econKR", ind.name) ? "selected" : ""}`} key={i} onClick={() => { if (!ind.isStatic) toggle("econKR", ind); }}>
+                {!ind.isStatic && <span className="click-hint">{isSelected("econKR", ind.name) ? "닫기" : "차트"}</span>}
                 <div className="econ-name">{ind.name}</div>
                 <div className="econ-value">{ind.value}</div>
-                {ind.change && <div className={`econ-change ${ind.up ? "up" : "down"}`}>{ind.up ? "▲" : "▼"} {ind.change}{ind.pct ? ` (${ind.pct})` : ""}</div>}
-                {ind.status && <span className="econ-status" style={{ color: ind.statusColor }}>{ind.status}</span>}
+                {ind.change && !ind.isStatic && <div className={`econ-change ${ind.up ? "up" : "down"}`}>{ind.up ? "▲" : "▼"} {ind.change}{ind.pct ? ` (${ind.pct})` : ""}</div>}
+                {ind.status && <span className="econ-status" style={{ color: ind.statusColor || "var(--text-tertiary)" }}>{ind.status}</span>}
               </div>
             ))}
           </div>
@@ -957,6 +966,7 @@ function MarketPage() {
     </div>
   );
 }
+
 
 // ─── Price Chart ─────────────────────────────────────────────────
 function PriceChart({ ticker, dailyChange }) {
