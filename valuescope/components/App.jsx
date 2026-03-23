@@ -523,7 +523,7 @@ function InlineChart({ item, onClose }) {
       setChartData(item?.history || []);
       return;
     }
-    const rangeMap = { "1M": "1mo", "3M": "3mo", "6M": "6mo", "1Y": "1y", "5Y": "5y", "10Y": "10y" };
+    const rangeMap = { "1D": "5d", "1W": "1wk", "1M": "1mo", "3M": "3mo", "6M": "6mo", "1Y": "1y", "5Y": "5y", "10Y": "10y", "MAX": "max" };
     const range = rangeMap[period] || "1y";
     const mult = item.chartMult || 1;
 
@@ -572,7 +572,7 @@ function InlineChart({ item, onClose }) {
         <button className="inline-chart-close" onClick={onClose}>✕</button>
       </div>
       <div className="inline-chart-periods">
-        {["1M", "3M", "6M", "1Y", "5Y", "10Y"].map(p => (
+        {["1D", "1W", "1M", "3M", "6M", "1Y", "5Y", "10Y", "MAX"].map(p => (
           <button key={p} className={`chart-period-btn ${period === p ? "active" : ""}`} onClick={() => setPeriod(p)}>{p}</button>
         ))}
       </div>
