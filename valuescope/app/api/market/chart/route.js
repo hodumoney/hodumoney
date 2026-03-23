@@ -16,12 +16,16 @@ export async function GET(request) {
 
   // Choose interval based on range
   const intervalMap = {
+    "5d": "5m",
+    "5d_daily": "1d",
+    "1wk": "15m",
     "1mo": "1d",
     "3mo": "1d",
     "6mo": "1d",
     "1y": "1d",
     "5y": "1wk",
     "10y": "1mo",
+    "max": "1mo",
   };
   const interval = intervalMap[range] || "1d";
 
@@ -57,9 +61,15 @@ export async function GET(request) {
 
       // Label format depends on range
       let label;
-      if (range === "1mo" || range === "3mo") {
+      if (range === "5d" || range === "1wk") {
+        const hh = String(d.getHours()).padStart(2, "0");
+        const mi = String(d.getMinutes()).padStart(2, "0");
+        label = `${mm}.${dd} ${hh}:${mi}`;
+      } else if (range === "5d_daily") {
         label = `${mm}.${dd}`;
-      } else if (range === "10y") {
+      } else if (range === "1mo" || range === "3mo") {
+        label = `${mm}.${dd}`;
+      } else if (range === "10y" || range === "max") {
         label = `${yy}.${mm}`;
       } else {
         label = `${yy}.${mm}`;
