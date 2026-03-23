@@ -119,15 +119,50 @@ function latestPoint(series) {
   return series.length ? series[series.length - 1] : null;
 }
 
+
+async function fetchKrBaseRateFromBok() {
+  try {
+    const res = await fetch("https://www.bok.or.kr/eng/main/main.do", {
+      headers: UA,
+      cache: "no-store",
+    });
+    if (!res.ok) return null;
+
+    const html = await res.text();
+    const rateMatch = html.match(/BOK\s*Base\s*Rate\s*([0-9]+(?:\.[0-9]+)?)\s*%/i)
+      || html.match(/Base\s*Rate[^0-9]{0,40}([0-9]+(?:\.[0-9]+)?)\s*%/i);
+
+    // Example: Monetary Policy Decision(February 26, 2026)
+    const dateMatch = html.match(/Monetary\s*Policy\s*Decision\(([^)]+)\)/i);
+
+    if (!rateMatch) return null;
+    const value = `${Number(rateMatch[1]).toFixed(2)}%`;
+
+    let status = "BOK 실시간";
+    if (dateMatch?.[1]) {
+      const d = new Date(dateMatch[1]);
+      if (Number.isFinite(d.getTime())) {
+        status = `${d.getFullYear()}.${String(d.getMonth() + 1).padStart(2, "0")} 발표`;
+      }
+    }
+
+    return { value, status };
+  } catch {
+    return null;
+  }
+}
+
 async function buildMacroIndicators() {
   const [
     usRateLowSeries,
     usRateHighSeries,
     usRateFallback,
+    krRateLive,
   ] = await Promise.all([
     fetchFredSeries("DFEDTARL"), // Fed Target Lower Bound
     fetchFredSeries("DFEDTARU"), // Fed Target Upper Bound
     fetchFredSeries("DFF"),
+    fetchKrBaseRateFromBok(),
   ]);
 
   const usLow = latestPoint(usRateLowSeries);
@@ -152,8 +187,8 @@ async function buildMacroIndicators() {
     kr: [
       {
         name: "한국 기준금리",
-        value: "2.75%",
-        status: "2026.03 기준",
+        value: krRateLive?.value || "N/A",
+        status: krRateLive?.status || "데이터 없음",
         statusColor: "var(--text-tertiary)",
         isStatic: true,
       },
