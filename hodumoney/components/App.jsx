@@ -2341,8 +2341,13 @@ function CompanyPage({ searchTicker, onQuickSearch }) {
   // 시가총액 순위 (API에서 제공, 없으면 분류 fallback)
   const capLabel = data.capRank || data.capClass || "N/A";
 
-  // 고점 대비 하락률
-  const dropFromHigh = data.yearHigh > 0 ? ((data.price - data.yearHigh) / data.yearHigh * 100) : 0;
+  // 52주 고가/고점 대비 하락률 (비정상 데이터 방어)
+  const validYearHigh = safeNum(data.yearHigh);
+  const safePrice = safeNum(data.price);
+  const hasValidYearHigh = validYearHigh > 0 && safePrice > 0 && validYearHigh >= safePrice * 0.5;
+  const dropFromHigh = hasValidYearHigh
+    ? Math.max(0, ((validYearHigh - safePrice) / validYearHigh) * 100)
+    : null;
 
   return (
     <div className="content-area">
@@ -2370,8 +2375,8 @@ function CompanyPage({ searchTicker, onQuickSearch }) {
           { label: "시가총액", value: fmtCap(data.marketCap) },
           { label: "시가총액 분류", value: capLabel },
           { label: "거래량", value: safeNum(data.volume).toLocaleString() },
-          { label: "52주 최고", value: `$${safeNum(data.yearHigh).toLocaleString()}` },
-          { label: "고점대비 하락률", value: `${dropFromHigh.toFixed(1)}%`, color: dropFromHigh < 0 ? "var(--accent-blue)" : "var(--accent-green)" },
+          { label: "52주 최고", value: hasValidYearHigh ? `$${validYearHigh.toLocaleString()}` : "-" },
+          { label: "고점대비 하락률", value: dropFromHigh === null ? "-" : `${dropFromHigh.toFixed(1)}%`, color: dropFromHigh === null ? "inherit" : "var(--accent-blue)" },
           { label: "변동성 (β)", value: safeNum(data.beta).toFixed(2), sub: "시장 대비 변동 배수" },
         ].map((s, i) => (
           <div className="stat-item" key={i}>

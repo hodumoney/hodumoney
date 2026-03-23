@@ -182,12 +182,41 @@ export async function getOverview(ticker) {
   let yearHigh = 0;
 
   const overviewStats = parseStatsTables(html);
-  const range52 = overviewStats["52-Week Range"] || "";
+  const range52 =
+    overviewStats["52-Week Range"] ||
+    overviewStats["52 Week Range"] ||
+    "";
   const rangeMatch = range52.match(/([\d.]+)\s*-\s*([\d.]+)/);
 
   if (rangeMatch) {
     yearLow = parseFloat(rangeMatch[1]) || 0;
     yearHigh = parseFloat(rangeMatch[2]) || 0;
+  }
+
+  const statYearHigh = parseNum(
+    overviewStats["52-Week High"] ||
+    overviewStats["52 Week High"] ||
+    stats["52-Week High"] ||
+    stats["52 Week High"] ||
+    "0"
+  );
+  const statYearLow = parseNum(
+    overviewStats["52-Week Low"] ||
+    overviewStats["52 Week Low"] ||
+    stats["52-Week Low"] ||
+    stats["52 Week Low"] ||
+    "0"
+  );
+
+  if (!yearHigh || yearHigh <= 0 || yearHigh < yearLow) yearHigh = statYearHigh;
+  if (!yearLow || yearLow <= 0 || yearLow > yearHigh) yearLow = statYearLow;
+
+  // 비정상 데이터 가드 (예: 52주 최고가 $1로 파싱되는 케이스)
+  if (price > 0 && yearHigh > 0 && yearHigh < price * 0.5) {
+    yearHigh = Math.max(statYearHigh || 0, price);
+  }
+  if (price > 0 && yearLow > price * 1.5) {
+    yearLow = Math.min(statYearLow || price, price);
   }
 
   const prevClose =
