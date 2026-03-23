@@ -1976,27 +1976,38 @@ function MarketPage() {
   const [marketTab, setMarketTab] = useState("전체");
   const [selectedIndex, setSelectedIndex] = useState(null); // { group: "idxUS"|"idxKR"|"econUS"|"econKR", name: string }
   const [marketData, setMarketData] = useState(null);
+  const [marketLoading, setMarketLoading] = useState(true);
+  const [marketError, setMarketError] = useState(null);
 
   useEffect(() => {
     let cancelled = false;
+    setMarketLoading(true);
+    setMarketError(null);
     fetch("/api/market")
       .then((r) => r.json())
       .then((d) => {
-        if (!cancelled && !d.error) setMarketData(d);
+        if (cancelled) return;
+        if (d.error) {
+          setMarketError(d.error);
+          setMarketData(null);
+        } else {
+          setMarketData(d);
+        }
       })
-      .catch(() => {});
+      .catch(() => !cancelled && setMarketError("시장 데이터를 가져오지 못했습니다"))
+      .finally(() => !cancelled && setMarketLoading(false));
     return () => { cancelled = true; };
   }, []);
 
   const showUS = marketTab === "전체" || marketTab === "해외";
   const showKR = marketTab === "전체" || marketTab === "국내";
-  const indicesUS = marketData?.indicesUS?.length ? marketData.indicesUS : INDICES_US;
-  const indicesKR = marketData?.indicesKR?.length ? marketData.indicesKR : INDICES_KR;
-  const econUS = marketData?.econUS?.length ? marketData.econUS : ECON_INDICATORS_US;
-  const econKR = marketData?.econKR?.length ? marketData.econKR : ECON_INDICATORS_KR;
+  const indicesUS = marketData?.indicesUS || [];
+  const indicesKR = marketData?.indicesKR || [];
+  const econUS = marketData?.econUS || [];
+  const econKR = marketData?.econKR || [];
   const exchangeRate = (typeof marketData?.exchangeRate === "number" && isFinite(marketData.exchangeRate))
     ? marketData.exchangeRate
-    : 1386.93;
+    : null;
 
   const toggle = (group, item) => {
     if (selectedIndex && selectedIndex.group === group && selectedIndex.name === item.name) {
@@ -2017,9 +2028,16 @@ function MarketPage() {
           </button>
         ))}
         <div style={{ marginLeft: "auto" }}>
-          <span className="exchange-badge">💱 달러 환율 {exchangeRate.toLocaleString(undefined, { maximumFractionDigits: 2 })} 원</span>
+          <span className="exchange-badge">
+            💱 달러 환율 {exchangeRate ? `${exchangeRate.toLocaleString(undefined, { maximumFractionDigits: 2 })} 원` : "불러오는 중"}
+          </span>
         </div>
       </div>
+      {marketError && (
+        <div className="card" style={{ marginBottom: 12, padding: "12px 14px", border: "1px solid #F04452", color: "#B42318", fontSize: 13 }}>
+          {marketError}
+        </div>
+      )}
 
       {/* ── 주가지수 ── */}
       <div className="section-header fade-up">
@@ -2040,6 +2058,9 @@ function MarketPage() {
                 </div>
               </div>
             ))}
+            {!marketLoading && indicesUS.length === 0 && (
+              <div className="index-card" style={{ minWidth: 220 }}>데이터 없음</div>
+            )}
           </div>
           {selectedIndex && selectedIndex.group === "idxUS" && (
             <InlineChart item={selectedIndex} onClose={() => setSelectedIndex(null)} />
@@ -2061,6 +2082,9 @@ function MarketPage() {
                 </div>
               </div>
             ))}
+            {!marketLoading && indicesKR.length === 0 && (
+              <div className="index-card" style={{ minWidth: 220 }}>데이터 없음</div>
+            )}
           </div>
           {selectedIndex && selectedIndex.group === "idxKR" && (
             <InlineChart item={selectedIndex} onClose={() => setSelectedIndex(null)} />
@@ -2095,6 +2119,9 @@ function MarketPage() {
                 )}
               </div>
             ))}
+            {!marketLoading && econUS.length === 0 && (
+              <div className="econ-card">데이터 없음</div>
+            )}
           </div>
           {selectedIndex && selectedIndex.group === "econUS" && (
             <InlineChart item={selectedIndex} onClose={() => setSelectedIndex(null)} />
@@ -2121,6 +2148,9 @@ function MarketPage() {
                 )}
               </div>
             ))}
+            {!marketLoading && econKR.length === 0 && (
+              <div className="econ-card">데이터 없음</div>
+            )}
           </div>
           {selectedIndex && selectedIndex.group === "econKR" && (
             <InlineChart item={selectedIndex} onClose={() => setSelectedIndex(null)} />
