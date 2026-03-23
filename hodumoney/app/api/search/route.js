@@ -32,31 +32,16 @@ export async function GET(request) {
   const localResults = [...localStartsWith, ...localIncludes].slice(0, 20);
 
   try {
-    const [stockAnalysisRes, yahooRes] = await Promise.allSettled([
+    const [stockAnalysisRes] = await Promise.allSettled([
       fetch(`https://stockanalysis.com/api/search?q=${encodeURIComponent(q)}`, {
         headers: { "User-Agent": "Mozilla/5.0" },
         cache: "no-store",
       }),
-      fetch(
-        `https://query1.finance.yahoo.com/v1/finance/search?q=${encodeURIComponent(
-          q
-        )}&quotesCount=12&newsCount=0`,
-        {
-          headers: { "User-Agent": "Mozilla/5.0" },
-          cache: "no-store",
-        }
-      ),
     ]);
 
     let saData = [];
     if (stockAnalysisRes.status === "fulfilled" && stockAnalysisRes.value.ok) {
       saData = await stockAnalysisRes.value.json();
-    }
-
-    let yahooQuotes = [];
-    if (yahooRes.status === "fulfilled" && yahooRes.value.ok) {
-      const yahooData = await yahooRes.value.json();
-      yahooQuotes = Array.isArray(yahooData?.quotes) ? yahooData.quotes : [];
     }
 
     const saList = Array.isArray(saData)
@@ -66,15 +51,8 @@ export async function GET(request) {
         }))
       : [];
 
-    const yahooList = yahooQuotes
-      .map((item) => ({
-        s: (item?.symbol || "").toUpperCase(),
-        n: item?.shortname || item?.longname || item?.symbol || "",
-      }))
-      .filter((item) => item.s && item.n);
-
     const merged = [];
-    for (const item of [...yahooList, ...saList]) {
+    for (const item of saList) {
       if (!item.s) continue;
       if (!merged.some((m) => m.s === item.s)) {
         merged.push(item);
