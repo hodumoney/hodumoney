@@ -115,19 +115,21 @@ function parseNum(text) {
 
 function makeKoreanCompanyDescription({ name, sector, industry, exchange, rawDescription }) {
   const clean = (rawDescription || "").replace(/\s+/g, " ").trim();
+  const hasKorean = /[가-힣]/.test(clean);
   const lower = clean.toLowerCase();
-  const noisySignals = ["revenue was", "net income", "fiscal year", "earnings per share", "eps was"];
+  const noisySignals = ["revenue was", "net income", "fiscal year", "earnings per share", "eps was", "real-time price", "chart, key statistics"];
   const isNoisy = noisySignals.some((sig) => lower.includes(sig));
 
   const sectorText = sector ? `${sector} 섹터` : "글로벌 시장";
   const industryText = industry ? `${industry} 산업` : "관련 산업";
   const exchangeText = exchange ? `${exchange} 상장` : "상장";
 
-  if (!clean || isNoisy) {
+  // 영어 원문 문장을 섞지 않고, 한국어 템플릿 중심으로 노출
+  if (!clean || isNoisy || !hasKorean) {
     return `${name}는 ${sectorText}에 속한 ${industryText} 기업으로, ${exchangeText} 종목입니다.`;
   }
 
-  return `${name}는 ${sectorText}에 속한 ${industryText} 기업입니다. 주요 사업: ${clean}`;
+  return `${name}는 ${sectorText}에 속한 ${industryText} 기업입니다. ${clean}`;
 }
 
 function parseStatsTables(html) {

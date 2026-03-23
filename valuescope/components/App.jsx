@@ -342,8 +342,20 @@ const styles = `
   .index-card.clickable, .econ-card.clickable { cursor: pointer; position: relative; }
   .index-card.clickable:active, .econ-card.clickable:active { transform: scale(0.98); }
   .index-card.selected, .econ-card.selected { border-color: var(--accent-blue); box-shadow: 0 0 0 2px rgba(49,130,246,0.15); }
-  .click-hint { position: absolute; top: 8px; right: 10px; font-size: 10px; color: var(--text-tertiary); opacity: 0; transition: opacity 0.2s ease; }
-  .index-card.clickable:hover .click-hint, .econ-card.clickable:hover .click-hint { opacity: 1; }
+    .card-chart-btn {
+    position: absolute; top: 10px; right: 10px; width: 26px; height: 26px;
+    border: 1px solid var(--border); border-radius: 7px; background: #fff;
+    color: var(--text-secondary); font-size: 13px; cursor: pointer;
+    display: flex; align-items: center; justify-content: center; transition: all 0.15s ease;
+  }
+  .card-chart-btn:hover { border-color: var(--accent-blue); color: var(--accent-blue); background: var(--accent-blue-light); }
+
+  .section-header-distinct {
+    border: 1px solid var(--border); border-radius: 12px; padding: 12px 14px; margin-bottom: 14px;
+    background: linear-gradient(180deg, #fff 0%, #fafbfc 100%);
+  }
+  .section-header-distinct.indices { border-left: 4px solid #3182F6; }
+  .section-header-distinct.econ { border-left: 4px solid #03B26C; }
 
   .data-table { width: 100%; border-collapse: collapse; font-size: 13px; }
   .data-table thead th { text-align: right; padding: 10px 12px; font-weight: 600; color: var(--text-tertiary); font-size: 12px; border-bottom: 1px solid var(--border); white-space: nowrap; }
@@ -869,7 +881,7 @@ function MarketPage() {
         </div>
       </div>
 
-      <div className="section-header fade-up"><div className="section-title">주가지수</div></div>
+      <div className="section-header section-header-distinct indices fade-up"><div className="section-title">주가지수</div><div className="section-subtitle">미국/한국 대표 지수</div></div>
 
       {showUS && liveIdxUS.length > 0 && (
         <div className="fade-up fade-up-d1">
@@ -877,7 +889,7 @@ function MarketPage() {
           <div className="index-strip">
             {liveIdxUS.map((idx, i) => (
               <div className={`index-card index-card-lg clickable ${isSelected("idxUS", idx.name) ? "selected" : ""}`} key={i} onClick={() => toggle("idxUS", idx)}>
-                <span className="click-hint">{isSelected("idxUS", idx.name) ? "닫기" : "차트"}</span>
+                <button className="card-chart-btn" onClick={(e) => { e.stopPropagation(); toggle("idxUS", idx); }} title="차트 보기">📈</button>
                 <div className="index-name">{idx.name}</div>
                 <div className="index-value">{idx.value}</div>
                 <div className={`index-change ${idx.up ? "up" : "down"}`}>{idx.change} ({idx.pct})</div>
@@ -894,7 +906,7 @@ function MarketPage() {
           <div className="index-strip index-strip-three">
             {liveIdxKR.map((idx, i) => (
               <div className={`index-card index-card-lg index-card-fixed clickable ${isSelected("idxKR", idx.name) ? "selected" : ""}`} key={i} onClick={() => toggle("idxKR", idx)}>
-                <span className="click-hint">{isSelected("idxKR", idx.name) ? "닫기" : "차트"}</span>
+                <button className="card-chart-btn" onClick={(e) => { e.stopPropagation(); toggle("idxKR", idx); }} title="차트 보기">📈</button>
                 <div className="index-name">{idx.name}</div>
                 <div className="index-value">{idx.value}</div>
                 <div className={`index-change ${idx.up ? "up" : "down"}`}>{idx.change} ({idx.pct})</div>
@@ -905,8 +917,8 @@ function MarketPage() {
         </div>
       )}
 
-      <div className="section-header fade-up fade-up-d2" style={{ marginTop: 20 }}>
-        <div><div className="section-title">경제 지표</div><div className="section-subtitle">주요 금리·통화·원자재 지표</div></div>
+      <div className="section-header section-header-distinct econ fade-up fade-up-d2" style={{ marginTop: 20 }}>
+        <div><div className="section-title">경제 지표</div><div className="section-subtitle">기준금리·채권·환율 중심 지표</div></div>
       </div>
 
       {showUS && liveEconUS.length > 0 && (
@@ -915,7 +927,7 @@ function MarketPage() {
           <div className="econ-grid">
             {liveEconUS.map((ind, i) => (
               <div className={`econ-card ${ind.isStatic ? "" : "clickable"} ${isSelected("econUS", ind.name) ? "selected" : ""}`} key={i} onClick={() => { if (!ind.isStatic) toggle("econUS", ind); }}>
-                {!ind.isStatic && <span className="click-hint">{isSelected("econUS", ind.name) ? "닫기" : "차트"}</span>}
+                {!ind.isStatic && <button className="card-chart-btn" onClick={(e) => { e.stopPropagation(); toggle("econUS", ind); }} title="차트 보기">📈</button>}
                 <div className="econ-name">{ind.name}</div>
                 <div className="econ-value">{ind.value}</div>
                 {ind.change && !ind.isStatic && <div className={`econ-change ${ind.up ? "up" : "down"}`}>{ind.up ? "▲" : "▼"} {ind.change}{ind.pct ? ` (${ind.pct})` : ""}</div>}
@@ -933,7 +945,7 @@ function MarketPage() {
           <div className="econ-grid">
             {liveEconKR.map((ind, i) => (
               <div className={`econ-card ${ind.isStatic ? "" : "clickable"} ${isSelected("econKR", ind.name) ? "selected" : ""}`} key={i} onClick={() => { if (!ind.isStatic) toggle("econKR", ind); }}>
-                {!ind.isStatic && <span className="click-hint">{isSelected("econKR", ind.name) ? "닫기" : "차트"}</span>}
+                {!ind.isStatic && <button className="card-chart-btn" onClick={(e) => { e.stopPropagation(); toggle("econKR", ind); }} title="차트 보기">📈</button>}
                 <div className="econ-name">{ind.name}</div>
                 <div className="econ-value">{ind.value}</div>
                 {ind.change && !ind.isStatic && <div className={`econ-change ${ind.up ? "up" : "down"}`}>{ind.up ? "▲" : "▼"} {ind.change}{ind.pct ? ` (${ind.pct})` : ""}</div>}
