@@ -176,6 +176,8 @@ const styles = `
   .index-card-lg .index-name { font-size: 13px; margin-bottom: 8px; }
   .index-card-lg .index-value { font-size: 22px; font-weight: 800; margin-bottom: 4px; }
   .index-card-lg .index-change { font-size: 13px; }
+  .index-strip-three { justify-content: flex-start; }
+  .index-card-fixed { flex: 0 0 calc((100% - 32px) / 3); max-width: calc((100% - 32px) / 3); }
   .index-name { font-size: 13px; color: var(--text-tertiary); font-weight: 500; margin-bottom: 8px; }
   .index-value { font-size: 24px; font-weight: 700; letter-spacing: -0.3px; margin-bottom: 4px; }
   .index-change { font-size: 13px; font-weight: 600; }
@@ -264,6 +266,7 @@ const styles = `
     .main-content { margin-left: 0; }
     .mobile-menu-btn { display: block; }
     .stats-grid { grid-template-columns: repeat(2, 1fr); }
+    .index-card-fixed { flex: 1 1 0; max-width: none; }
     .company-hero { flex-direction: column; }
     .price-block { text-align: left; }
     .search-wrapper { width: 220px; }
@@ -339,8 +342,20 @@ const styles = `
   .index-card.clickable, .econ-card.clickable { cursor: pointer; position: relative; }
   .index-card.clickable:active, .econ-card.clickable:active { transform: scale(0.98); }
   .index-card.selected, .econ-card.selected { border-color: var(--accent-blue); box-shadow: 0 0 0 2px rgba(49,130,246,0.15); }
-  .click-hint { position: absolute; top: 8px; right: 10px; font-size: 10px; color: var(--text-tertiary); opacity: 0; transition: opacity 0.2s ease; }
-  .index-card.clickable:hover .click-hint, .econ-card.clickable:hover .click-hint { opacity: 1; }
+    .card-chart-btn {
+    position: absolute; top: 10px; right: 10px; width: 26px; height: 26px;
+    border: 1px solid var(--border); border-radius: 7px; background: #fff;
+    color: var(--text-secondary); font-size: 13px; cursor: pointer;
+    display: flex; align-items: center; justify-content: center; transition: all 0.15s ease;
+  }
+  .card-chart-btn:hover { border-color: var(--accent-blue); color: var(--accent-blue); background: var(--accent-blue-light); }
+
+  .section-header-distinct {
+    border: 1px solid var(--border); border-radius: 12px; padding: 12px 14px; margin-bottom: 14px;
+    background: linear-gradient(180deg, #fff 0%, #fafbfc 100%);
+  }
+  .section-header-distinct.indices { border-left: 4px solid #3182F6; }
+  .section-header-distinct.econ { border-left: 4px solid #03B26C; }
 
   .data-table { width: 100%; border-collapse: collapse; font-size: 13px; }
   .data-table thead th { text-align: right; padding: 10px 12px; font-weight: 600; color: var(--text-tertiary); font-size: 12px; border-bottom: 1px solid var(--border); white-space: nowrap; }
@@ -517,7 +532,7 @@ function SentimentGaugeVisual({ value, reversed }) {
 
 // ─── Inline Chart Panel (period-aware) ───────────────────────────
 function InlineChart({ item, onClose }) {
-  const [period, setPeriod] = useState("1Y");
+  const [period, setPeriod] = useState("1D");
   const [chartData, setChartData] = useState(item?.history || []);
   const [chartLoading, setChartLoading] = useState(false);
   const [periodChange, setPeriodChange] = useState({ change: item?.change || "-", pct: item?.pct || "-", up: item?.up || false });
@@ -527,7 +542,7 @@ function InlineChart({ item, onClose }) {
       setChartData(item?.history || []);
       return;
     }
-    const rangeMap = { "1D": "5d", "1W": "5d", "1M": "1mo", "3M": "3mo", "6M": "6mo", "1Y": "1y", "5Y": "5y", "10Y": "10y", "MAX": "max" };
+    const rangeMap = { "1D": "1d", "1W": "5d", "1M": "1mo", "3M": "3mo", "6M": "6mo", "1Y": "1y", "5Y": "5y", "10Y": "10y", "MAX": "max" };
     const range = rangeMap[period] || "1y";
     const mult = item.chartMult || 1;
 
@@ -600,7 +615,12 @@ function InlineChart({ item, onClose }) {
               </defs>
               <CartesianGrid strokeDasharray="3 3" stroke="#F2F3F5" vertical={false} />
               <XAxis dataKey="label" axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: "#8B95A1" }} interval={Math.max(0, Math.floor(data.length / 6) - 1)} />
-              <YAxis domain={[min - padding, max + padding]} axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: "#8B95A1" }} tickFormatter={(v) => v >= 1000 ? `${(v/1000).toFixed(1)}k` : v.toFixed(v < 10 ? 2 : 1)} width={52} />
+              <YAxis domain={[min - padding, max + padding]} axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: "#8B95A1" }} tickFormatter={(v) => {
+                if (Math.abs(v) >= 1000) {
+                  return `${(v / 1000).toFixed(2).replace(/\.00$/, "").replace(/(\.\d)0$/, "$1")}k`;
+                }
+                return v.toFixed(v < 10 ? 2 : 1);
+              }} width={58} />
               <Tooltip contentStyle={{ background: "white", border: "1px solid #E5E8EB", borderRadius: 10, boxShadow: "0 4px 12px rgba(0,0,0,0.08)", padding: "8px 14px", fontSize: 13, fontWeight: 600 }} formatter={(val) => [typeof val === "number" ? val.toLocaleString(undefined, { maximumFractionDigits: 2 }) : val, ""]} labelStyle={{ color: "#8B95A1", fontSize: 11, marginBottom: 2 }} />
               <Area type="monotone" dataKey="value" stroke={color} strokeWidth={2.5} fill={`url(#${gradId})`} dot={false} activeDot={{ r: 5, stroke: color, strokeWidth: 2, fill: "white" }} />
             </AreaChart>
@@ -861,7 +881,7 @@ function MarketPage() {
         </div>
       </div>
 
-      <div className="section-header fade-up"><div className="section-title">주가지수</div></div>
+      <div className="section-header section-header-distinct indices fade-up"><div className="section-title">주가지수</div><div className="section-subtitle">미국/한국 대표 지수</div></div>
 
       {showUS && liveIdxUS.length > 0 && (
         <div className="fade-up fade-up-d1">
@@ -869,7 +889,7 @@ function MarketPage() {
           <div className="index-strip">
             {liveIdxUS.map((idx, i) => (
               <div className={`index-card index-card-lg clickable ${isSelected("idxUS", idx.name) ? "selected" : ""}`} key={i} onClick={() => toggle("idxUS", idx)}>
-                <span className="click-hint">{isSelected("idxUS", idx.name) ? "닫기" : "차트"}</span>
+                <button className="card-chart-btn" onClick={(e) => { e.stopPropagation(); toggle("idxUS", idx); }} title="차트 보기">📈</button>
                 <div className="index-name">{idx.name}</div>
                 <div className="index-value">{idx.value}</div>
                 <div className={`index-change ${idx.up ? "up" : "down"}`}>{idx.change} ({idx.pct})</div>
@@ -883,10 +903,10 @@ function MarketPage() {
       {showKR && liveIdxKR.length > 0 && (
         <div className="fade-up fade-up-d1" style={{ marginTop: showUS ? 8 : 0 }}>
           <div className="country-label"><span className="country-flag">🇰🇷</span> 한국</div>
-          <div className="index-strip">
+          <div className="index-strip index-strip-three">
             {liveIdxKR.map((idx, i) => (
-              <div className={`index-card index-card-lg clickable ${isSelected("idxKR", idx.name) ? "selected" : ""}`} key={i} onClick={() => toggle("idxKR", idx)}>
-                <span className="click-hint">{isSelected("idxKR", idx.name) ? "닫기" : "차트"}</span>
+              <div className={`index-card index-card-lg index-card-fixed clickable ${isSelected("idxKR", idx.name) ? "selected" : ""}`} key={i} onClick={() => toggle("idxKR", idx)}>
+                <button className="card-chart-btn" onClick={(e) => { e.stopPropagation(); toggle("idxKR", idx); }} title="차트 보기">📈</button>
                 <div className="index-name">{idx.name}</div>
                 <div className="index-value">{idx.value}</div>
                 <div className={`index-change ${idx.up ? "up" : "down"}`}>{idx.change} ({idx.pct})</div>
@@ -897,8 +917,8 @@ function MarketPage() {
         </div>
       )}
 
-      <div className="section-header fade-up fade-up-d2" style={{ marginTop: 20 }}>
-        <div><div className="section-title">경제 지표</div><div className="section-subtitle">주요 금리·통화·물가 지표</div></div>
+      <div className="section-header section-header-distinct econ fade-up fade-up-d2" style={{ marginTop: 20 }}>
+        <div><div className="section-title">경제 지표</div><div className="section-subtitle">기준금리·채권·환율 중심 지표</div></div>
       </div>
 
       {showUS && liveEconUS.length > 0 && (
@@ -907,7 +927,7 @@ function MarketPage() {
           <div className="econ-grid">
             {liveEconUS.map((ind, i) => (
               <div className={`econ-card ${ind.isStatic ? "" : "clickable"} ${isSelected("econUS", ind.name) ? "selected" : ""}`} key={i} onClick={() => { if (!ind.isStatic) toggle("econUS", ind); }}>
-                {!ind.isStatic && <span className="click-hint">{isSelected("econUS", ind.name) ? "닫기" : "차트"}</span>}
+                {!ind.isStatic && <button className="card-chart-btn" onClick={(e) => { e.stopPropagation(); toggle("econUS", ind); }} title="차트 보기">📈</button>}
                 <div className="econ-name">{ind.name}</div>
                 <div className="econ-value">{ind.value}</div>
                 {ind.change && !ind.isStatic && <div className={`econ-change ${ind.up ? "up" : "down"}`}>{ind.up ? "▲" : "▼"} {ind.change}{ind.pct ? ` (${ind.pct})` : ""}</div>}
@@ -925,7 +945,7 @@ function MarketPage() {
           <div className="econ-grid">
             {liveEconKR.map((ind, i) => (
               <div className={`econ-card ${ind.isStatic ? "" : "clickable"} ${isSelected("econKR", ind.name) ? "selected" : ""}`} key={i} onClick={() => { if (!ind.isStatic) toggle("econKR", ind); }}>
-                {!ind.isStatic && <span className="click-hint">{isSelected("econKR", ind.name) ? "닫기" : "차트"}</span>}
+                {!ind.isStatic && <button className="card-chart-btn" onClick={(e) => { e.stopPropagation(); toggle("econKR", ind); }} title="차트 보기">📈</button>}
                 <div className="econ-name">{ind.name}</div>
                 <div className="econ-value">{ind.value}</div>
                 {ind.change && !ind.isStatic && <div className={`econ-change ${ind.up ? "up" : "down"}`}>{ind.up ? "▲" : "▼"} {ind.change}{ind.pct ? ` (${ind.pct})` : ""}</div>}

@@ -112,6 +112,26 @@ function parseNum(text) {
   return parseFloat(cleaned) || 0;
 }
 
+
+function makeKoreanCompanyDescription({ name, sector, industry, exchange, rawDescription }) {
+  const clean = (rawDescription || "").replace(/\s+/g, " ").trim();
+  const hasKorean = /[가-힣]/.test(clean);
+  const lower = clean.toLowerCase();
+  const noisySignals = ["revenue was", "net income", "fiscal year", "earnings per share", "eps was", "real-time price", "chart, key statistics"];
+  const isNoisy = noisySignals.some((sig) => lower.includes(sig));
+
+  const sectorText = sector ? `${sector} 섹터` : "글로벌 시장";
+  const industryText = industry ? `${industry} 산업` : "관련 산업";
+  const exchangeText = exchange ? `${exchange} 상장` : "상장";
+
+  // 영어 원문 문장을 섞지 않고, 한국어 템플릿 중심으로 노출
+  if (!clean || isNoisy || !hasKorean) {
+    return `${name}는 ${sectorText}에 속한 ${industryText} 기업으로, ${exchangeText} 종목입니다.`;
+  }
+
+  return `${name}는 ${sectorText}에 속한 ${industryText} 기업입니다. ${clean}`;
+}
+
 function parseStatsTables(html) {
   if (!html) return {};
 
@@ -213,18 +233,6 @@ export async function getOverview(ticker) {
   // Beta from StockAnalysis
   const beta = parseFloat(stats["Beta (5Y)"]?.replace(/,/g, "") || "0") || 0;
 
-  // Description
-  let description = "";
-  const descPatterns = [
-    /class="[^"]*"[^>]*>([A-Z][^<]{20,200}\.)\s*</,
-    />((?:[A-Z][a-z]+\s(?:Inc|Corp|Co|Ltd|LLC)?\.?\s)?(?:designs|develops|operates|provides|manufactures|engages|is a)[^<]{10,200}\.)/,
-  ];
-  for (const dp of descPatterns) {
-    if (description) break;
-    const dm = html.match(dp);
-    if (dm) description = dm[1].split(".")[0] + ".";
-  }
-
   // Sector / Industry
   const sectorMatch = html.match(
     /Sector\s*<\/[^>]+>\s*<[^>]+>\s*(?:<a[^>]*>)?([^<]+)/
@@ -232,6 +240,10 @@ export async function getOverview(ticker) {
   const industryMatch = html.match(
     /Industry\s*<\/[^>]+>\s*<[^>]+>\s*(?:<a[^>]*>)?([^<]+)/
   );
+
+  // Description source candidates
+  const summaryMatch = html.match(/(\b[A-Z][^<]{40,320}\.)/);
+  const rawDescription = summaryMatch ? stripHtml(summaryMatch[1]) : "";
 
   // Use Yahoo data for price, yearHigh, yearLow, dailyChange, volume
   // Fall back to StockAnalysis if Yahoo fails
@@ -291,13 +303,23 @@ export async function getOverview(ticker) {
     if (price && prevClose) dailyChange = (price - prevClose) / prevClose;
   }
 
+  const sector = sectorMatch ? sectorMatch[1].trim() : "";
+  const industry = industryMatch ? industryMatch[1].trim() : "";
+  const description = makeKoreanCompanyDescription({
+    name: companyName,
+    sector,
+    industry,
+    exchange,
+    rawDescription,
+  });
+
   return {
     name: companyName,
     ticker: ticker.toUpperCase(),
     exchange,
     description,
-    sector: sectorMatch ? sectorMatch[1].trim() : "",
-    industry: industryMatch ? industryMatch[1].trim() : "",
+    sector,
+    industry,
     price,
     marketCap,
     beta,
