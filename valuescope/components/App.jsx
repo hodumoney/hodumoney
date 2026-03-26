@@ -106,10 +106,21 @@ const styles = `
     overflow-y: auto; z-index: 100; transition: transform 0.3s ease;
   }
   .sidebar-logo {
-    padding: 20px 24px 24px; display: flex; flex-direction: column; gap: 2px;
-    border-bottom: 1px solid var(--border); margin-bottom: 16px;
+    padding: 24px 20px 20px; display: flex; flex-direction: column; gap: 0;
+    margin: 0 12px 16px; border-radius: 14px;
+    background: linear-gradient(135deg, #1B64DA 0%, #3182F6 50%, #5BA0F8 100%);
+    position: relative; overflow: hidden;
   }
-  .logo-text { font-size: 28px; font-weight: 800; color: var(--text-primary); letter-spacing: -0.8px; line-height: 1.2; }
+  .sidebar-logo::before {
+    content: ''; position: absolute; top: -30px; right: -20px; width: 90px; height: 90px;
+    background: rgba(255,255,255,0.1); border-radius: 50%;
+  }
+  .sidebar-logo::after {
+    content: ''; position: absolute; bottom: -15px; left: -10px; width: 60px; height: 60px;
+    background: rgba(255,255,255,0.07); border-radius: 50%;
+  }
+  .logo-text { font-size: 26px; font-weight: 800; color: #fff; letter-spacing: -0.8px; line-height: 1.2; position: relative; z-index: 1; }
+  .logo-sub { font-size: 11px; color: rgba(255,255,255,0.65); font-weight: 500; margin-top: 6px; letter-spacing: 0.3px; position: relative; z-index: 1; }
   .sidebar-section { padding: 0 12px; margin-bottom: 8px; }
   .sidebar-section-label { font-size: 11px; font-weight: 600; color: var(--text-tertiary); text-transform: uppercase; letter-spacing: 0.5px; padding: 0 12px; margin-bottom: 6px; }
   .sidebar-item { display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-radius: var(--radius-sm); cursor: pointer; transition: all 0.15s ease; font-size: 14px; font-weight: 500; color: var(--text-secondary); position: relative; }
@@ -1380,22 +1391,26 @@ function PaywallModal({ usageCount, maxFree, onCodeSubmit, onClose }) {
   );
 }
 
-// ─── Welcome / Usage Toast ───────────────────────────────────────
-function UsageToast({ message, onClose }) {
+// ─── Usage Notification (centered overlay) ───────────────────────
+function UsageNotice({ message, onClose }) {
   useEffect(() => {
-    const timer = setTimeout(onClose, 3000);
+    const timer = setTimeout(onClose, 2200);
     return () => clearTimeout(timer);
   }, [onClose]);
 
   return (
     <div style={{
-      position: "fixed", bottom: 24, left: "50%", transform: "translateX(-50%)",
-      background: "var(--text-primary)", color: "white", padding: "12px 24px",
-      borderRadius: 12, fontSize: 14, fontWeight: 600, zIndex: 400,
-      boxShadow: "0 8px 32px rgba(0,0,0,0.18)", animation: "fadeUp 0.3s ease",
-      display: "flex", alignItems: "center", gap: 8, whiteSpace: "nowrap",
+      position: "fixed", inset: 0, display: "flex", alignItems: "center", justifyContent: "center",
+      zIndex: 350, pointerEvents: "none",
     }}>
-      {message}
+      <div style={{
+        background: "white", padding: "28px 36px", borderRadius: 16,
+        boxShadow: "0 12px 48px rgba(0,0,0,0.15)", textAlign: "center",
+        animation: "fadeUp 0.3s ease", pointerEvents: "auto",
+      }}>
+        <div style={{ fontSize: 32, marginBottom: 8 }}>🔑</div>
+        <div style={{ fontSize: 16, fontWeight: 700, color: "var(--text-primary)", letterSpacing: "-0.3px" }}>{message}</div>
+      </div>
     </div>
   );
 }
@@ -1429,11 +1444,18 @@ export default function App() {
   const [usageCount, setUsageCount] = useState(0);
   const [isUnlocked, setIsUnlocked] = useState(false);
   const [showPaywall, setShowPaywall] = useState(false);
-  const [showWelcome, setShowWelcome] = useState(true);
-  const [toastMsg, setToastMsg] = useState(null);
+  const [showWelcome, setShowWelcome] = useState(false);
+  const [welcomeShown, setWelcomeShown] = useState(false);
+  const [noticeMsg, setNoticeMsg] = useState(null);
 
-  const showToast = (msg) => {
-    setToastMsg(msg);
+  // Show welcome popup when entering company tab for the first time
+  const handlePageChange = (pageId) => {
+    if (pageId === "company" && !welcomeShown && !isUnlocked) {
+      setShowWelcome(true);
+      setWelcomeShown(true);
+    }
+    setActivePage(pageId);
+    setSidebarOpen(false);
   };
 
   const handleSearchSelect = (ticker) => {
@@ -1448,9 +1470,9 @@ export default function App() {
       setUsageCount(newCount);
       const remaining = MAX_FREE_ANALYSES - newCount;
       if (remaining > 0) {
-        showToast(`🔑 무료 기업분석 ${remaining}회 남았습니다`);
+        setNoticeMsg(`무료 사용 횟수 ${remaining}회 남았습니다`);
       } else {
-        showToast(`🔒 무료 기업분석을 모두 사용했습니다`);
+        setNoticeMsg("무료 사용 횟수를 모두 사용했습니다");
       }
     }
   };
@@ -1467,9 +1489,9 @@ export default function App() {
       setUsageCount(newCount);
       const remaining = MAX_FREE_ANALYSES - newCount;
       if (remaining > 0) {
-        showToast(`🔑 무료 기업분석 ${remaining}회 남았습니다`);
+        setNoticeMsg(`무료 사용 횟수 ${remaining}회 남았습니다`);
       } else {
-        showToast(`🔒 무료 기업분석을 모두 사용했습니다`);
+        setNoticeMsg("무료 사용 횟수를 모두 사용했습니다");
       }
     }
   };
@@ -1477,7 +1499,7 @@ export default function App() {
   const handleCodeSubmit = (code) => {
     if (VALID_CODES.includes(code.toUpperCase())) {
       setIsUnlocked(true);
-      showToast("✓ 무제한 이용권이 활성화되었습니다!");
+      setNoticeMsg("무제한 이용권이 활성화되었습니다!");
       return true;
     }
     return false;
@@ -1497,15 +1519,15 @@ export default function App() {
       <style>{styles}</style>
       <div className={`sidebar-overlay ${sidebarOpen ? "open" : ""}`} onClick={() => setSidebarOpen(false)} />
 
-      {/* Welcome popup - shows once on first visit */}
+      {/* Welcome popup - shows once when first entering company tab */}
       {showWelcome && !isUnlocked && (
         <div className="paywall-overlay" onClick={() => setShowWelcome(false)}>
           <div className="paywall-card" onClick={e => e.stopPropagation()} style={{ position: "relative" }}>
             <button className="paywall-close" onClick={() => setShowWelcome(false)}>✕</button>
             <div style={{ fontSize: 40, marginBottom: 12 }}>👋</div>
-            <h3>호두머니에 오신 걸 환영합니다!</h3>
+            <h3>기업 분석 {MAX_FREE_ANALYSES}회 무료!</h3>
             <p>기업 분석 기능은 <strong>{MAX_FREE_ANALYSES}회</strong>까지 무료로 이용 가능합니다.<br />이후에는 이용권을 구매하시면 무제한으로 사용할 수 있어요.</p>
-            <button className="paywall-submit" onClick={() => setShowWelcome(false)}>시작하기</button>
+            <button className="paywall-submit" onClick={() => setShowWelcome(false)}>확인</button>
           </div>
         </div>
       )}
@@ -1519,20 +1541,18 @@ export default function App() {
         />
       )}
 
-      {/* Usage toast notification */}
-      {toastMsg && <UsageToast message={toastMsg} onClose={() => setToastMsg(null)} />}
+      {/* Centered usage notice */}
+      {noticeMsg && <UsageNotice message={noticeMsg} onClose={() => setNoticeMsg(null)} />}
 
       <aside className={`sidebar ${sidebarOpen ? "open" : ""}`}>
         <div className="sidebar-logo">
-          <div>
-            <div className="logo-text">호두머니</div>
-            <div style={{ fontSize: 11, color: "var(--text-tertiary)", fontWeight: 500, marginTop: 4, letterSpacing: "0.5px" }}>©hodusolution</div>
-          </div>
+          <div className="logo-text">호두머니</div>
+          <div className="logo-sub">©hodusolution · 투자의 첫 걸음</div>
         </div>
         <div className="sidebar-section">
           <div className="sidebar-section-label">분석 도구</div>
           {MENU_ITEMS.map(item => (
-            <div key={item.id} className={`sidebar-item ${activePage === item.id ? "active" : ""}`} onClick={() => { setActivePage(item.id); setSidebarOpen(false); }}>
+            <div key={item.id} className={`sidebar-item ${activePage === item.id ? "active" : ""}`} onClick={() => handlePageChange(item.id)}>
               <span className="item-icon">{item.icon}</span>
               <span>{item.label}</span>
               {item.id === "company" && <span className="badge-soon" style={{ background: "#FFF0F1", color: "#F04452" }}>유료</span>}
