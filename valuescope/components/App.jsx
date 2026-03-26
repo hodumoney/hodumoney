@@ -17,6 +17,7 @@ function genHistory(current, months = 12, volatility = 0.02, trend = 0) {
 const MENU_ITEMS = [
   { id: "market", label: "시장 동향", icon: "📊", ready: true },
   { id: "company", label: "기업 분석", icon: "🔍", ready: true },
+  { id: "briefing", label: "호두 브리핑", icon: "🗞️", ready: false },
   { id: "etf", label: "ETF 단일 분석", icon: "📦", ready: false },
   { id: "etf-compare", label: "ETF 비교 분석", icon: "⚖️", ready: false },
   { id: "correlation", label: "상관관계 분석", icon: "🔗", ready: false },
@@ -105,11 +106,6 @@ const styles = `
     overflow-y: auto; z-index: 100; transition: transform 0.3s ease;
   }
   .sidebar-logo { padding: 0 24px 28px; display: flex; align-items: center; gap: 10px; }
-  .logo-icon {
-    width: 36px; height: 36px; background: linear-gradient(135deg, #3182F6, #1B64DA);
-    border-radius: 10px; display: flex; align-items: center; justify-content: center;
-    font-size: 18px; color: white; font-weight: 800;
-  }
   .logo-text { font-size: 17px; font-weight: 700; color: var(--text-primary); letter-spacing: -0.3px; }
   .sidebar-section { padding: 0 12px; margin-bottom: 8px; }
   .sidebar-section-label { font-size: 11px; font-weight: 600; color: var(--text-tertiary); text-transform: uppercase; letter-spacing: 0.5px; padding: 0 12px; margin-bottom: 6px; }
@@ -343,19 +339,22 @@ const styles = `
   .index-card.clickable:active, .econ-card.clickable:active { transform: scale(0.98); }
   .index-card.selected, .econ-card.selected { border-color: var(--accent-blue); box-shadow: 0 0 0 2px rgba(49,130,246,0.15); }
     .card-chart-btn {
-    position: absolute; top: 10px; right: 10px; width: 26px; height: 26px;
-    border: 1px solid var(--border); border-radius: 7px; background: #fff;
-    color: var(--text-secondary); font-size: 13px; cursor: pointer;
+    position: absolute; top: 50%; right: 14px; transform: translateY(-50%); width: 32px; height: 32px;
+    border: 1px solid var(--border); border-radius: 8px; background: #fff;
+    color: var(--text-tertiary); font-size: 15px; cursor: pointer;
     display: flex; align-items: center; justify-content: center; transition: all 0.15s ease;
+    opacity: 0; pointer-events: auto;
   }
+  .index-card:hover .card-chart-btn, .econ-card:hover .card-chart-btn { opacity: 1; }
   .card-chart-btn:hover { border-color: var(--accent-blue); color: var(--accent-blue); background: var(--accent-blue-light); }
 
   .section-header-distinct {
-    border: 1px solid var(--border); border-radius: 12px; padding: 12px 14px; margin-bottom: 14px;
-    background: linear-gradient(180deg, #fff 0%, #fafbfc 100%);
+    margin-bottom: 20px; padding: 0;
+    background: transparent; border: none; border-radius: 0;
   }
-  .section-header-distinct.indices { border-left: 4px solid #3182F6; }
-  .section-header-distinct.econ { border-left: 4px solid #03B26C; }
+  .section-header-distinct .section-title { font-size: 19px; font-weight: 700; letter-spacing: -0.4px; color: var(--text-primary); }
+  .section-header-distinct .section-subtitle { font-size: 13px; color: var(--text-tertiary); font-weight: 400; margin-top: 2px; }
+  .section-header-distinct.indices, .section-header-distinct.econ { border-left: none; }
 
   .data-table { width: 100%; border-collapse: collapse; font-size: 13px; }
   .data-table thead th { text-align: right; padding: 10px 12px; font-weight: 600; color: var(--text-tertiary); font-size: 12px; border-bottom: 1px solid var(--border); white-space: nowrap; }
@@ -364,6 +363,45 @@ const styles = `
   .data-table tbody td:first-child { text-align: left; color: var(--text-secondary); font-weight: 600; }
   .data-table tbody tr:hover { background: var(--bg-hover); }
   .data-table tbody tr:last-child td { border-bottom: none; }
+
+  .paywall-overlay {
+    position: fixed; inset: 0; background: rgba(0,0,0,0.45); backdrop-filter: blur(4px);
+    z-index: 300; display: flex; align-items: center; justify-content: center;
+    animation: fadeIn 0.2s ease;
+  }
+  @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+  .paywall-card {
+    background: white; border-radius: 20px; padding: 36px 32px; max-width: 400px; width: 90%;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.15); text-align: center;
+  }
+  .paywall-card h3 { font-size: 20px; font-weight: 800; margin-bottom: 6px; letter-spacing: -0.4px; }
+  .paywall-card p { font-size: 14px; color: var(--text-secondary); line-height: 1.6; margin-bottom: 20px; }
+  .paywall-input {
+    width: 100%; padding: 12px 16px; border: 1px solid var(--border); border-radius: 10px;
+    font-size: 14px; font-family: inherit; outline: none; text-align: center;
+    letter-spacing: 2px; font-weight: 600; transition: border-color 0.15s;
+  }
+  .paywall-input:focus { border-color: var(--accent-blue); box-shadow: 0 0 0 3px rgba(49,130,246,0.12); }
+  .paywall-input.error { border-color: var(--accent-red); box-shadow: 0 0 0 3px rgba(240,68,82,0.12); }
+  .paywall-submit {
+    width: 100%; padding: 12px; margin-top: 12px; border: none; border-radius: 10px;
+    background: var(--accent-blue); color: white; font-size: 15px; font-weight: 700;
+    cursor: pointer; font-family: inherit; transition: background 0.15s;
+  }
+  .paywall-submit:hover { background: #1B64DA; }
+  .paywall-counter { font-size: 12px; color: var(--text-tertiary); margin-top: 12px; }
+  .paywall-error { font-size: 12px; color: var(--accent-red); margin-top: 8px; font-weight: 600; }
+  .paywall-close {
+    position: absolute; top: 16px; right: 16px; background: none; border: none;
+    font-size: 18px; color: var(--text-tertiary); cursor: pointer;
+  }
+  .usage-badge {
+    display: inline-flex; align-items: center; gap: 5px; font-size: 11px;
+    color: var(--text-tertiary); font-weight: 500; padding: 3px 10px;
+    background: var(--bg-primary); border-radius: 20px; border: 1px solid var(--border);
+  }
+  .usage-badge.warning { color: #F59E0B; border-color: #FEF3C7; background: #FFFBEB; }
+  .usage-badge.unlimited { color: var(--accent-green); border-color: #D1FAE5; background: #ECFDF5; }
 `;
 
 // ─── Format Helpers ──────────────────────────────────────────────
@@ -378,7 +416,107 @@ function fmt(val, type = "number") {
   return typeof val === "number" ? val.toLocaleString(undefined, { maximumFractionDigits: 2 }) : val;
 }
 
-// ─── Search Box Component (NEW) ─────────────────────────────────
+// ─── Korean Company Descriptions (no API cost) ──────────────────
+const COMPANY_DESC_KR = {
+  AAPL: "아이폰, 맥, 아이패드 등을 만드는 세계 최대 소비자 전자기기 기업. 하드웨어와 서비스 생태계를 기반으로 한 강력한 브랜드 충성도를 보유하고 있습니다.",
+  MSFT: "윈도우, 오피스 365, Azure 클라우드를 운영하는 글로벌 소프트웨어 기업. AI 인프라와 엔터프라이즈 솔루션에 대규모 투자를 진행하고 있습니다.",
+  GOOG: "구글 검색, 유튜브, 안드로이드 운영체제를 보유한 알파벳의 티커. 전 세계 디지털 광고 시장을 선도하며, AI와 클라우드 사업을 확장 중입니다.",
+  GOOGL: "구글 검색, 유튜브, 안드로이드 운영체제를 보유한 알파벳의 Class A 주식. 전 세계 디지털 광고 시장을 선도하며, AI와 클라우드 사업을 확장 중입니다.",
+  AMZN: "세계 최대 이커머스 플랫폼이자 AWS 클라우드의 선두 주자. 물류 네트워크와 프라임 구독 서비스로 소비자 생태계를 구축하고 있습니다.",
+  NVDA: "GPU와 AI 가속기 칩을 설계하는 반도체 기업. 데이터센터, 자율주행, 생성형 AI 시장에서 압도적인 점유율을 확보하고 있습니다.",
+  META: "페이스북, 인스타그램, 왓츠앱을 운영하는 소셜 미디어 기업. 메타버스와 AI 기반 광고 기술에 집중 투자하고 있습니다.",
+  TSLA: "전기차와 에너지 저장 시스템을 생산하는 기업. 자율주행 기술과 로보택시 사업을 통해 모빌리티 혁신을 추구하고 있습니다.",
+  BRK: "워렌 버핏이 이끄는 세계 최대 투자 지주회사. 보험, 에너지, 철도 등 다양한 산업에 걸쳐 자회사를 보유하고 있습니다.",
+  "BRK-B": "워렌 버핏이 이끄는 버크셔 해서웨이의 Class B 주식. 보험, 에너지, 철도 등 다양한 자회사를 보유한 투자 지주회사입니다.",
+  "BRK-A": "워렌 버핏이 이끄는 버크셔 해서웨이의 Class A 주식. 세계 최대 투자 지주회사로, 다양한 산업에 걸쳐 투자하고 있습니다.",
+  LLY: "당뇨병·비만 치료제 분야에서 글로벌 1위를 달리는 제약 기업. GLP-1 계열 신약으로 폭발적 성장을 기록하고 있습니다.",
+  JPM: "미국 최대 상업·투자은행. 글로벌 금융 서비스 전반에서 시장 지배력을 갖추고 있습니다.",
+  V: "전 세계 전자결제 네트워크를 운영하는 핀테크 대장주. 카드 결제 거래 처리에서 독보적인 위치를 차지하고 있습니다.",
+  MA: "비자와 함께 글로벌 결제 인프라를 양분하는 기업. 전 세계 210개국 이상에서 결제 네트워크를 운영합니다.",
+  WMT: "세계 최대 오프라인 유통 기업. 미국 내 5,000개 이상의 매장과 이커머스 사업을 함께 운영합니다.",
+  UNH: "미국 최대 건강보험사이자 헬스케어 서비스 기업. 보험과 데이터 분석을 결합한 통합 헬스케어 모델을 구축하고 있습니다.",
+  XOM: "세계 최대 석유·가스 상장기업. 업스트림부터 다운스트림까지 에너지 밸류체인 전반을 커버합니다.",
+  HD: "미국 1위 홈 인테리어 소매 체인. 주택 리모델링과 건축 자재 시장에서 강력한 입지를 보유하고 있습니다.",
+  COST: "회원제 창고형 매장을 운영하는 대형 유통 기업. 저마진·고회전 전략으로 높은 고객 충성도를 유지합니다.",
+  PG: "세계 최대 생활용품 기업. 질레트, 팸퍼스, 다우니 등 소비재 브랜드 포트폴리오를 보유하고 있습니다.",
+  JNJ: "제약, 의료기기, 소비자 건강 부문을 아우르는 헬스케어 대기업. 안정적인 배당으로 유명합니다.",
+  ABBV: "면역학, 종양학 분야에 강점을 가진 글로벌 바이오 제약사. 휴미라 이후 차세대 파이프라인 전환에 집중하고 있습니다.",
+  CRM: "기업용 클라우드 CRM 플랫폼의 글로벌 1위. 영업, 마케팅, 고객 서비스 자동화 솔루션을 제공합니다.",
+  ORCL: "기업용 데이터베이스와 클라우드 인프라를 제공하는 IT 기업. AI 클라우드 수요 급증으로 데이터센터 사업이 빠르게 성장하고 있습니다.",
+  AMD: "CPU와 GPU를 설계하는 반도체 기업. 서버용 EPYC 프로세서와 AI 가속기로 데이터센터 시장 점유율을 확대하고 있습니다.",
+  NFLX: "전 세계 2억 명 이상의 가입자를 보유한 스트리밍 플랫폼. 오리지널 콘텐츠 제작과 광고 모델로 수익 다각화를 추진하고 있습니다.",
+  INTC: "세계 최대 반도체 제조사 중 하나. 파운드리 사업 확대와 차세대 공정 기술 개발에 주력하고 있습니다.",
+  DIS: "디즈니+, 마블, 픽사, 테마파크를 운영하는 글로벌 엔터테인먼트 기업. IP 기반 콘텐츠와 체험 사업의 시너지를 추구합니다.",
+  BA: "세계 양대 항공기 제조사 중 하나. 민간 항공기와 방위산업 부문에서 사업을 영위하고 있습니다.",
+  AVGO: "데이터센터, 네트워킹, 브로드밴드용 반도체를 설계하는 기업. VMware 인수로 소프트웨어 사업을 대폭 확대했습니다.",
+  PLTR: "정부와 기업을 위한 빅데이터 분석 플랫폼을 제공하는 AI 기업. 국방·정보기관 및 상업 고객에게 데이터 통합 솔루션을 제공합니다.",
+  TSM: "세계 최대 반도체 위탁 생산(파운드리) 기업. 애플, 엔비디아 등 주요 팹리스 기업의 최첨단 칩을 생산합니다.",
+  ASML: "반도체 노광 장비(EUV) 분야 세계 유일의 공급사. 차세대 반도체 미세공정에 필수적인 장비를 독점 공급합니다.",
+  COIN: "미국 최대 암호화폐 거래소. 비트코인, 이더리움 등 디지털 자산 거래 인프라와 커스터디 서비스를 제공합니다.",
+  MSTR: "비트코인을 대규모로 보유한 소프트웨어 기업. 기업 분석 솔루션과 함께 비트코인 투자 전략으로 유명합니다.",
+  SNOW: "클라우드 기반 데이터 웨어하우스 플랫폼을 제공하는 기업. 멀티 클라우드 환경에서 데이터 공유와 분석을 지원합니다.",
+  SQ: "Block(구 Square)의 티커. 소상공인 결제 솔루션과 Cash App 개인 금융 서비스를 운영합니다.",
+  SHOP: "이커머스 스토어 구축 플랫폼의 글로벌 리더. 중소 판매자부터 대기업까지 온라인 상점 인프라를 제공합니다.",
+  UBER: "글로벌 1위 모빌리티·배달 플랫폼. 70개국 이상에서 라이드 셰어링과 음식 배달 서비스를 운영합니다.",
+  NKE: "세계 최대 스포츠 브랜드. 운동화, 의류, 장비 분야에서 강력한 글로벌 브랜드 파워를 보유하고 있습니다.",
+  SBUX: "전 세계 3만 5천 개 이상의 매장을 운영하는 커피 체인. 프리미엄 커피 문화를 대중화한 글로벌 식음료 기업입니다.",
+  BABA: "중국 최대 이커머스·클라우드 기업 알리바바. 타오바오, 알리클라우드 등 중국 디지털 경제의 핵심 인프라를 운영합니다.",
+  PDD: "테무(Temu)의 모기업인 중국 이커머스 기업. 초저가 전략으로 글로벌 시장에서 빠르게 성장하고 있습니다.",
+  BIDU: "중국 최대 검색엔진 바이두. AI, 자율주행(아폴로), 클라우드 사업에 집중 투자하고 있습니다.",
+  ARM: "스마트폰·IoT용 프로세서 아키텍처를 설계하는 영국 반도체 기업. 전 세계 모바일 칩의 대다수가 ARM 기반입니다.",
+  SMCI: "AI 서버와 데이터센터 인프라를 제조하는 기업. GPU 서버 수요 급증으로 매출이 폭발적으로 성장하고 있습니다.",
+  PANW: "클라우드·네트워크 보안 분야 글로벌 리더. AI 기반 통합 사이버보안 플랫폼을 제공합니다.",
+  CRWD: "클라우드 기반 엔드포인트 보안 기업. 팔콘 플랫폼으로 실시간 위협 탐지 및 대응 서비스를 제공합니다.",
+  MU: "DRAM, NAND 플래시 메모리를 제조하는 반도체 기업. AI와 데이터센터용 HBM 메모리 수요 확대의 수혜를 받고 있습니다.",
+  QCOM: "모바일 통신용 칩(스냅드래곤)을 설계하는 반도체 기업. 5G, 자동차, IoT 분야로 사업을 확장하고 있습니다.",
+  ADBE: "포토샵, 일러스트레이터 등 크리에이티브 소프트웨어의 글로벌 표준. AI 기능을 적극 통합한 구독형 SaaS 모델을 운영합니다.",
+  NOW: "IT 서비스 관리(ITSM) 플랫폼의 글로벌 1위. 기업의 디지털 워크플로우 자동화를 지원합니다.",
+  IBM: "기업용 클라우드, AI(왓슨X), 컨설팅 서비스를 제공하는 IT 대기업. 하이브리드 클라우드 전략에 집중하고 있습니다.",
+  GS: "글로벌 투자은행 및 자산운용사. M&A 자문, 트레이딩, 자산관리 분야에서 월스트리트를 대표합니다.",
+  MS: "투자은행, 자산운용, 웰스매니지먼트를 영위하는 글로벌 금융 그룹. 모건스탠리 캐피털 인터내셔널(MSCI)의 모체입니다.",
+  BAC: "미국 2위 상업은행. 소비자 금융부터 기업 금융까지 종합 금융 서비스를 제공합니다.",
+  KO: "코카콜라를 중심으로 200개 이상의 음료 브랜드를 보유한 세계 최대 음료 기업.",
+  PEP: "펩시콜라와 프리토레이 스낵 브랜드를 보유한 글로벌 식음료 기업. 음료와 스낵의 균형 잡힌 포트폴리오가 강점입니다.",
+  MCD: "전 세계 100개국 이상에서 4만 개 매장을 운영하는 글로벌 패스트푸드 체인.",
+  CVX: "글로벌 에너지 메이저 기업. 석유·가스 탐사부터 정제, 화학까지 에너지 밸류체인을 통합 운영합니다.",
+  LMT: "세계 최대 방위산업 기업. F-35 전투기를 비롯한 군사 장비와 우주 시스템을 개발합니다.",
+  RTX: "레이시온 테크놀로지스. 미사일 시스템, 항공 엔진, 방위 전자장비를 제조하는 방산 기업입니다.",
+  CAT: "건설·광산 장비 분야 세계 최대 기업. 인프라 투자 확대와 함께 안정적인 수요를 확보하고 있습니다.",
+  DE: "존디어(John Deere). 농기계와 건설장비 분야의 글로벌 리더로 정밀 농업 기술을 선도하고 있습니다.",
+  UPS: "세계 최대 택배·물류 기업 중 하나. 전자상거래 성장에 따른 배송 수요 확대의 수혜를 받습니다.",
+  FDX: "페덱스. 글로벌 특송·물류 서비스를 제공하며, B2B 물류와 이커머스 배송에 강점이 있습니다.",
+  T: "AT&T. 미국 대표 통신사로, 5G 네트워크와 광대역 인터넷 서비스를 제공합니다.",
+  VZ: "버라이즌. 미국 최대 무선 통신사. 5G 인프라 구축과 기업용 솔루션에 투자하고 있습니다.",
+  PYPL: "온라인 결제 플랫폼의 선구자. 벤모(Venmo)를 포함한 디지털 결제 생태계를 운영합니다.",
+  "005930.KS": "삼성전자. 메모리 반도체, 스마트폰, 디스플레이 분야의 글로벌 리더. 파운드리와 AI 반도체 사업을 확대하고 있습니다.",
+  "000660.KS": "SK하이닉스. DRAM과 NAND 메모리 세계 2위 기업. HBM 메모리 시장에서 선두를 달리고 있습니다.",
+};
+
+// ─── Market Cap Rank Lookup (global top companies) ──────────────
+const MARKET_CAP_RANKS = {
+  AAPL: 1, MSFT: 2, NVDA: 3, GOOG: 4, GOOGL: 4, AMZN: 5,
+  META: 6, "BRK-B": 7, "BRK-A": 7, TSM: 8, AVGO: 9, LLY: 10,
+  WMT: 11, JPM: 12, V: 13, TSLA: 14, MA: 15, UNH: 16,
+  XOM: 17, COST: 18, ORCL: 19, HD: 20, PG: 21, JNJ: 22,
+  ABBV: 23, NFLX: 24, CRM: 25, BAC: 26, KO: 27, AMD: 28,
+  PLTR: 29, SAP: 30,
+};
+
+function getKrDescription(ticker, fallbackDesc) {
+  const key = ticker?.toUpperCase();
+  if (COMPANY_DESC_KR[key]) return COMPANY_DESC_KR[key];
+  return fallbackDesc || "";
+}
+
+function getCapRankLabel(ticker, marketCap) {
+  const key = ticker?.toUpperCase();
+  if (MARKET_CAP_RANKS[key]) return `글로벌 ${MARKET_CAP_RANKS[key]}위`;
+  if (marketCap >= 200e9) return "Mega Cap";
+  if (marketCap >= 10e9) return "Large Cap";
+  if (marketCap >= 2e9) return "Mid Cap";
+  if (marketCap >= 300e6) return "Small Cap";
+  return "Small Cap";
+}
 function SearchBox({ onSelect }) {
   const [query, setQuery] = useState("");
   const [results, setResults] = useState([]);
@@ -889,7 +1027,7 @@ function MarketPage() {
           <div className="index-strip">
             {liveIdxUS.map((idx, i) => (
               <div className={`index-card index-card-lg clickable ${isSelected("idxUS", idx.name) ? "selected" : ""}`} key={i} onClick={() => toggle("idxUS", idx)}>
-                <button className="card-chart-btn" onClick={(e) => { e.stopPropagation(); toggle("idxUS", idx); }} title="차트 보기">📈</button>
+                <button className="card-chart-btn" onClick={(e) => { e.stopPropagation(); toggle("idxUS", idx); }} title="차트 보기"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="2,12 5.5,7 8.5,9 14,3" /><polyline points="10,3 14,3 14,7" /></svg></button>
                 <div className="index-name">{idx.name}</div>
                 <div className="index-value">{idx.value}</div>
                 <div className={`index-change ${idx.up ? "up" : "down"}`}>{idx.change} ({idx.pct})</div>
@@ -906,7 +1044,7 @@ function MarketPage() {
           <div className="index-strip index-strip-three">
             {liveIdxKR.map((idx, i) => (
               <div className={`index-card index-card-lg index-card-fixed clickable ${isSelected("idxKR", idx.name) ? "selected" : ""}`} key={i} onClick={() => toggle("idxKR", idx)}>
-                <button className="card-chart-btn" onClick={(e) => { e.stopPropagation(); toggle("idxKR", idx); }} title="차트 보기">📈</button>
+                <button className="card-chart-btn" onClick={(e) => { e.stopPropagation(); toggle("idxKR", idx); }} title="차트 보기"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="2,12 5.5,7 8.5,9 14,3" /><polyline points="10,3 14,3 14,7" /></svg></button>
                 <div className="index-name">{idx.name}</div>
                 <div className="index-value">{idx.value}</div>
                 <div className={`index-change ${idx.up ? "up" : "down"}`}>{idx.change} ({idx.pct})</div>
@@ -927,7 +1065,7 @@ function MarketPage() {
           <div className="econ-grid">
             {liveEconUS.map((ind, i) => (
               <div className={`econ-card ${ind.isStatic ? "" : "clickable"} ${isSelected("econUS", ind.name) ? "selected" : ""}`} key={i} onClick={() => { if (!ind.isStatic) toggle("econUS", ind); }}>
-                {!ind.isStatic && <button className="card-chart-btn" onClick={(e) => { e.stopPropagation(); toggle("econUS", ind); }} title="차트 보기">📈</button>}
+                {!ind.isStatic && <button className="card-chart-btn" onClick={(e) => { e.stopPropagation(); toggle("econUS", ind); }} title="차트 보기"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="2,12 5.5,7 8.5,9 14,3" /><polyline points="10,3 14,3 14,7" /></svg></button>}
                 <div className="econ-name">{ind.name}</div>
                 <div className="econ-value">{ind.value}</div>
                 {ind.change && !ind.isStatic && <div className={`econ-change ${ind.up ? "up" : "down"}`}>{ind.up ? "▲" : "▼"} {ind.change}{ind.pct ? ` (${ind.pct})` : ""}</div>}
@@ -945,7 +1083,7 @@ function MarketPage() {
           <div className="econ-grid">
             {liveEconKR.map((ind, i) => (
               <div className={`econ-card ${ind.isStatic ? "" : "clickable"} ${isSelected("econKR", ind.name) ? "selected" : ""}`} key={i} onClick={() => { if (!ind.isStatic) toggle("econKR", ind); }}>
-                {!ind.isStatic && <button className="card-chart-btn" onClick={(e) => { e.stopPropagation(); toggle("econKR", ind); }} title="차트 보기">📈</button>}
+                {!ind.isStatic && <button className="card-chart-btn" onClick={(e) => { e.stopPropagation(); toggle("econKR", ind); }} title="차트 보기"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="2,12 5.5,7 8.5,9 14,3" /><polyline points="10,3 14,3 14,7" /></svg></button>}
                 <div className="econ-name">{ind.name}</div>
                 <div className="econ-value">{ind.value}</div>
                 {ind.change && !ind.isStatic && <div className={`econ-change ${ind.up ? "up" : "down"}`}>{ind.up ? "▲" : "▼"} {ind.change}{ind.pct ? ` (${ind.pct})` : ""}</div>}
@@ -1113,8 +1251,9 @@ function CompanyPage({ searchTicker, onQuickSearch }) {
     return `$${v.toLocaleString()}`;
   };
   const safeNum = (v, fallback = 0) => (typeof v === "number" && isFinite(v)) ? v : fallback;
-  const capLabel = data.capRank || data.capClass || "N/A";
+  const capLabel = getCapRankLabel(data.ticker, data.marketCap);
   const dropFromHigh = data.yearHigh > 0 ? ((data.price - data.yearHigh) / data.yearHigh * 100) : 0;
+  const krDesc = getKrDescription(data.ticker, data.description);
 
   return (
     <div className="content-area">
@@ -1122,7 +1261,7 @@ function CompanyPage({ searchTicker, onQuickSearch }) {
         <div className="company-info">
           <h2>{data.name}</h2>
           <div className="company-ticker">{data.ticker} · {data.exchange || ""} {data.sector ? `· ${data.sector}` : ""}</div>
-          <div className="company-desc">{data.description}</div>
+          <div className="company-desc">{krDesc}</div>
         </div>
         <div className="price-block">
           <div className="price-current">${safeNum(data.price).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
@@ -1137,7 +1276,7 @@ function CompanyPage({ searchTicker, onQuickSearch }) {
       <div className="stats-grid fade-up fade-up-d1" style={{ gridTemplateColumns: "repeat(3, 1fr)" }}>
         {[
           { label: "시가총액", value: fmtCap(data.marketCap) },
-          { label: "시가총액 분류", value: capLabel },
+          { label: "시가총액 순위", value: capLabel },
           { label: "거래량", value: safeNum(data.volume).toLocaleString() },
           { label: "52주 최고", value: `$${safeNum(data.yearHigh).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}` },
           { label: "고점대비 하락률", value: `${dropFromHigh.toFixed(1)}%`, color: dropFromHigh < 0 ? "var(--accent-blue)" : "var(--accent-green)" },
@@ -1169,7 +1308,7 @@ function CompanyPage({ searchTicker, onQuickSearch }) {
       {activeSection === "advanced" && <AdvancedMetrics data={viewMode === "quarterly" ? (data.quarterly || data) : (data.annual || data)} />}
 
       <div style={{ textAlign: "center", padding: "32px 0 0", fontSize: 11, color: "var(--text-tertiary)" }}>
-        ⓒ HODU SOLUTION. All Rights Reserved.<br />본 데이터는 참고용이며, 투자 판단의 책임은 투자자 본인에게 있습니다.
+        ©hodusolution · 본 데이터는 참고용이며, 투자 판단의 책임은 투자자 본인에게 있습니다.
       </div>
     </div>
   );
@@ -1188,39 +1327,129 @@ function ComingSoonPage({ icon, title }) {
   );
 }
 
+// ─── Paywall Modal ───────────────────────────────────────────────
+function PaywallModal({ usageCount, maxFree, onCodeSubmit, onClose }) {
+  const [code, setCode] = useState("");
+  const [error, setError] = useState("");
+
+  const handleSubmit = () => {
+    if (onCodeSubmit(code.trim())) {
+      onClose();
+    } else {
+      setError("유효하지 않은 코드입니다");
+      setTimeout(() => setError(""), 2000);
+    }
+  };
+
+  return (
+    <div className="paywall-overlay" onClick={onClose}>
+      <div className="paywall-card" onClick={e => e.stopPropagation()} style={{ position: "relative" }}>
+        <button className="paywall-close" onClick={onClose}>✕</button>
+        <div style={{ fontSize: 40, marginBottom: 12 }}>🔒</div>
+        <h3>무료 분석 횟수를 모두 사용했어요</h3>
+        <p>기업 분석은 <strong>{maxFree}회</strong>까지 무료입니다.<br />이용권 코드를 입력하면 무제한으로 사용할 수 있어요.</p>
+        <input
+          className={`paywall-input ${error ? "error" : ""}`}
+          type="text"
+          placeholder="이용권 코드 입력"
+          value={code}
+          onChange={e => setCode(e.target.value)}
+          onKeyDown={e => { if (e.key === "Enter") handleSubmit(); }}
+        />
+        {error && <div className="paywall-error">{error}</div>}
+        <button className="paywall-submit" onClick={handleSubmit}>코드 인증</button>
+        <div className="paywall-counter">사용 {usageCount}/{maxFree}회</div>
+      </div>
+    </div>
+  );
+}
+
+// ─── Briefing Page (Coming Soon) ─────────────────────────────────
+function BriefingPage() {
+  return (
+    <div className="content-area">
+      <div className="coming-soon fade-up">
+        <div className="coming-soon-icon">🗞️</div>
+        <h3>호두 브리핑</h3>
+        <p>매일 아침, 시장 핵심 이슈를 한눈에 정리해드립니다.<br />곧 업데이트될 예정이니 조금만 기다려주세요!</p>
+        <div style={{ marginTop: 24, display: "flex", gap: 8, justifyContent: "center", flexWrap: "wrap" }}>
+          {["오늘의 시장 요약", "섹터별 이슈", "실적 캘린더"].map(tag => (
+            <span key={tag} style={{ padding: "6px 14px", borderRadius: 20, border: "1px solid var(--border)", background: "white", fontSize: 12, fontWeight: 600, color: "var(--text-secondary)" }}>{tag}</span>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ─── Main App ────────────────────────────────────────────────────
+const VALID_CODES = ["MZHODU"];
+const MAX_FREE_ANALYSES = 3;
+
 export default function App() {
   const [activePage, setActivePage] = useState("market");
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [searchedTicker, setSearchedTicker] = useState("");
+  const [usageCount, setUsageCount] = useState(0);
+  const [isUnlocked, setIsUnlocked] = useState(false);
+  const [showPaywall, setShowPaywall] = useState(false);
 
   const handleSearchSelect = (ticker) => {
+    if (!isUnlocked && usageCount >= MAX_FREE_ANALYSES) {
+      setShowPaywall(true);
+      return;
+    }
     setSearchedTicker(ticker);
     setActivePage("company");
+    if (!isUnlocked) setUsageCount(prev => prev + 1);
   };
 
   const handleQuickSearch = (ticker) => {
+    if (!isUnlocked && usageCount >= MAX_FREE_ANALYSES) {
+      setShowPaywall(true);
+      return;
+    }
     setSearchedTicker(ticker);
     setActivePage("company");
+    if (!isUnlocked) setUsageCount(prev => prev + 1);
+  };
+
+  const handleCodeSubmit = (code) => {
+    if (VALID_CODES.includes(code.toUpperCase())) {
+      setIsUnlocked(true);
+      return true;
+    }
+    return false;
   };
 
   const pageTitle = {
-    market: "시장 동향", company: "기업 분석", etf: "ETF 단일 분석",
-    "etf-compare": "ETF 비교 분석", correlation: "상관관계 분석",
-    backtest: "백테스트", watchlist: "관심 종목",
+    market: "시장 동향", company: "기업 분석", briefing: "호두 브리핑",
+    etf: "ETF 단일 분석", "etf-compare": "ETF 비교 분석",
+    correlation: "상관관계 분석", backtest: "백테스트", watchlist: "관심 종목",
   };
+
+  const usageBadgeClass = isUnlocked ? "usage-badge unlimited" : (usageCount >= MAX_FREE_ANALYSES ? "usage-badge warning" : "usage-badge");
+  const usageBadgeText = isUnlocked ? "무제한" : `${usageCount}/${MAX_FREE_ANALYSES}회`;
 
   return (
     <div className="app-container">
       <style>{styles}</style>
       <div className={`sidebar-overlay ${sidebarOpen ? "open" : ""}`} onClick={() => setSidebarOpen(false)} />
 
+      {showPaywall && (
+        <PaywallModal
+          usageCount={usageCount}
+          maxFree={MAX_FREE_ANALYSES}
+          onCodeSubmit={handleCodeSubmit}
+          onClose={() => setShowPaywall(false)}
+        />
+      )}
+
       <aside className={`sidebar ${sidebarOpen ? "open" : ""}`}>
         <div className="sidebar-logo">
-          <div className="logo-icon">H</div>
           <div>
             <div className="logo-text">호두머니</div>
-            <div style={{ fontSize: 10, color: "var(--text-tertiary)", fontWeight: 500, marginTop: 1, letterSpacing: "-0.2px" }}>©호두머니</div>
+            <div style={{ fontSize: 10, color: "var(--text-tertiary)", fontWeight: 500, marginTop: 2, letterSpacing: "-0.2px" }}>©hodusolution</div>
           </div>
         </div>
         <div className="sidebar-section">
@@ -1239,6 +1468,11 @@ export default function App() {
           <div className="sidebar-item"><span className="item-icon">📖</span><span>사용 가이드</span></div>
           <div className="sidebar-item"><span className="item-icon">💬</span><span>문의하기</span></div>
         </div>
+        <div style={{ padding: "12px 24px" }}>
+          <div className={usageBadgeClass}>
+            {isUnlocked ? "✓ " : "🔑 "}기업분석 {usageBadgeText}
+          </div>
+        </div>
       </aside>
 
       <main className="main-content">
@@ -1256,6 +1490,7 @@ export default function App() {
             ? <CompanyPage searchTicker={searchedTicker} />
             : <CompanyPage searchTicker={null} onQuickSearch={handleQuickSearch} />
         )}
+        {activePage === "briefing" && <BriefingPage />}
         {activePage === "etf" && <ComingSoonPage icon="📦" title="ETF 단일 분석" />}
         {activePage === "etf-compare" && <ComingSoonPage icon="⚖️" title="ETF 비교 분석" />}
         {activePage === "correlation" && <ComingSoonPage icon="🔗" title="상관관계 분석" />}
