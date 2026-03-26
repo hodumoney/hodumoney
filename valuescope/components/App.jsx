@@ -1223,6 +1223,7 @@ function CompanyPage({ searchTicker, onQuickSearch, onUsageConsume }) {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+  const [periodInfo, setPeriodInfo] = useState({ pct: 0, label: "전년대비" });
   const consumedRef = useRef(new Set());
 
   useEffect(() => {
@@ -1302,7 +1303,6 @@ function CompanyPage({ searchTicker, onQuickSearch, onUsageConsume }) {
   const capLabel = data.capRank || getCapRankLabel(data.ticker, data.marketCap);
   const dropFromHigh = data.yearHigh > 0 ? ((data.price - data.yearHigh) / data.yearHigh * 100) : 0;
   const krDesc = getKrDescription(data.ticker, null);
-  const [periodInfo, setPeriodInfo] = useState({ pct: safeNum(data.dailyChange) * 100, label: "전년대비" });
 
   const displayPct = periodInfo.pct;
   const displayLabel = periodInfo.label;
