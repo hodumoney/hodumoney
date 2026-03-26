@@ -85,6 +85,27 @@ export async function GET(request) {
       return "Nano Cap";
     };
 
+    // Dynamic global market cap rank via Yahoo screener
+    let capRank = null;
+    if (overview.marketCap && overview.marketCap >= 100e9) {
+      try {
+        const UA = { "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36" };
+        const scrUrl = `https://query1.finance.yahoo.com/v1/finance/screener/predefined/saved?formatted=false&count=50&scrIds=most_actives_market_cap`;
+        const scrRes = await fetch(scrUrl, { headers: UA, cache: "no-store" }).catch(() => null);
+        if (scrRes?.ok) {
+          const scrData = await scrRes.json();
+          const quotes = scrData?.finance?.result?.[0]?.quotes || [];
+          if (quotes.length > 0) {
+            const sorted = quotes
+              .filter(q => q.marketCap)
+              .sort((a, b) => (b.marketCap || 0) - (a.marketCap || 0));
+            const idx = sorted.findIndex(q => q.symbol?.toUpperCase() === symbol);
+            if (idx >= 0) capRank = `글로벌 ${idx + 1}위`;
+          }
+        }
+      } catch {}
+    }
+
     return Response.json({
       name: overview.name,
       ticker: overview.ticker,
@@ -95,7 +116,7 @@ export async function GET(request) {
       price: overview.price,
       marketCap: overview.marketCap,
       capClass: capClass(overview.marketCap),
-      capRank: null,
+      capRank: capRank,
       dailyChange: overview.dailyChange,
       yearHigh: overview.yearHigh,
       yearLow: overview.yearLow,
