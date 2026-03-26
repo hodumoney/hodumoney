@@ -105,8 +105,11 @@ const styles = `
     padding: 24px 0; position: fixed; top: 0; left: 0; height: 100vh;
     overflow-y: auto; z-index: 100; transition: transform 0.3s ease;
   }
-  .sidebar-logo { padding: 0 24px 28px; display: flex; align-items: center; gap: 10px; }
-  .logo-text { font-size: 17px; font-weight: 700; color: var(--text-primary); letter-spacing: -0.3px; }
+  .sidebar-logo {
+    padding: 20px 24px 24px; display: flex; flex-direction: column; gap: 2px;
+    border-bottom: 1px solid var(--border); margin-bottom: 16px;
+  }
+  .logo-text { font-size: 28px; font-weight: 800; color: var(--text-primary); letter-spacing: -0.8px; line-height: 1.2; }
   .sidebar-section { padding: 0 12px; margin-bottom: 8px; }
   .sidebar-section-label { font-size: 11px; font-weight: 600; color: var(--text-tertiary); text-transform: uppercase; letter-spacing: 0.5px; padding: 0 12px; margin-bottom: 6px; }
   .sidebar-item { display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-radius: var(--radius-sm); cursor: pointer; transition: all 0.15s ease; font-size: 14px; font-weight: 500; color: var(--text-secondary); position: relative; }
@@ -505,7 +508,7 @@ const MARKET_CAP_RANKS = {
 function getKrDescription(ticker, fallbackDesc) {
   const key = ticker?.toUpperCase();
   if (COMPANY_DESC_KR[key]) return COMPANY_DESC_KR[key];
-  return fallbackDesc || "";
+  return fallbackDesc || null;
 }
 
 function getCapRankLabel(ticker, marketCap) {
@@ -673,7 +676,8 @@ function InlineChart({ item, onClose }) {
   const [period, setPeriod] = useState("1D");
   const [chartData, setChartData] = useState(item?.history || []);
   const [chartLoading, setChartLoading] = useState(false);
-  const [periodChange, setPeriodChange] = useState({ change: item?.change || "-", pct: item?.pct || "-", up: item?.up || false });
+  const originalChange = { change: item?.change || "-", pct: item?.pct || "-", up: item?.up || false };
+  const [periodChange, setPeriodChange] = useState(originalChange);
 
   useEffect(() => {
     if (!item?.yahooSymbol) {
@@ -691,16 +695,21 @@ function InlineChart({ item, onClose }) {
         if (d.points && d.points.length > 0) {
           const pts = d.points.map(p => ({ label: p.label, value: Math.round(p.value * mult * 100) / 100 }));
           setChartData(pts);
-          const first = pts[0].value;
-          const last = pts[pts.length - 1].value;
-          const chg = last - first;
-          const pctVal = first !== 0 ? (chg / first) * 100 : 0;
-          const up = chg >= 0;
-          setPeriodChange({
-            change: `${up ? "+" : ""}${Math.abs(chg) >= 100 ? Math.round(chg).toLocaleString() : chg.toFixed(2)}`,
-            pct: `${up ? "+" : ""}${pctVal.toFixed(1)}%`,
-            up,
-          });
+          // For 1D, always use the card's original change/pct to stay consistent
+          if (period === "1D") {
+            setPeriodChange(originalChange);
+          } else {
+            const first = pts[0].value;
+            const last = pts[pts.length - 1].value;
+            const chg = last - first;
+            const pctVal = first !== 0 ? (chg / first) * 100 : 0;
+            const up = chg >= 0;
+            setPeriodChange({
+              change: `${up ? "+" : ""}${Math.abs(chg) >= 100 ? Math.round(chg).toLocaleString() : chg.toFixed(2)}`,
+              pct: `${up ? "+" : ""}${pctVal.toFixed(1)}%`,
+              up,
+            });
+          }
         }
       })
       .catch(() => {})
@@ -1251,9 +1260,9 @@ function CompanyPage({ searchTicker, onQuickSearch }) {
     return `$${v.toLocaleString()}`;
   };
   const safeNum = (v, fallback = 0) => (typeof v === "number" && isFinite(v)) ? v : fallback;
-  const capLabel = getCapRankLabel(data.ticker, data.marketCap);
+  const capLabel = data.capRank || getCapRankLabel(data.ticker, data.marketCap);
   const dropFromHigh = data.yearHigh > 0 ? ((data.price - data.yearHigh) / data.yearHigh * 100) : 0;
-  const krDesc = getKrDescription(data.ticker, data.description);
+  const krDesc = getKrDescription(data.ticker, null);
 
   return (
     <div className="content-area">
@@ -1261,7 +1270,7 @@ function CompanyPage({ searchTicker, onQuickSearch }) {
         <div className="company-info">
           <h2>{data.name}</h2>
           <div className="company-ticker">{data.ticker} · {data.exchange || ""} {data.sector ? `· ${data.sector}` : ""}</div>
-          <div className="company-desc">{krDesc}</div>
+          {krDesc && <div className="company-desc">{krDesc}</div>}
         </div>
         <div className="price-block">
           <div className="price-current">${safeNum(data.price).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
@@ -1347,7 +1356,14 @@ function PaywallModal({ usageCount, maxFree, onCodeSubmit, onClose }) {
         <button className="paywall-close" onClick={onClose}>✕</button>
         <div style={{ fontSize: 40, marginBottom: 12 }}>🔒</div>
         <h3>무료 분석 횟수를 모두 사용했어요</h3>
-        <p>기업 분석은 <strong>{maxFree}회</strong>까지 무료입니다.<br />이용권 코드를 입력하면 무제한으로 사용할 수 있어요.</p>
+        <p>기업 분석은 <strong>{maxFree}회</strong>까지 무료입니다.<br />이용권 코드를 입력하거나 구매하면 무제한으로 사용할 수 있어요.</p>
+        <a href="https://litt.ly/hodumoney/sale/QnPfK6I" target="_blank" rel="noopener noreferrer"
+          style={{ display: "block", width: "100%", padding: "12px", marginBottom: 12, border: "none", borderRadius: 10,
+            background: "linear-gradient(135deg, #3182F6, #1B64DA)", color: "white", fontSize: 15, fontWeight: 700,
+            cursor: "pointer", fontFamily: "inherit", textAlign: "center", textDecoration: "none", letterSpacing: "-0.3px" }}>
+          기업분석 무제한 이용권 구매하기
+        </a>
+        <div style={{ fontSize: 12, color: "var(--text-tertiary)", marginBottom: 16 }}>또는 이미 이용권이 있으시면 코드를 입력해주세요</div>
         <input
           className={`paywall-input ${error ? "error" : ""}`}
           type="text"
@@ -1360,6 +1376,26 @@ function PaywallModal({ usageCount, maxFree, onCodeSubmit, onClose }) {
         <button className="paywall-submit" onClick={handleSubmit}>코드 인증</button>
         <div className="paywall-counter">사용 {usageCount}/{maxFree}회</div>
       </div>
+    </div>
+  );
+}
+
+// ─── Welcome / Usage Toast ───────────────────────────────────────
+function UsageToast({ message, onClose }) {
+  useEffect(() => {
+    const timer = setTimeout(onClose, 3000);
+    return () => clearTimeout(timer);
+  }, [onClose]);
+
+  return (
+    <div style={{
+      position: "fixed", bottom: 24, left: "50%", transform: "translateX(-50%)",
+      background: "var(--text-primary)", color: "white", padding: "12px 24px",
+      borderRadius: 12, fontSize: 14, fontWeight: 600, zIndex: 400,
+      boxShadow: "0 8px 32px rgba(0,0,0,0.18)", animation: "fadeUp 0.3s ease",
+      display: "flex", alignItems: "center", gap: 8, whiteSpace: "nowrap",
+    }}>
+      {message}
     </div>
   );
 }
@@ -1393,6 +1429,12 @@ export default function App() {
   const [usageCount, setUsageCount] = useState(0);
   const [isUnlocked, setIsUnlocked] = useState(false);
   const [showPaywall, setShowPaywall] = useState(false);
+  const [showWelcome, setShowWelcome] = useState(true);
+  const [toastMsg, setToastMsg] = useState(null);
+
+  const showToast = (msg) => {
+    setToastMsg(msg);
+  };
 
   const handleSearchSelect = (ticker) => {
     if (!isUnlocked && usageCount >= MAX_FREE_ANALYSES) {
@@ -1401,7 +1443,16 @@ export default function App() {
     }
     setSearchedTicker(ticker);
     setActivePage("company");
-    if (!isUnlocked) setUsageCount(prev => prev + 1);
+    if (!isUnlocked) {
+      const newCount = usageCount + 1;
+      setUsageCount(newCount);
+      const remaining = MAX_FREE_ANALYSES - newCount;
+      if (remaining > 0) {
+        showToast(`🔑 무료 기업분석 ${remaining}회 남았습니다`);
+      } else {
+        showToast(`🔒 무료 기업분석을 모두 사용했습니다`);
+      }
+    }
   };
 
   const handleQuickSearch = (ticker) => {
@@ -1411,12 +1462,22 @@ export default function App() {
     }
     setSearchedTicker(ticker);
     setActivePage("company");
-    if (!isUnlocked) setUsageCount(prev => prev + 1);
+    if (!isUnlocked) {
+      const newCount = usageCount + 1;
+      setUsageCount(newCount);
+      const remaining = MAX_FREE_ANALYSES - newCount;
+      if (remaining > 0) {
+        showToast(`🔑 무료 기업분석 ${remaining}회 남았습니다`);
+      } else {
+        showToast(`🔒 무료 기업분석을 모두 사용했습니다`);
+      }
+    }
   };
 
   const handleCodeSubmit = (code) => {
     if (VALID_CODES.includes(code.toUpperCase())) {
       setIsUnlocked(true);
+      showToast("✓ 무제한 이용권이 활성화되었습니다!");
       return true;
     }
     return false;
@@ -1436,6 +1497,19 @@ export default function App() {
       <style>{styles}</style>
       <div className={`sidebar-overlay ${sidebarOpen ? "open" : ""}`} onClick={() => setSidebarOpen(false)} />
 
+      {/* Welcome popup - shows once on first visit */}
+      {showWelcome && !isUnlocked && (
+        <div className="paywall-overlay" onClick={() => setShowWelcome(false)}>
+          <div className="paywall-card" onClick={e => e.stopPropagation()} style={{ position: "relative" }}>
+            <button className="paywall-close" onClick={() => setShowWelcome(false)}>✕</button>
+            <div style={{ fontSize: 40, marginBottom: 12 }}>👋</div>
+            <h3>호두머니에 오신 걸 환영합니다!</h3>
+            <p>기업 분석 기능은 <strong>{MAX_FREE_ANALYSES}회</strong>까지 무료로 이용 가능합니다.<br />이후에는 이용권을 구매하시면 무제한으로 사용할 수 있어요.</p>
+            <button className="paywall-submit" onClick={() => setShowWelcome(false)}>시작하기</button>
+          </div>
+        </div>
+      )}
+
       {showPaywall && (
         <PaywallModal
           usageCount={usageCount}
@@ -1445,11 +1519,14 @@ export default function App() {
         />
       )}
 
+      {/* Usage toast notification */}
+      {toastMsg && <UsageToast message={toastMsg} onClose={() => setToastMsg(null)} />}
+
       <aside className={`sidebar ${sidebarOpen ? "open" : ""}`}>
         <div className="sidebar-logo">
           <div>
             <div className="logo-text">호두머니</div>
-            <div style={{ fontSize: 10, color: "var(--text-tertiary)", fontWeight: 500, marginTop: 2, letterSpacing: "-0.2px" }}>©hodusolution</div>
+            <div style={{ fontSize: 11, color: "var(--text-tertiary)", fontWeight: 500, marginTop: 4, letterSpacing: "0.5px" }}>©hodusolution</div>
           </div>
         </div>
         <div className="sidebar-section">
@@ -1458,7 +1535,8 @@ export default function App() {
             <div key={item.id} className={`sidebar-item ${activePage === item.id ? "active" : ""}`} onClick={() => { setActivePage(item.id); setSidebarOpen(false); }}>
               <span className="item-icon">{item.icon}</span>
               <span>{item.label}</span>
-              {!item.ready && <span className="badge-soon">준비중</span>}
+              {item.id === "company" && <span className="badge-soon" style={{ background: "#FFF0F1", color: "#F04452" }}>유료</span>}
+              {item.id !== "company" && !item.ready && <span className="badge-soon">준비중</span>}
             </div>
           ))}
         </div>
