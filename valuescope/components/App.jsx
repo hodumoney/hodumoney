@@ -119,8 +119,8 @@ const styles = `
     content: ''; position: absolute; bottom: -15px; left: -10px; width: 60px; height: 60px;
     background: rgba(255,255,255,0.07); border-radius: 50%;
   }
-  .logo-text { font-size: 26px; font-weight: 800; color: #fff; letter-spacing: -0.8px; line-height: 1.2; position: relative; z-index: 1; }
-  .logo-sub { font-size: 11px; color: rgba(255,255,255,0.65); font-weight: 500; margin-top: 6px; letter-spacing: 0.3px; position: relative; z-index: 1; }
+  .logo-text { font-size: 44px; font-weight: 800; color: #fff; letter-spacing: -1.5px; line-height: 1.1; position: relative; z-index: 1; }
+  .logo-sub { font-size: 12px; color: rgba(255,255,255,0.65); font-weight: 500; margin-top: 8px; letter-spacing: 0.3px; position: relative; z-index: 1; }
   .sidebar-section { padding: 0 12px; margin-bottom: 8px; }
   .sidebar-section-label { font-size: 11px; font-weight: 600; color: var(--text-tertiary); text-transform: uppercase; letter-spacing: 0.5px; padding: 0 12px; margin-bottom: 6px; }
   .sidebar-item { display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-radius: var(--radius-sm); cursor: pointer; transition: all 0.15s ease; font-size: 14px; font-weight: 500; color: var(--text-secondary); position: relative; }
@@ -1147,7 +1147,12 @@ function MarketPage() {
 
 
 // ─── Price Chart ─────────────────────────────────────────────────
-function PriceChart({ ticker, dailyChange }) {
+const PERIOD_LABELS = {
+  "1D": "전일대비", "1M": "전월대비", "3M": "3개월 전 대비", "6M": "6개월 전 대비",
+  "1Y": "전년대비", "3Y": "3년 전 대비", "5Y": "5년 전 대비", "10Y": "10년 전 대비", "MAX": "상장 이후",
+};
+
+function PriceChart({ ticker, dailyChange, onPeriodChange }) {
   const [period, setPeriod] = useState("1Y");
   const [chartData, setChartData] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -1158,20 +1163,31 @@ function PriceChart({ ticker, dailyChange }) {
     fetch(`/api/price?symbol=${ticker}&period=${period}`)
       .then(r => r.json())
       .then(d => {
-        if (d.points) {
-          setChartData(d.points.map(p => {
+        if (d.points && d.points.length > 0) {
+          const pts = d.points.map(p => {
             const dt = new Date(p.date);
             const yy = String(dt.getFullYear()).slice(-2);
             const mm = String(dt.getMonth() + 1).padStart(2, "0");
             return { date: `${yy}년 ${mm}월`, price: p.price, fullDate: p.date };
-          }));
+          });
+          setChartData(pts);
+          // Calculate period return and notify parent
+          const first = d.points[0].price;
+          const last = d.points[d.points.length - 1].price;
+          if (first > 0 && onPeriodChange) {
+            const pctChange = ((last - first) / first) * 100;
+            onPeriodChange({ pct: pctChange, label: PERIOD_LABELS[period] || period });
+          }
         }
       })
       .catch(() => {})
       .finally(() => setLoading(false));
   }, [ticker, period]);
 
-  const color = dailyChange >= 0 ? "#F04452" : "#3182F6";
+  const firstPrice = chartData.length > 0 ? chartData[0].price : 0;
+  const lastPrice = chartData.length > 0 ? chartData[chartData.length - 1].price : 0;
+  const chartUp = lastPrice >= firstPrice;
+  const color = chartUp ? "#F04452" : "#3182F6";
 
   return (
     <div className="card fade-up" style={{ padding: "16px" }}>
@@ -1201,12 +1217,13 @@ function PriceChart({ ticker, dailyChange }) {
 }
 
 // ─── Company Analysis Page ───────────────────────────────────────
-function CompanyPage({ searchTicker, onQuickSearch }) {
+function CompanyPage({ searchTicker, onQuickSearch, onUsageConsume }) {
   const [viewMode, setViewMode] = useState("quarterly");
   const [activeSection, setActiveSection] = useState("overview");
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+  const consumedRef = useRef(new Set());
 
   useEffect(() => {
     if (!searchTicker) { setData(null); return; }
@@ -1214,7 +1231,18 @@ function CompanyPage({ searchTicker, onQuickSearch }) {
     setLoading(true); setError(null);
     fetch(`/api/stock?symbol=${encodeURIComponent(searchTicker)}`)
       .then(r => r.json())
-      .then(d => { if (cancelled) return; if (d.error) { setError(d.error); setData(null); } else setData(d); })
+      .then(d => {
+        if (cancelled) return;
+        if (d.error) { setError(d.error); setData(null); }
+        else {
+          setData(d);
+          // Only consume usage once per ticker, and only on success
+          if (onUsageConsume && !consumedRef.current.has(searchTicker)) {
+            consumedRef.current.add(searchTicker);
+            onUsageConsume();
+          }
+        }
+      })
       .catch(() => !cancelled && setError("데이터를 불러올 수 없습니다"))
       .finally(() => !cancelled && setLoading(false));
     return () => { cancelled = true; };
@@ -1274,6 +1302,10 @@ function CompanyPage({ searchTicker, onQuickSearch }) {
   const capLabel = data.capRank || getCapRankLabel(data.ticker, data.marketCap);
   const dropFromHigh = data.yearHigh > 0 ? ((data.price - data.yearHigh) / data.yearHigh * 100) : 0;
   const krDesc = getKrDescription(data.ticker, null);
+  const [periodInfo, setPeriodInfo] = useState({ pct: safeNum(data.dailyChange) * 100, label: "전년대비" });
+
+  const displayPct = periodInfo.pct;
+  const displayLabel = periodInfo.label;
 
   return (
     <div className="content-area">
@@ -1285,13 +1317,13 @@ function CompanyPage({ searchTicker, onQuickSearch }) {
         </div>
         <div className="price-block">
           <div className="price-current">${safeNum(data.price).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
-          <div className={`price-change ${data.dailyChange >= 0 ? "positive" : "negative"}`}>
-            {data.dailyChange >= 0 ? "+" : ""}{(safeNum(data.dailyChange) * 100).toFixed(2)}% 전일대비
+          <div className={`price-change ${displayPct >= 0 ? "positive" : "negative"}`}>
+            {displayPct >= 0 ? "+" : ""}{displayPct.toFixed(2)}% {displayLabel}
           </div>
         </div>
       </div>
 
-      <PriceChart ticker={data.ticker} dailyChange={data.dailyChange} />
+      <PriceChart ticker={data.ticker} dailyChange={data.dailyChange} onPeriodChange={(info) => setPeriodInfo(info)} />
 
       <div className="stats-grid fade-up fade-up-d1" style={{ gridTemplateColumns: "repeat(3, 1fr)" }}>
         {[
@@ -1394,7 +1426,7 @@ function PaywallModal({ usageCount, maxFree, onCodeSubmit, onClose }) {
 // ─── Usage Notification (centered overlay) ───────────────────────
 function UsageNotice({ message, onClose }) {
   useEffect(() => {
-    const timer = setTimeout(onClose, 2200);
+    const timer = setTimeout(onClose, 2000);
     return () => clearTimeout(timer);
   }, [onClose]);
 
@@ -1465,16 +1497,6 @@ export default function App() {
     }
     setSearchedTicker(ticker);
     setActivePage("company");
-    if (!isUnlocked) {
-      const newCount = usageCount + 1;
-      setUsageCount(newCount);
-      const remaining = MAX_FREE_ANALYSES - newCount;
-      if (remaining > 0) {
-        setNoticeMsg(`무료 사용 횟수 ${remaining}회 남았습니다`);
-      } else {
-        setNoticeMsg("무료 사용 횟수를 모두 사용했습니다");
-      }
-    }
   };
 
   const handleQuickSearch = (ticker) => {
@@ -1484,15 +1506,17 @@ export default function App() {
     }
     setSearchedTicker(ticker);
     setActivePage("company");
-    if (!isUnlocked) {
-      const newCount = usageCount + 1;
-      setUsageCount(newCount);
-      const remaining = MAX_FREE_ANALYSES - newCount;
-      if (remaining > 0) {
-        setNoticeMsg(`무료 사용 횟수 ${remaining}회 남았습니다`);
-      } else {
-        setNoticeMsg("무료 사용 횟수를 모두 사용했습니다");
-      }
+  };
+
+  const handleUsageConsume = () => {
+    if (isUnlocked) return;
+    const newCount = usageCount + 1;
+    setUsageCount(newCount);
+    const remaining = MAX_FREE_ANALYSES - newCount;
+    if (remaining > 0) {
+      setNoticeMsg(`무료 사용 횟수 ${remaining}회 남았습니다`);
+    } else {
+      setNoticeMsg("무료 사용 횟수를 모두 사용했습니다");
     }
   };
 
@@ -1585,7 +1609,7 @@ export default function App() {
         {activePage === "market" && <MarketPage />}
         {activePage === "company" && (
           searchedTicker
-            ? <CompanyPage searchTicker={searchedTicker} />
+            ? <CompanyPage searchTicker={searchedTicker} onUsageConsume={handleUsageConsume} />
             : <CompanyPage searchTicker={null} onQuickSearch={handleQuickSearch} />
         )}
         {activePage === "briefing" && <BriefingPage />}
