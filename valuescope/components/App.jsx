@@ -106,18 +106,18 @@ const styles = `
     overflow-y: auto; z-index: 100; transition: transform 0.3s ease;
   }
   .sidebar-logo {
-    padding: 24px 20px 20px; display: flex; flex-direction: column; gap: 0;
+    padding: 28px 20px 22px; display: flex; flex-direction: column; gap: 0;
     margin: 0 12px 16px; border-radius: 14px;
-    background: linear-gradient(135deg, #1B64DA 0%, #3182F6 50%, #5BA0F8 100%);
+    background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
     position: relative; overflow: hidden;
   }
   .sidebar-logo::before {
     content: ''; position: absolute; top: -30px; right: -20px; width: 90px; height: 90px;
-    background: rgba(255,255,255,0.1); border-radius: 50%;
+    background: rgba(255,255,255,0.05); border-radius: 50%;
   }
   .sidebar-logo::after {
     content: ''; position: absolute; bottom: -15px; left: -10px; width: 60px; height: 60px;
-    background: rgba(255,255,255,0.07); border-radius: 50%;
+    background: rgba(255,255,255,0.03); border-radius: 50%;
   }
   .logo-text { font-size: 44px; font-weight: 800; color: #fff; letter-spacing: -1.5px; line-height: 1.1; position: relative; z-index: 1; }
   .logo-sub { font-size: 12px; color: rgba(255,255,255,0.65); font-weight: 500; margin-top: 8px; letter-spacing: 0.3px; position: relative; z-index: 1; }
@@ -316,8 +316,8 @@ const styles = `
   .econ-change.down { color: var(--accent-blue); }
   .econ-status { font-size: 11px; font-weight: 600; display: inline-block; padding: 2px 8px; border-radius: 4px; background: #F2F3F5; }
 
-  .country-label { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; font-weight: 600; color: var(--text-secondary); margin-bottom: 12px; padding: 4px 10px; background: var(--bg-primary); border-radius: 6px; }
-  .country-flag { font-size: 15px; }
+  .country-label { display: inline-flex; align-items: center; gap: 8px; font-size: 15px; font-weight: 700; color: var(--text-primary); margin-bottom: 14px; padding: 0; background: none; border-radius: 0; }
+  .country-flag { font-size: 18px; }
 
   .sentiment-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 24px; }
   @media (max-width: 768px) { .sentiment-grid { grid-template-columns: 1fr; } }
@@ -363,11 +363,12 @@ const styles = `
   .card-chart-btn:hover { border-color: var(--accent-blue); color: var(--accent-blue); background: var(--accent-blue-light); }
 
   .section-header-distinct {
-    margin-bottom: 20px; padding: 0;
+    margin-bottom: 20px; padding: 0 0 12px;
     background: transparent; border: none; border-radius: 0;
+    border-bottom: 2px solid var(--border);
   }
-  .section-header-distinct .section-title { font-size: 19px; font-weight: 700; letter-spacing: -0.4px; color: var(--text-primary); }
-  .section-header-distinct .section-subtitle { font-size: 13px; color: var(--text-tertiary); font-weight: 400; margin-top: 2px; }
+  .section-header-distinct .section-title { font-size: 20px; font-weight: 800; letter-spacing: -0.5px; color: var(--text-primary); }
+  .section-header-distinct .section-subtitle { font-size: 13px; color: var(--text-tertiary); font-weight: 400; margin-top: 3px; }
   .section-header-distinct.indices, .section-header-distinct.econ { border-left: none; }
 
   .data-table { width: 100%; border-collapse: collapse; font-size: 13px; }
@@ -1050,7 +1051,7 @@ function MarketPage() {
                 <button className="card-chart-btn" onClick={(e) => { e.stopPropagation(); toggle("idxUS", idx); }} title="차트 보기"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="2,12 5.5,7 8.5,9 14,3" /><polyline points="10,3 14,3 14,7" /></svg></button>
                 <div className="index-name">{idx.name}</div>
                 <div className="index-value">{idx.value}</div>
-                <div className={`index-change ${idx.up ? "up" : "down"}`}>{idx.change} ({idx.pct})</div>
+                <div className={`index-change ${idx.up ? "up" : "down"}`}>{idx.up ? "▲" : "▼"} {idx.change} ({idx.pct})</div>
               </div>
             ))}
           </div>
@@ -1067,7 +1068,7 @@ function MarketPage() {
                 <button className="card-chart-btn" onClick={(e) => { e.stopPropagation(); toggle("idxKR", idx); }} title="차트 보기"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="2,12 5.5,7 8.5,9 14,3" /><polyline points="10,3 14,3 14,7" /></svg></button>
                 <div className="index-name">{idx.name}</div>
                 <div className="index-value">{idx.value}</div>
-                <div className={`index-change ${idx.up ? "up" : "down"}`}>{idx.change} ({idx.pct})</div>
+                <div className={`index-change ${idx.up ? "up" : "down"}`}>{idx.up ? "▲" : "▼"} {idx.change} ({idx.pct})</div>
               </div>
             ))}
           </div>
@@ -1166,9 +1167,12 @@ function PriceChart({ ticker, dailyChange, onPeriodChange }) {
         if (d.points && d.points.length > 0) {
           const pts = d.points.map(p => {
             const dt = new Date(p.date);
-            const yy = String(dt.getFullYear()).slice(-2);
-            const mm = String(dt.getMonth() + 1).padStart(2, "0");
-            return { date: `${yy}년 ${mm}월`, price: p.price, fullDate: p.date };
+            const krDate = new Date(dt.getTime() + 9 * 60 * 60 * 1000);
+            const yy = String(krDate.getUTCFullYear()).slice(-2);
+            const mm = String(krDate.getUTCMonth() + 1).padStart(2, "0");
+            const dd = String(krDate.getUTCDate()).padStart(2, "0");
+            const label = period === "1D" ? `${mm}.${dd} ${String(krDate.getUTCHours()).padStart(2,"0")}:${String(krDate.getUTCMinutes()).padStart(2,"0")}` : `${yy}년 ${mm}월`;
+            return { date: label, price: p.price, fullDate: p.date };
           });
           setChartData(pts);
           // Calculate period return and notify parent
@@ -1251,17 +1255,24 @@ function CompanyPage({ searchTicker, onQuickSearch, onUsageConsume }) {
 
   if (!searchTicker) {
     return (
-      <div className="content-area">
-        <div className="empty-state fade-up">
-          <div className="empty-state-icon">🔍</div>
-          <h3>기업을 검색해보세요</h3>
-          <p>상단 검색창에 티커 또는 기업명을 입력하면<br />재무제표, 밸류에이션, 현금흐름을 한눈에 볼 수 있습니다.</p>
-          <div style={{ marginTop: 24, display: "flex", gap: 8, justifyContent: "center", flexWrap: "wrap" }}>
+      <div className="content-area" style={{ display: "flex", alignItems: "center", justifyContent: "center", minHeight: "calc(100vh - 60px)" }}>
+        <div className="fade-up" style={{ textAlign: "center", width: "100%", maxWidth: 480 }}>
+          <div style={{ fontSize: 48, marginBottom: 12, opacity: 0.7 }}>🔍</div>
+          <h3 style={{ fontSize: 22, fontWeight: 800, marginBottom: 6, letterSpacing: "-0.4px" }}>기업을 검색해보세요</h3>
+          <p style={{ fontSize: 14, color: "var(--text-tertiary)", lineHeight: 1.6, marginBottom: 24 }}>티커 또는 기업명을 입력하면<br />재무제표, 밸류에이션, 현금흐름을 한눈에 볼 수 있습니다.</p>
+          <div style={{ marginBottom: 20 }}>
+            <SearchBox onSelect={onQuickSearch} />
+          </div>
+          <div style={{ display: "flex", gap: 8, justifyContent: "center", flexWrap: "wrap", marginBottom: 24 }}>
             {["NVDA", "AAPL", "TSLA", "MSFT", "GOOG", "LLY"].map(t => (
               <button key={t} onClick={() => onQuickSearch && onQuickSearch(t)}
                 style={{ padding: "8px 16px", borderRadius: 20, border: "1px solid var(--border)", background: "white", fontFamily: "inherit", fontSize: 13, fontWeight: 600, cursor: "pointer", color: "var(--accent-blue)", transition: "all 0.15s ease" }}>{t}</button>
             ))}
           </div>
+          <a href="https://litt.ly/hodumoney/sale/QnPfK6I" target="_blank" rel="noopener noreferrer"
+            style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "10px 20px", borderRadius: 10, background: "var(--bg-primary)", border: "1px solid var(--border)", fontSize: 13, fontWeight: 600, color: "var(--text-secondary)", textDecoration: "none", transition: "all 0.15s ease" }}>
+            🎫 기업분석 무제한 이용권 구매하기
+          </a>
         </div>
       </div>
     );
@@ -1399,7 +1410,7 @@ function PaywallModal({ usageCount, maxFree, onCodeSubmit, onClose }) {
         <button className="paywall-close" onClick={onClose}>✕</button>
         <div style={{ fontSize: 40, marginBottom: 12 }}>🔒</div>
         <h3>무료 분석 횟수를 모두 사용했어요</h3>
-        <p>기업 분석은 <strong>{maxFree}회</strong>까지 무료입니다.<br />이용권 코드를 입력하거나 구매하면 무제한으로 사용할 수 있어요.</p>
+        <p>기업 분석은 <strong>{maxFree}회</strong>까지 무료입니다.<br />코드를 입력하거나 구매하면 무제한으로 사용할 수 있어요!</p>
         <a href="https://litt.ly/hodumoney/sale/QnPfK6I" target="_blank" rel="noopener noreferrer"
           style={{ display: "block", width: "100%", padding: "12px", marginBottom: 12, border: "none", borderRadius: 10,
             background: "linear-gradient(135deg, #3182F6, #1B64DA)", color: "white", fontSize: 15, fontWeight: 700,
@@ -1603,7 +1614,7 @@ export default function App() {
             <button className="mobile-menu-btn" onClick={() => setSidebarOpen(true)}>☰</button>
             <div className="top-bar-title">{pageTitle[activePage]}</div>
           </div>
-          <SearchBox onSelect={handleSearchSelect} />
+          {activePage === "company" && searchedTicker && <SearchBox onSelect={handleSearchSelect} />}
         </div>
 
         {activePage === "market" && <MarketPage />}
