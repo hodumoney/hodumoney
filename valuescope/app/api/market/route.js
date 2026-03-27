@@ -56,17 +56,17 @@ async function fetchYahoo(symbol) {
         const step = Math.max(1, Math.floor(c.length / 12));
         for (let i = 0; i < c.length; i += step) {
           if (c[i] && ts[i]) {
-            const d = new Date(ts[i] * 1000);
+            const d = new Date(ts[i] * 1000 + 9 * 60 * 60 * 1000);
             history.push({
-              label: `${String(d.getFullYear()).slice(-2)}.${String(d.getMonth() + 1).padStart(2, "0")}`,
+              label: `${String(d.getUTCFullYear()).slice(-2)}.${String(d.getUTCMonth() + 1).padStart(2, "0")}`,
               value: Math.round(c[i] * 100) / 100,
             });
           }
         }
 
         if (c[c.length - 1] && ts[ts.length - 1]) {
-          const d = new Date(ts[ts.length - 1] * 1000);
-          const l = `${String(d.getFullYear()).slice(-2)}.${String(d.getMonth() + 1).padStart(2, "0")}`;
+          const d = new Date(ts[ts.length - 1] * 1000 + 9 * 60 * 60 * 1000);
+          const l = `${String(d.getUTCFullYear()).slice(-2)}.${String(d.getUTCMonth() + 1).padStart(2, "0")}`;
           if (!history.length || history[history.length - 1].label !== l) {
             history.push({ label: l, value: Math.round(c[c.length - 1] * 100) / 100 });
           }
