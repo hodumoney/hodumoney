@@ -417,6 +417,17 @@ const styles = `
   }
   .usage-badge.warning { color: #F59E0B; border-color: #FEF3C7; background: #FFFBEB; }
   .usage-badge.unlimited { color: var(--accent-green); border-color: #D1FAE5; background: #ECFDF5; }
+
+  .insight-panel { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 0; border-top: 1px solid #F2F3F5; margin-top: 12px; }
+  .insight-panel.two-col { grid-template-columns: 1fr 1fr; }
+  .insight-col { padding: 12px 14px; border-right: 1px solid #F2F3F5; }
+  .insight-col:last-child { border-right: none; }
+  .insight-col-title { font-size: 11px; font-weight: 700; margin-bottom: 6px; letter-spacing: -0.2px; }
+  .insight-col-title.up { color: var(--accent-red); }
+  .insight-col-title.down { color: var(--accent-blue); }
+  .insight-col-title.comment { color: #795548; }
+  .insight-col-text { font-size: 12px; color: var(--text-secondary); line-height: 1.55; }
+  @media (max-width: 768px) { .insight-panel { grid-template-columns: 1fr; } .insight-col { border-right: none; border-bottom: 1px solid #F2F3F5; } .insight-col:last-child { border-bottom: none; } }
 `;
 
 // ─── Format Helpers ──────────────────────────────────────────────
@@ -532,6 +543,32 @@ function getCapRankLabel(ticker, marketCap) {
   if (marketCap >= 300e6) return "Small Cap";
   return "Small Cap";
 }
+
+// ─── Insight Panel (below chart in expanded metrics) ─────────────
+function InsightPanel({ metricKey }) {
+  const insight = METRIC_INSIGHTS[metricKey];
+  if (!insight) return null;
+  const hasComment = insight.comment && insight.comment.length > 0;
+  return (
+    <div className={`insight-panel ${hasComment ? "" : "two-col"}`}>
+      <div className="insight-col">
+        <div className="insight-col-title up">▲ 증가 시</div>
+        <div className="insight-col-text">{insight.up}</div>
+      </div>
+      <div className="insight-col">
+        <div className="insight-col-title down">▼ 감소 시</div>
+        <div className="insight-col-text">{insight.down}</div>
+      </div>
+      {hasComment && (
+        <div className="insight-col">
+          <div className="insight-col-title comment">🥜 호두머니 코멘트</div>
+          <div className="insight-col-text">{insight.comment}</div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 function SearchBox({ onSelect, large }) {
   const [query, setQuery] = useState("");
   const [results, setResults] = useState([]);
@@ -852,6 +889,7 @@ function CoreValuations({ data }) {
                       <Area type="monotone" dataKey="value" stroke="#3182F6" strokeWidth={2.5} fill={`url(#mg-${key})`} dot={{ r: 4, stroke: "#3182F6", strokeWidth: 2, fill: "white" }} activeDot={{ r: 6, stroke: "#3182F6", strokeWidth: 2, fill: "white" }} />
                     </AreaChart>
                   </ResponsiveContainer>
+                  <InsightPanel metricKey={key} />
                 </div>
               </div>
             )}
@@ -863,7 +901,7 @@ function CoreValuations({ data }) {
 }
 
 // ─── Reusable Financial Row Card ─────────────────────────────────
-function FinRowCard({ label, values, labels, expanded, onToggle, fmtFn, allowNeg, desc }) {
+function FinRowCard({ label, values, labels, expanded, onToggle, fmtFn, allowNeg, desc, metricKey }) {
   const lastVal = values[values.length - 1];
   const vMin = Math.min(...values);
   const vMax = Math.max(...values);
@@ -901,6 +939,7 @@ function FinRowCard({ label, values, labels, expanded, onToggle, fmtFn, allowNeg
                 <Area type="monotone" dataKey="value" stroke="#3182F6" strokeWidth={2.5} fill={`url(#fg-${label.replace(/[^a-zA-Z]/g,"")})`} dot={{ r: 4, stroke: "#3182F6", strokeWidth: 2, fill: "white" }} activeDot={{ r: 6, stroke: "#3182F6", strokeWidth: 2, fill: "white" }} />
               </AreaChart>
             </ResponsiveContainer>
+            <InsightPanel metricKey={metricKey} />
           </div>
         </div>
       )}
@@ -946,7 +985,7 @@ function FinancialStatements({ data }) {
             <div className="card-description">{sec.desc}</div>
           </div>
           {sec.rows.map(row => (
-            <FinRowCard key={row.key} label={row.label} values={row.values} labels={labels} expanded={expandedKey === row.key} onToggle={() => toggle(row.key)} allowNeg={row.allowNeg} desc={row.desc} />
+            <FinRowCard key={row.key} label={row.label} values={row.values} labels={labels} expanded={expandedKey === row.key} onToggle={() => toggle(row.key)} allowNeg={row.allowNeg} desc={row.desc} metricKey={row.key} />
           ))}
         </div>
       ))}
@@ -987,7 +1026,7 @@ function AdvancedMetrics({ data }) {
             <div className="card-description">{sec.desc}</div>
           </div>
           {sec.rows.map(row => (
-            <FinRowCard key={row.key} label={row.label} values={row.values} labels={labels} expanded={expandedKey === row.key} onToggle={() => toggle(row.key)} fmtFn={row.fmt} desc={row.desc} />
+            <FinRowCard key={row.key} label={row.label} values={row.values} labels={labels} expanded={expandedKey === row.key} onToggle={() => toggle(row.key)} fmtFn={row.fmt} desc={row.desc} metricKey={row.key} />
           ))}
         </div>
       ))}
@@ -1152,6 +1191,42 @@ function MarketPage() {
 const PERIOD_LABELS = {
   "1D": "전일대비", "1M": "전월대비", "3M": "3개월 전 대비", "6M": "6개월 전 대비",
   "1Y": "전년대비", "3Y": "3년 전 대비", "5Y": "5년 전 대비", "10Y": "10년 전 대비", "MAX": "상장 이후",
+};
+
+// ─── Metric Insights (증가/감소 시 의미 + 호두머니 코멘트) ────────
+const METRIC_INSIGHTS = {
+  // 핵심 밸류에이션
+  per: { up: "회사가 고평가됨, 투자자들이 미래 성장을 높게 평가함", down: "회사가 저평가됨, 성장성에 대한 기대가 낮음", comment: "PER이 높게 형성되기도 하는 성장주(예:반도체)의 경우 PEG를 함께 보는 것이 좋습니다." },
+  pbr: { up: "시장이 회사의 자산 가치를 높게 평가함 (우량업, 성장 기대)", down: "기업 가치가 자산 대비 저평가되거나 수익성이 낮다고 판단", comment: "주가가 가진 건물이나 기계는 늘지만, 산업 자체가 사양이라면 여부로 PBR은 계속 1.0 미만에 머물 수 있습니다. PBR이 낮다고 곧바로 투자하지 말고, 성장성과 PBR을 함께 보세요." },
+  eps: { up: "기업의 순이익 증가, 실질 개선", down: "기업의 순이익 감소, 실적 악화", comment: "좋다·적인 수치보다는 과거 자체의 비교가 기업의 실적을 판단하는 기준이 됩니다." },
+  de: { up: "부채 의존도가 높아지고 있어 재무 건전성 경고", down: "재무 건전성 강화, 재무 구조가 안정적", comment: "신규 산업에 투자하는 경우 (ex. 인공지능) 발빠른 시장 점유를 위해 투자하므로 부채 비율이 일시적으로 높아지기도 합니다. 제조업의 경우 100~200%, 금융업의 경우 400% 이상, IT 기업의 경우 100% 정도의 부채비율이 일반적입니다." },
+  roe: { up: "자본효율성이 높아지고 있어 경영 성과 우수", down: "자본효율성이 낮아져 경영 효율 저하", comment: "ROE는 부채가 많아져도 높아질 수 있기 때문에 부채비율과 함께 확인하세요." },
+  div: { up: "안정적 현금 창출, 주주환원 의지 강화", down: "배당 축소, 기업이 현금 보전을 우선시", comment: "주가가 하락할 경우 상대적으로 배당수익률이 높아져 보이지만, 실제 배당 규모 유지 여부를 확인해야 합니다." },
+  ebitda: { up: "본업에서 현금 창출 확인, 재무구조 양호", down: "본업의 현금 창출이 약화", comment: "EBITDA는 현금 창출 능력을 보여주지만, 장비 교체나 시설 투자를 줄여 실적이 나가는 경우도 (CAPEX)도 반영하지 않습니다. 따라서 아래 자유현금흐름과 투자활동 현금흐름을 함께 보시는 것이 좋습니다." },
+  // 손익계산서
+  revenue: { up: "판매량 증가, 시장 점유율 증가", down: "수요 감소, 경쟁 심화", comment: "" },
+  grossProfit: { up: "원가 절감, 고수익 제품 판매 비중 상승", down: "원가 상승, 수익성 악화", comment: "" },
+  opIncome: { up: "본업의 효율성 개선", down: "본업이 잘 되는 동안 비용 증가", comment: "" },
+  netIncome: { up: "회사의 전체 수익성 개선", down: "수익성 저하", comment: "" },
+  // 재무상태표
+  totalAssets: { up: "사업 확장, 자산 취득, 규모 성장", down: "자산 매각, 축소 경영, 유동성 악화", comment: "" },
+  currentLiab: { up: "단기자금 조달 증가 (성장, 투자 목적일 수 있음)", down: "부채 상환, 재무 건전성 개선", comment: "" },
+  equity: { up: "회사의 재무 건전성 향상, 이익잉여금 누적", down: "부채 증가, 순손실 발생, 과도한 배당, 자본 잠식 위험", comment: "" },
+  // 현금흐름표
+  fcf: { up: "현금 창출력 여유, 배당·투자 여력 확대", down: "투자·부채상환 때문에 현금 여력 감소", comment: "" },
+  opCash: { up: "본업이 안정적, 현금 창출 능력 우수", down: "재고증가, 매출채권 회수 지연 가능성 악화", comment: "" },
+  invCash: { up: "투자 축소, 자산매각 (단기 현금 확보)", down: "설비 투자 확대 (미래 성장에 투자)", comment: "" },
+  finCash: { up: "기업이 외부에서 현금을 끌어오는 상태", down: "대출 상환, 배당, 자사주 매입 등", comment: "" },
+  netChange: { up: "현금 보유량 증가로 유동성 확보", down: "현금 유출 증가로 단기적으로 돈이 모자랄 수 있음에 주의", comment: "" },
+  // 심화 밸류에이션
+  evEbitda: { up: "영업이익 대비 기업 가치가 높아진 상태", down: "영업이익 대비 기업 가치가 낮아진 상태", comment: "보통 10~20 사이면 적정 수준으로 보지만, 동종 업계 경쟁사들과 비교해 적절한가 여부를 판단하는 것이 정확합니다." },
+  pe: { up: "주가가 이익에 비해 고평가된 상태 (2 이상이면 고평가)", down: "주가가 이익에 비해 저평가된 상태 (1 이하면 냉각)", comment: "" },
+  peg: { up: "성장률 대비 주가가 고평가된 상태", down: "성장률에 비해 주가가 저평가된 상태", comment: "성장주의 경우 높은 PER을 정당화시켜주는 지표입니다. 성장이 기업이라면 투자 전 꼭 봐야할 지표입니다." },
+  opMargin: { up: "운영 효율성 좋아짐", down: "경쟁 심화나 비용 증가로 본업 수익성 악화", comment: "비율이 높을수록 업계에서 독점적인 지위를 가졌거나 비용 관리를 하고 있다는 뜻이니 경쟁사 한번 비교해보세요." },
+  netMargin: { up: "재무 건전성이 좋아지고 있음", down: "본업 외 비용(금융비용 등)이 증가", comment: "영업 이익률과 차이가 너무 크다면(5% 이상) 영업 외 이익이나 비용이 과도하지 않은지 점검해야 합니다." },
+  // 주주환원
+  sharesQ: { up: "유상증자나 스톡옵션을 통해 주식 수가 늘어난 상태(기존 주주들의 지분율이 강제로 낮아지는 현상)", down: "자사주 매입 및 소각으로 주식 수가 줄어든 상태(주주 환원적인 기업)", comment: "주식 수가 꾸준히 줄어드는 것(우하향)이 주주 친화적인 기업입니다." },
+  sharesY: { up: "유상증자나 스톡옵션을 통해 주식 수가 늘어난 상태", down: "자사주 매입 및 소각으로 주식 수가 줄어든 상태", comment: "주식 수가 꾸준히 줄어드는 것(우하향)이 주주 친화적인 기업입니다." },
 };
 
 function PriceChart({ ticker, dailyChange, onPeriodChange }) {
