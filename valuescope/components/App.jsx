@@ -106,21 +106,21 @@ const styles = `
     overflow-y: auto; z-index: 100; transition: transform 0.3s ease;
   }
   .sidebar-logo {
-    padding: 28px 20px 22px; display: flex; flex-direction: column; gap: 0;
+    padding: 28px 20px 24px; display: flex; flex-direction: column; gap: 0;
     margin: 0 12px 16px; border-radius: 14px;
-    background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+    background: linear-gradient(135deg, #3E2723 0%, #5D4037 40%, #795548 100%);
     position: relative; overflow: hidden;
   }
   .sidebar-logo::before {
-    content: ''; position: absolute; top: -30px; right: -20px; width: 90px; height: 90px;
-    background: rgba(255,255,255,0.05); border-radius: 50%;
+    content: ''; position: absolute; top: -25px; right: -15px; width: 80px; height: 80px;
+    background: rgba(255,255,255,0.06); border-radius: 50%;
   }
   .sidebar-logo::after {
-    content: ''; position: absolute; bottom: -15px; left: -10px; width: 60px; height: 60px;
-    background: rgba(255,255,255,0.03); border-radius: 50%;
+    content: ''; position: absolute; bottom: -20px; left: -10px; width: 65px; height: 65px;
+    background: rgba(255,255,255,0.04); border-radius: 50%;
   }
   .logo-text { font-size: 44px; font-weight: 800; color: #fff; letter-spacing: -1.5px; line-height: 1.1; position: relative; z-index: 1; }
-  .logo-sub { font-size: 12px; color: rgba(255,255,255,0.65); font-weight: 500; margin-top: 8px; letter-spacing: 0.3px; position: relative; z-index: 1; }
+  .logo-sub { font-size: 11px; color: rgba(255,255,255,0.5); font-weight: 500; margin-top: 6px; letter-spacing: 0.3px; position: relative; z-index: 1; }
   .sidebar-section { padding: 0 12px; margin-bottom: 8px; }
   .sidebar-section-label { font-size: 11px; font-weight: 600; color: var(--text-tertiary); text-transform: uppercase; letter-spacing: 0.5px; padding: 0 12px; margin-bottom: 6px; }
   .sidebar-item { display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-radius: var(--radius-sm); cursor: pointer; transition: all 0.15s ease; font-size: 14px; font-weight: 500; color: var(--text-secondary); position: relative; }
@@ -532,7 +532,7 @@ function getCapRankLabel(ticker, marketCap) {
   if (marketCap >= 300e6) return "Small Cap";
   return "Small Cap";
 }
-function SearchBox({ onSelect }) {
+function SearchBox({ onSelect, large }) {
   const [query, setQuery] = useState("");
   const [results, setResults] = useState([]);
   const [isOpen, setIsOpen] = useState(false);
@@ -624,9 +624,9 @@ function SearchBox({ onSelect }) {
   };
 
   return (
-    <div className="search-wrapper" ref={wrapperRef}>
-      <div className="search-box">
-        <span className="search-icon">🔍</span>
+    <div className="search-wrapper" ref={wrapperRef} style={large ? { width: "100%", maxWidth: 520 } : {}}>
+      <div className="search-box" style={large ? { padding: "14px 20px", borderRadius: 14, border: "2px solid var(--border)", boxShadow: "0 2px 12px rgba(0,0,0,0.06)", background: "white" } : {}}>
+        <span className="search-icon" style={large ? { fontSize: 20 } : {}}>🔍</span>
         <input
           type="text"
           placeholder="티커 또는 기업명 검색 (예: NVDA, Apple)"
@@ -634,6 +634,7 @@ function SearchBox({ onSelect }) {
           onChange={handleChange}
           onKeyDown={handleKeyDown}
           onFocus={() => { if (results.length > 0) setIsOpen(true); }}
+          style={large ? { fontSize: 16, fontWeight: 500 } : {}}
         />
         {query && (
           <button className="search-clear-btn" onClick={handleClear} type="button">✕</button>
@@ -1256,17 +1257,17 @@ function CompanyPage({ searchTicker, onQuickSearch, onUsageConsume }) {
   if (!searchTicker) {
     return (
       <div className="content-area" style={{ display: "flex", alignItems: "center", justifyContent: "center", minHeight: "calc(100vh - 60px)" }}>
-        <div className="fade-up" style={{ textAlign: "center", width: "100%", maxWidth: 480 }}>
-          <div style={{ fontSize: 48, marginBottom: 12, opacity: 0.7 }}>🔍</div>
-          <h3 style={{ fontSize: 22, fontWeight: 800, marginBottom: 6, letterSpacing: "-0.4px" }}>기업을 검색해보세요</h3>
-          <p style={{ fontSize: 14, color: "var(--text-tertiary)", lineHeight: 1.6, marginBottom: 24 }}>티커 또는 기업명을 입력하면<br />재무제표, 밸류에이션, 현금흐름을 한눈에 볼 수 있습니다.</p>
-          <div style={{ marginBottom: 20 }}>
-            <SearchBox onSelect={onQuickSearch} />
+        <div className="fade-up" style={{ textAlign: "center", width: "100%", maxWidth: 560, padding: "0 20px" }}>
+          <div style={{ fontSize: 48, marginBottom: 16, opacity: 0.6 }}>🔍</div>
+          <h3 style={{ fontSize: 26, fontWeight: 800, marginBottom: 8, letterSpacing: "-0.5px" }}>기업을 검색해보세요</h3>
+          <p style={{ fontSize: 14, color: "var(--text-tertiary)", lineHeight: 1.6, marginBottom: 28 }}>티커 또는 기업명을 입력하면<br />재무제표, 밸류에이션, 현금흐름을 한눈에 볼 수 있습니다.</p>
+          <div style={{ width: "100%", maxWidth: 520, margin: "0 auto 20px" }}>
+            <SearchBox onSelect={onQuickSearch} large />
           </div>
-          <div style={{ display: "flex", gap: 8, justifyContent: "center", flexWrap: "wrap", marginBottom: 24 }}>
+          <div style={{ display: "flex", gap: 8, justifyContent: "center", flexWrap: "wrap", marginBottom: 28 }}>
             {["NVDA", "AAPL", "TSLA", "MSFT", "GOOG", "LLY"].map(t => (
               <button key={t} onClick={() => onQuickSearch && onQuickSearch(t)}
-                style={{ padding: "8px 16px", borderRadius: 20, border: "1px solid var(--border)", background: "white", fontFamily: "inherit", fontSize: 13, fontWeight: 600, cursor: "pointer", color: "var(--accent-blue)", transition: "all 0.15s ease" }}>{t}</button>
+                style={{ padding: "8px 18px", borderRadius: 20, border: "1px solid var(--border)", background: "white", fontFamily: "inherit", fontSize: 13, fontWeight: 600, cursor: "pointer", color: "var(--accent-blue)", transition: "all 0.15s ease" }}>{t}</button>
             ))}
           </div>
           <a href="https://litt.ly/hodumoney/sale/QnPfK6I" target="_blank" rel="noopener noreferrer"
@@ -1493,9 +1494,12 @@ export default function App() {
 
   // Show welcome popup when entering company tab for the first time
   const handlePageChange = (pageId) => {
-    if (pageId === "company" && !welcomeShown && !isUnlocked) {
-      setShowWelcome(true);
-      setWelcomeShown(true);
+    if (pageId === "company") {
+      setSearchedTicker(""); // always reset to search screen
+      if (!welcomeShown && !isUnlocked) {
+        setShowWelcome(true);
+        setWelcomeShown(true);
+      }
     }
     setActivePage(pageId);
     setSidebarOpen(false);
@@ -1582,7 +1586,7 @@ export default function App() {
       <aside className={`sidebar ${sidebarOpen ? "open" : ""}`}>
         <div className="sidebar-logo">
           <div className="logo-text">호두머니</div>
-          <div className="logo-sub">©hodusolution · 투자의 첫 걸음</div>
+          <div className="logo-sub">©hodusolution</div>
         </div>
         <div className="sidebar-section">
           <div className="sidebar-section-label">분석 도구</div>
