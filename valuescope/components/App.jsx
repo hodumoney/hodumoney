@@ -418,16 +418,16 @@ const styles = `
   .usage-badge.warning { color: #F59E0B; border-color: #FEF3C7; background: #FFFBEB; }
   .usage-badge.unlimited { color: var(--accent-green); border-color: #D1FAE5; background: #ECFDF5; }
 
-  .insight-panel { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 0; border-top: 1px solid #F2F3F5; margin-top: 12px; }
+  .insight-panel { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 0; border-top: 1px solid #E5E8EB; margin-top: 14px; }
   .insight-panel.two-col { grid-template-columns: 1fr 1fr; }
-  .insight-col { padding: 12px 14px; border-right: 1px solid #F2F3F5; }
+  .insight-col { padding: 14px 16px; border-right: 1px solid #E5E8EB; }
   .insight-col:last-child { border-right: none; }
-  .insight-col-title { font-size: 11px; font-weight: 700; margin-bottom: 6px; letter-spacing: -0.2px; }
-  .insight-col-title.up { color: var(--accent-red); }
-  .insight-col-title.down { color: var(--accent-blue); }
-  .insight-col-title.comment { color: #795548; }
-  .insight-col-text { font-size: 12px; color: var(--text-secondary); line-height: 1.55; }
-  @media (max-width: 768px) { .insight-panel { grid-template-columns: 1fr; } .insight-col { border-right: none; border-bottom: 1px solid #F2F3F5; } .insight-col:last-child { border-bottom: none; } }
+  .insight-col-title { font-size: 12px; font-weight: 800; margin-bottom: 8px; letter-spacing: -0.2px; }
+  .insight-col-title.up { color: #D32F2F; }
+  .insight-col-title.down { color: #1565C0; }
+  .insight-col-title.comment { color: #5D4037; }
+  .insight-col-text { font-size: 13px; color: var(--text-primary); line-height: 1.65; font-weight: 500; }
+  @media (max-width: 768px) { .insight-panel { grid-template-columns: 1fr; } .insight-col { border-right: none; border-bottom: 1px solid #E5E8EB; } .insight-col:last-child { border-bottom: none; } }
 `;
 
 // ─── Format Helpers ──────────────────────────────────────────────
@@ -552,11 +552,11 @@ function InsightPanel({ metricKey }) {
   return (
     <div className={`insight-panel ${hasComment ? "" : "two-col"}`}>
       <div className="insight-col">
-        <div className="insight-col-title up">▲ 증가 시</div>
+        <div className="insight-col-title up">▲ 증가 시 의미</div>
         <div className="insight-col-text">{insight.up}</div>
       </div>
       <div className="insight-col">
-        <div className="insight-col-title down">▼ 감소 시</div>
+        <div className="insight-col-title down">▼ 감소 시 의미</div>
         <div className="insight-col-text">{insight.down}</div>
       </div>
       {hasComment && (
@@ -1204,23 +1204,23 @@ const METRIC_INSIGHTS = {
   div: { up: "안정적 현금 창출, 주주환원 의지 강화", down: "배당 축소, 기업이 현금 보전을 우선시", comment: "주가가 하락할 경우 상대적으로 배당수익률이 높아져 보이지만, 실제 배당 규모 유지 여부를 확인해야 합니다." },
   ebitda: { up: "본업에서 현금 창출 확인, 재무구조 양호", down: "본업의 현금 창출이 약화", comment: "EBITDA는 현금 창출 능력을 보여주지만, 장비 교체나 시설 투자를 줄여 실적이 나가는 경우도 (CAPEX)도 반영하지 않습니다. 따라서 아래 자유현금흐름과 투자활동 현금흐름을 함께 보시는 것이 좋습니다." },
   // 손익계산서
-  revenue: { up: "판매량 증가, 시장 점유율 증가", down: "수요 감소, 경쟁 심화", comment: "" },
-  grossProfit: { up: "원가 절감, 고수익 제품 판매 비중 상승", down: "원가 상승, 수익성 악화", comment: "" },
-  opIncome: { up: "본업의 효율성 개선", down: "본업이 잘 되는 동안 비용 증가", comment: "" },
-  netIncome: { up: "회사의 전체 수익성 개선", down: "수익성 저하", comment: "" },
+  revenue: { up: "판매량 증가, 시장 점유율 증가", down: "수요 감소, 경쟁 심화", comment: "매출이 꾸준히 성장하는 기업은 시장에서 경쟁력을 유지하고 있다는 뜻입니다. 다만 매출이 늘어도 이익이 줄면 '저수익 성장'일 수 있으니 영업이익과 함께 확인하세요." },
+  grossProfit: { up: "원가 절감, 고수익 제품 판매 비중 상승", down: "원가 상승, 수익성 악화", comment: "매출 총이익률(매출 총이익/매출)이 높을수록 원가 경쟁력이 뛰어난 기업입니다. 같은 업종 내에서 비교하면 어떤 회사가 더 효율적인지 한눈에 보입니다." },
+  opIncome: { up: "본업의 효율성 개선", down: "본업이 잘 되는 동안 비용 증가", comment: "영업이익은 회사가 '본업'으로 얼마나 벌고 있는지를 보여주는 핵심 지표입니다. 매출은 늘어도 영업이익이 줄어드는 회사는 비용 관리에 문제가 있을 수 있습니다." },
+  netIncome: { up: "회사의 전체 수익성 개선", down: "수익성 저하", comment: "순이익은 세금, 이자 등 모든 비용을 뺀 최종 이익입니다. 영업이익은 좋은데 순이익이 급감했다면 일회성 손실이나 환차손 등 영업 외 요인을 의심해보세요." },
   // 재무상태표
-  totalAssets: { up: "사업 확장, 자산 취득, 규모 성장", down: "자산 매각, 축소 경영, 유동성 악화", comment: "" },
-  currentLiab: { up: "단기자금 조달 증가 (성장, 투자 목적일 수 있음)", down: "부채 상환, 재무 건전성 개선", comment: "" },
-  equity: { up: "회사의 재무 건전성 향상, 이익잉여금 누적", down: "부채 증가, 순손실 발생, 과도한 배당, 자본 잠식 위험", comment: "" },
+  totalAssets: { up: "사업 확장, 자산 취득, 규모 성장", down: "자산 매각, 축소 경영, 유동성 악화", comment: "총 자산이 커지는 것이 무조건 좋은 건 아닙니다. 부채로 자산을 늘린 건지, 이익 잉여금으로 쌓인 건지 자본 총계와 함께 확인해야 합니다." },
+  currentLiab: { up: "단기자금 조달 증가 (성장, 투자 목적일 수 있음)", down: "부채 상환, 재무 건전성 개선", comment: "유동 부채가 유동 자산보다 크면 단기 지급 능력에 문제가 생길 수 있습니다. '유동비율(유동자산/유동부채)' 200% 이상이면 안정적이라 판단합니다." },
+  equity: { up: "회사의 재무 건전성 향상, 이익잉여금 누적", down: "부채 증가, 순손실 발생, 과도한 배당, 자본 잠식 위험", comment: "자본 총계가 꾸준히 늘어나는 기업은 매년 이익을 쌓아가며 체력이 강해지고 있다는 뜻입니다. 반대로 줄어들면 배당이나 손실로 체력이 빠지고 있는 것이니 주의하세요." },
   // 현금흐름표
-  fcf: { up: "현금 창출력 여유, 배당·투자 여력 확대", down: "투자·부채상환 때문에 현금 여력 감소", comment: "" },
-  opCash: { up: "본업이 안정적, 현금 창출 능력 우수", down: "재고증가, 매출채권 회수 지연 가능성 악화", comment: "" },
-  invCash: { up: "투자 축소, 자산매각 (단기 현금 확보)", down: "설비 투자 확대 (미래 성장에 투자)", comment: "" },
-  finCash: { up: "기업이 외부에서 현금을 끌어오는 상태", down: "대출 상환, 배당, 자사주 매입 등", comment: "" },
-  netChange: { up: "현금 보유량 증가로 유동성 확보", down: "현금 유출 증가로 단기적으로 돈이 모자랄 수 있음에 주의", comment: "" },
+  fcf: { up: "현금 창출력 여유, 배당·투자 여력 확대", down: "투자·부채상환 때문에 현금 여력 감소", comment: "자유현금흐름은 기업이 진짜로 자유롭게 쓸 수 있는 돈입니다. 이 숫자가 꾸준히 플러스인 기업은 주주환원(배당, 자사주 매입)에 여유가 있어 장기 투자에 유리합니다." },
+  opCash: { up: "본업이 안정적, 현금 창출 능력 우수", down: "재고증가, 매출채권 회수 지연 가능성 악화", comment: "순이익은 높은데 영업활동 현금흐름이 마이너스라면 '이익의 질'을 의심해야 합니다. 실제 현금이 들어오지 않는 이익은 회계상 숫자에 불과할 수 있습니다." },
+  invCash: { up: "투자 축소, 자산매각 (단기 현금 확보)", down: "설비 투자 확대 (미래 성장에 투자)", comment: "투자활동 현금흐름이 마이너스(-)라고 나쁜 것이 아닙니다. 적극적으로 설비에 투자하는 기업은 미래 매출 성장을 준비하고 있는 것이니, 영업이익과 매출 추세를 함께 보세요." },
+  finCash: { up: "기업이 외부에서 현금을 끌어오는 상태", down: "대출 상환, 배당, 자사주 매입 등", comment: "재무활동에서 마이너스가 크다면 빚을 갚거나 주주에게 환원 중인 것입니다. 건전한 기업일수록 본업으로 번 돈을 재무활동에서 나눠주는 패턴을 보입니다." },
+  netChange: { up: "현금 보유량 증가로 유동성 확보", down: "현금 유출 증가로 단기적으로 돈이 모자랄 수 있음에 주의", comment: "현금 증감이 마이너스여도 투자 때문이라면 걱정할 필요 없습니다. 문제는 영업에서도 돈을 못 벌면서 현금이 줄어드는 경우이니, 영업활동 현금흐름과 함께 판단하세요." },
   // 심화 밸류에이션
   evEbitda: { up: "영업이익 대비 기업 가치가 높아진 상태", down: "영업이익 대비 기업 가치가 낮아진 상태", comment: "보통 10~20 사이면 적정 수준으로 보지만, 동종 업계 경쟁사들과 비교해 적절한가 여부를 판단하는 것이 정확합니다." },
-  pe: { up: "주가가 이익에 비해 고평가된 상태 (2 이상이면 고평가)", down: "주가가 이익에 비해 저평가된 상태 (1 이하면 냉각)", comment: "" },
+  pe: { up: "주가가 이익에 비해 고평가된 상태 (2 이상이면 고평가)", down: "주가가 이익에 비해 저평가된 상태 (1 이하면 냉각)", comment: "심화 PER 추세는 핵심 밸류에이션의 PER과 동일한 지표입니다. 추세가 급격히 변했다면 이익 변동보다 주가 변동이 원인일 수 있으니 주가 차트와 함께 확인하세요." },
   peg: { up: "성장률 대비 주가가 고평가된 상태", down: "성장률에 비해 주가가 저평가된 상태", comment: "성장주의 경우 높은 PER을 정당화시켜주는 지표입니다. 성장이 기업이라면 투자 전 꼭 봐야할 지표입니다." },
   opMargin: { up: "운영 효율성 좋아짐", down: "경쟁 심화나 비용 증가로 본업 수익성 악화", comment: "비율이 높을수록 업계에서 독점적인 지위를 가졌거나 비용 관리를 하고 있다는 뜻이니 경쟁사 한번 비교해보세요." },
   netMargin: { up: "재무 건전성이 좋아지고 있음", down: "본업 외 비용(금융비용 등)이 증가", comment: "영업 이익률과 차이가 너무 크다면(5% 이상) 영업 외 이익이나 비용이 과도하지 않은지 점검해야 합니다." },
