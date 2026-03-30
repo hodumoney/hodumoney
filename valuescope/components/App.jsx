@@ -4,12 +4,12 @@ import { LineChart, Line, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip,
 // ─── Firebase 설정 (lazy load — 빌드 시 실행 안 됨) ─────────────
 // 이 값들을 본인의 Firebase 프로젝트 설정으로 교체하세요
 const FIREBASE_CONFIG = {
-  apiKey: "AIzaSyABrvoetmfs4pFYMR2IFjBXKhxeYa_eZbs",
-  authDomain: "hodumoney-1e015.firebaseapp.com",
-  projectId: "hodumoney-1e015",
-  storageBucket: "hodumoney-1e015.firebasestorage.app",
-  messagingSenderId: "674599618160",
-  appId: "1:674599618160:web:2492e68229f14d4324d6b5",
+  apiKey: "YOUR_FIREBASE_API_KEY",
+  authDomain: "YOUR_PROJECT.firebaseapp.com",
+  projectId: "YOUR_PROJECT_ID",
+  storageBucket: "YOUR_PROJECT.appspot.com",
+  messagingSenderId: "YOUR_SENDER_ID",
+  appId: "YOUR_APP_ID",
 };
 
 let _firebaseAuth = null;
@@ -20,6 +20,18 @@ async function getFirebaseAuth() {
   const app = getApps().length === 0 ? initializeApp(FIREBASE_CONFIG) : getApps()[0];
   _firebaseAuth = getAuth(app);
   return _firebaseAuth;
+}
+
+const ADMIN_EMAIL = "qkrgkdus2017@gmail.com";
+
+let _firebaseStorage = null;
+async function getFirebaseStorage() {
+  if (_firebaseStorage) return _firebaseStorage;
+  const { initializeApp, getApps } = await import("firebase/app");
+  const { getStorage } = await import("firebase/storage");
+  const app = getApps().length === 0 ? initializeApp(FIREBASE_CONFIG) : getApps()[0];
+  _firebaseStorage = getStorage(app);
+  return _firebaseStorage;
 }
 
 // ─── Helper: generate fake historical data ───────────────────────
@@ -564,6 +576,35 @@ const styles = `
   .auth-modal .auth-toggle button { background: none; border: none; color: var(--accent-blue); font-weight: 600; cursor: pointer; font-family: inherit; font-size: 13px; }
   .auth-modal .auth-error { font-size: 12px; color: var(--accent-red); margin-top: 8px; text-align: center; font-weight: 600; }
   .auth-modal .auth-close { position: absolute; top: 14px; right: 14px; background: none; border: none; font-size: 18px; color: var(--text-tertiary); cursor: pointer; }
+
+  /* ── Post Editor ── */
+  .post-editor { background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 28px; margin-bottom: 24px; }
+  .post-editor h3 { font-size: 18px; font-weight: 700; margin-bottom: 16px; }
+  .post-field { margin-bottom: 14px; }
+  .post-field label { display: block; font-size: 12px; font-weight: 600; color: var(--text-secondary); margin-bottom: 5px; }
+  .post-field input, .post-field textarea {
+    width: 100%; padding: 10px 14px; border: 1.5px solid var(--border); border-radius: 10px;
+    font-size: 14px; font-family: inherit; outline: none; transition: border-color 0.15s; box-sizing: border-box;
+  }
+  .post-field input:focus, .post-field textarea:focus { border-color: var(--accent-blue); box-shadow: 0 0 0 3px rgba(49,130,246,0.12); }
+  .post-field textarea { min-height: 120px; resize: vertical; line-height: 1.6; }
+  .post-image-upload {
+    display: flex; align-items: center; gap: 12px; padding: 16px; border: 2px dashed var(--border);
+    border-radius: 10px; cursor: pointer; transition: all 0.15s;
+  }
+  .post-image-upload:hover { border-color: var(--accent-blue); background: var(--accent-blue-light); }
+  .post-image-preview { width: 100%; max-height: 300px; object-fit: cover; border-radius: 10px; margin-top: 8px; border: 1px solid var(--border); }
+  .post-actions { display: flex; gap: 8px; margin-top: 16px; }
+  .post-btn {
+    padding: 10px 20px; border: none; border-radius: 10px; font-size: 14px; font-weight: 700;
+    cursor: pointer; font-family: inherit; transition: all 0.15s;
+  }
+  .post-btn.primary { background: #5D4037; color: white; }
+  .post-btn.primary:hover { background: #4E342E; }
+  .post-btn.secondary { background: var(--bg-primary); color: var(--text-secondary); border: 1px solid var(--border); }
+  .post-btn.danger { background: var(--accent-red-light); color: var(--accent-red); }
+  .post-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+  .admin-badge { display: inline-flex; align-items: center; gap: 4px; font-size: 11px; font-weight: 600; color: #5D4037; background: #EFEBE9; padding: 3px 8px; border-radius: 4px; }
 `;
 
 // ─── Format Helpers ──────────────────────────────────────────────
@@ -1670,51 +1711,55 @@ function UsageNotice({ message, onClose }) {
   );
 }
 
-// ─── Briefing Page (Newsletter Archive + Subscribe) ──────────────
-function BriefingPage() {
+// ─── Briefing Page (Newsletter Archive + Subscribe + Admin Editor) ──
+function BriefingPage({ user }) {
   const [email, setEmail] = useState("");
-  const [subStatus, setSubStatus] = useState(null); // null | "loading" | "success" | "error"
+  const [subStatus, setSubStatus] = useState(null);
   const [subMsg, setSubMsg] = useState("");
   const [newsletters, setNewsletters] = useState([]);
   const [loadingNL, setLoadingNL] = useState(true);
   const [selectedNL, setSelectedNL] = useState(null);
+  const [showEditor, setShowEditor] = useState(false);
+  const [editingNL, setEditingNL] = useState(null);
 
-  // Fetch newsletters from API
-  useEffect(() => {
+  const isAdmin = user?.email === ADMIN_EMAIL;
+
+  const fetchNewsletters = () => {
     setLoadingNL(true);
     fetch("/api/briefing")
       .then(r => r.json())
       .then(d => { if (Array.isArray(d)) setNewsletters(d); })
       .catch(() => {})
       .finally(() => setLoadingNL(false));
-  }, []);
+  };
+
+  useEffect(() => { fetchNewsletters(); }, []);
 
   const handleSubscribe = async () => {
-    if (!email || !email.includes("@")) {
-      setSubStatus("error");
-      setSubMsg("올바른 이메일을 입력해주세요.");
-      return;
-    }
+    if (!email || !email.includes("@")) { setSubStatus("error"); setSubMsg("올바른 이메일을 입력해주세요."); return; }
     setSubStatus("loading");
     try {
-      const res = await fetch("/api/subscribe", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email }),
-      });
+      const res = await fetch("/api/subscribe", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ email }) });
       const data = await res.json();
-      if (res.ok) {
-        setSubStatus("success");
-        setSubMsg("구독 신청이 완료되었습니다! 매일 아침 뉴스 브리핑을 보내드릴게요.");
-        setEmail("");
-      } else {
-        setSubStatus("error");
-        setSubMsg(data.error || "구독 신청에 실패했습니다.");
-      }
-    } catch {
-      setSubStatus("error");
-      setSubMsg("네트워크 오류가 발생했습니다.");
-    }
+      if (res.ok) { setSubStatus("success"); setSubMsg("구독 신청이 완료되었습니다! 매일 아침 뉴스 브리핑을 보내드릴게요."); setEmail(""); }
+      else { setSubStatus("error"); setSubMsg(data.error || "구독 신청에 실패했습니다."); }
+    } catch { setSubStatus("error"); setSubMsg("네트워크 오류가 발생했습니다."); }
+  };
+
+  // Admin: Edit existing post
+  const handleEdit = (nl) => {
+    setEditingNL(nl);
+    setShowEditor(true);
+    setSelectedNL(null);
+  };
+
+  // Admin: Delete post
+  const handleDelete = async (nl) => {
+    if (!confirm(`"${nl.title}" 게시글을 삭제하시겠습니까?`)) return;
+    try {
+      await fetch("/api/briefing", { method: "DELETE", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ date: nl.date }) });
+      fetchNewsletters();
+    } catch {}
   };
 
   // Detail view
@@ -1722,12 +1767,20 @@ function BriefingPage() {
     return (
       <div className="content-area">
         <div className="newsletter-detail fade-up">
-          <button className="newsletter-detail-back" onClick={() => setSelectedNL(null)}>← 목록으로</button>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+            <button className="newsletter-detail-back" onClick={() => setSelectedNL(null)}>← 목록으로</button>
+            {isAdmin && (
+              <div style={{ display: "flex", gap: 6 }}>
+                <button className="post-btn secondary" onClick={() => handleEdit(selectedNL)} style={{ padding: "6px 14px", fontSize: 12 }}>✏️ 수정</button>
+                <button className="post-btn danger" onClick={() => handleDelete(selectedNL)} style={{ padding: "6px 14px", fontSize: 12 }}>🗑 삭제</button>
+              </div>
+            )}
+          </div>
           <div className="newsletter-detail-date">{selectedNL.date}</div>
           <div className="newsletter-detail-title">{selectedNL.title || "호두 브리핑"}</div>
           {selectedNL.imageUrl && (
             <div style={{ marginBottom: 20, textAlign: "center" }}>
-              <img src={selectedNL.imageUrl} alt="오늘의 만화" style={{ maxWidth: "100%", borderRadius: 12, border: "1px solid var(--border)" }} />
+              <img src={selectedNL.imageUrl} alt="브리핑 이미지" style={{ maxWidth: "100%", borderRadius: 12, border: "1px solid var(--border)" }} />
             </div>
           )}
           {selectedNL.overallInsight && (
@@ -1735,16 +1788,16 @@ function BriefingPage() {
               <strong>🍟 오늘의 인사이트</strong><br />{selectedNL.overallInsight}
             </div>
           )}
+          {selectedNL.content && (
+            <div style={{ fontSize: 15, lineHeight: 1.8, color: "var(--text-primary)", marginBottom: 24, whiteSpace: "pre-wrap" }}>{selectedNL.content}</div>
+          )}
           {(selectedNL.articles || []).map((a, i) => (
             <div className="newsletter-article" key={i}>
               <h4><span style={{ color: "#A67B5B" }}>{i + 1}.</span> {a.title}</h4>
               <p>{a.summary}</p>
               {a.interpretation && <div className="interp"><strong>💡 해석</strong><br />{a.interpretation}</div>}
               {a.link && a.link !== "#" && (
-                <a href={a.link} target="_blank" rel="noopener noreferrer"
-                  style={{ display: "inline-block", marginTop: 8, fontSize: 12, color: "var(--accent-blue)", fontWeight: 600 }}>
-                  원본 뉴스 보기 →
-                </a>
+                <a href={a.link} target="_blank" rel="noopener noreferrer" style={{ display: "inline-block", marginTop: 8, fontSize: 12, color: "var(--accent-blue)", fontWeight: 600 }}>원본 뉴스 보기 →</a>
               )}
             </div>
           ))}
@@ -1753,9 +1806,23 @@ function BriefingPage() {
     );
   }
 
+  // Editor view
+  if (showEditor && isAdmin) {
+    return (
+      <div className="content-area">
+        <PostEditor
+          existing={editingNL}
+          onSave={() => { setShowEditor(false); setEditingNL(null); fetchNewsletters(); }}
+          onCancel={() => { setShowEditor(false); setEditingNL(null); }}
+          user={user}
+        />
+      </div>
+    );
+  }
+
   return (
     <div className="content-area">
-      {/* ── Section 1: 호두 브리핑 소개 (후킹) ── */}
+      {/* ── Section 1: 소개 ── */}
       <div className="card fade-up" style={{ textAlign: "center", padding: "44px 28px 36px", marginBottom: 0, borderBottom: "none", borderRadius: "var(--radius-lg) var(--radius-lg) 0 0" }}>
         <div style={{ fontSize: 48, marginBottom: 14 }}>🥜</div>
         <h2 style={{ fontSize: 26, fontWeight: 800, letterSpacing: "-0.6px", marginBottom: 12 }}>호두 브리핑</h2>
@@ -1767,7 +1834,7 @@ function BriefingPage() {
         </p>
       </div>
 
-      {/* ── Section 2: 이메일 구독 ── */}
+      {/* ── Section 2: 구독 ── */}
       <div className="card fade-up fade-up-d1" style={{ padding: "28px", marginBottom: 28, borderRadius: "0 0 var(--radius-lg) var(--radius-lg)", borderTop: "1px dashed var(--border)", background: "#FDFBF9" }}>
         <div style={{ textAlign: "center", marginBottom: 16 }}>
           <h3 style={{ fontSize: 17, fontWeight: 700, marginBottom: 4 }}>📬 호두레터 무료 구독하기</h3>
@@ -1775,14 +1842,9 @@ function BriefingPage() {
         </div>
         <div style={{ maxWidth: 440, margin: "0 auto" }}>
           <div className="subscribe-form">
-            <input
-              className="subscribe-input"
-              type="email"
-              placeholder="이메일 주소 입력"
-              value={email}
+            <input className="subscribe-input" type="email" placeholder="이메일 주소 입력" value={email}
               onChange={e => { setEmail(e.target.value); setSubStatus(null); }}
-              onKeyDown={e => { if (e.key === "Enter") handleSubscribe(); }}
-            />
+              onKeyDown={e => { if (e.key === "Enter") handleSubscribe(); }} />
             <button className="subscribe-btn" onClick={handleSubscribe} disabled={subStatus === "loading"}>
               {subStatus === "loading" ? "처리중..." : "무료 구독"}
             </button>
@@ -1791,11 +1853,18 @@ function BriefingPage() {
         </div>
       </div>
 
-      {/* ── Section 3: 지난 브리핑 아카이브 ── */}
+      {/* ── Section 3: 아카이브 ── */}
       <div style={{ marginTop: 8 }}>
         <div className="section-header section-header-distinct fade-up fade-up-d2" style={{ marginBottom: 20 }}>
-          <div className="section-title">지난 브리핑</div>
-          <div className="section-subtitle">매일 발행되는 호두레터를 다시 읽어보세요</div>
+          <div>
+            <div className="section-title">지난 브리핑</div>
+            <div className="section-subtitle">매일 발행되는 호두레터를 다시 읽어보세요</div>
+          </div>
+          {isAdmin && (
+            <button className="post-btn primary" onClick={() => { setEditingNL(null); setShowEditor(true); }} style={{ fontSize: 13, padding: "8px 16px" }}>
+              ✏️ 새 게시글 작성
+            </button>
+          )}
         </div>
 
         {loadingNL ? (
@@ -1828,6 +1897,107 @@ function BriefingPage() {
             ))}
           </div>
         )}
+      </div>
+    </div>
+  );
+}
+
+// ─── Post Editor (Admin Only) ─────────────────────────────────────
+function PostEditor({ existing, onSave, onCancel, user }) {
+  const [title, setTitle] = useState(existing?.title || "");
+  const [date, setDate] = useState(existing?.date || new Date().toISOString().split("T")[0]);
+  const [overallInsight, setOverallInsight] = useState(existing?.overallInsight || "");
+  const [content, setContent] = useState(existing?.content || "");
+  const [imageUrl, setImageUrl] = useState(existing?.imageUrl || "");
+  const [uploading, setUploading] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const fileInputRef = useRef(null);
+
+  const handleImageUpload = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (file.size > 5 * 1024 * 1024) { alert("파일 크기는 5MB 이하여야 합니다."); return; }
+
+    setUploading(true);
+    try {
+      const { ref, uploadBytes, getDownloadURL } = await import("firebase/storage");
+      const storage = await getFirebaseStorage();
+      const fileName = `briefing/${date}_${Date.now()}_${file.name}`;
+      const storageRef = ref(storage, fileName);
+      await uploadBytes(storageRef, file);
+      const url = await getDownloadURL(storageRef);
+      setImageUrl(url);
+    } catch (err) {
+      alert("이미지 업로드에 실패했습니다: " + err.message);
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const handleSave = async () => {
+    if (!title.trim() || !date) { alert("제목과 날짜를 입력해주세요."); return; }
+    setSaving(true);
+    try {
+      const body = {
+        date, title: title.trim(), overallInsight: overallInsight.trim(),
+        content: content.trim(), imageUrl, isManual: true,
+      };
+      const res = await fetch("/api/briefing", {
+        method: existing ? "PUT" : "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
+      if (res.ok) { onSave(); }
+      else { const d = await res.json(); alert(d.error || "저장에 실패했습니다."); }
+    } catch { alert("네트워크 오류가 발생했습니다."); }
+    finally { setSaving(false); }
+  };
+
+  return (
+    <div className="post-editor fade-up">
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
+        <h3 style={{ margin: 0 }}>{existing ? "게시글 수정" : "새 게시글 작성"}</h3>
+        <span className="admin-badge">👑 관리자</span>
+      </div>
+
+      <div className="post-field">
+        <label>날짜</label>
+        <input type="date" value={date} onChange={e => setDate(e.target.value)} />
+      </div>
+      <div className="post-field">
+        <label>제목</label>
+        <input type="text" placeholder="게시글 제목" value={title} onChange={e => setTitle(e.target.value)} />
+      </div>
+      <div className="post-field">
+        <label>오늘의 인사이트 (요약)</label>
+        <textarea placeholder="전체 흐름을 2~3문장으로 요약" value={overallInsight} onChange={e => setOverallInsight(e.target.value)} rows={3} />
+      </div>
+      <div className="post-field">
+        <label>본문 내용</label>
+        <textarea placeholder="게시글 본문을 작성하세요" value={content} onChange={e => setContent(e.target.value)} rows={10} />
+      </div>
+      <div className="post-field">
+        <label>대표 이미지</label>
+        <div className="post-image-upload" onClick={() => fileInputRef.current?.click()}>
+          <span style={{ fontSize: 24 }}>📷</span>
+          <span style={{ fontSize: 14, color: "var(--text-secondary)" }}>
+            {uploading ? "업로드 중..." : "클릭하여 이미지 업로드 (최대 5MB)"}
+          </span>
+        </div>
+        <input ref={fileInputRef} type="file" accept="image/*" style={{ display: "none" }} onChange={handleImageUpload} />
+        {imageUrl && <img className="post-image-preview" src={imageUrl} alt="미리보기" />}
+        {imageUrl && (
+          <button onClick={() => setImageUrl("")} style={{ marginTop: 6, fontSize: 12, color: "var(--accent-red)", background: "none", border: "none", cursor: "pointer", fontFamily: "inherit" }}>
+            이미지 제거
+          </button>
+        )}
+      </div>
+
+      <div className="post-actions">
+        <button className="post-btn primary" onClick={handleSave} disabled={saving}>
+          {saving ? "저장 중..." : (existing ? "수정 완료" : "게시하기")}
+        </button>
+        <button className="post-btn secondary" onClick={onCancel}>취소</button>
       </div>
     </div>
   );
@@ -2095,7 +2265,7 @@ export default function App() {
             ? <CompanyPage searchTicker={searchedTicker} onUsageConsume={handleUsageConsume} />
             : <CompanyPage searchTicker={null} onQuickSearch={handleQuickSearch} />
         )}
-        {activePage === "briefing" && <BriefingPage />}
+        {activePage === "briefing" && <BriefingPage user={user} />}
         {activePage === "etf" && <ComingSoonPage icon="📦" title="ETF 단일 분석" />}
         {activePage === "etf-compare" && <ComingSoonPage icon="⚖️" title="ETF 비교 분석" />}
         {activePage === "correlation" && <ComingSoonPage icon="🔗" title="상관관계 분석" />}
