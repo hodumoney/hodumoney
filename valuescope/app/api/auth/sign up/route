@@ -1,0 +1,95 @@
+// app/api/auth/signup/route.js
+// 회원가입: Google Sheets의 users 시트에 저장
+import { google } from "googleapis";
+import crypto from "crypto";
+
+export const dynamic = "force-dynamic";
+
+function getSheets() {
+  const auth = new google.auth.JWT(
+    process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL,
+    null,
+    (process.env.GOOGLE_PRIVATE_KEY || "").replace(/\\n/g, "\n"),
+    ["https://www.googleapis.com/auth/spreadsheets"]
+  );
+  return google.sheets({ version: "v4", auth });
+}
+
+function hashPassword(password) {
+  return crypto.createHash("sha256").update(password + "hodumoney_salt").digest("hex");
+}
+
+export async function POST(request) {
+  try {
+    const { email, password, name } = await request.json();
+
+    if (!email || !email.includes("@")) {
+      return Response.json({ error: "올바른 이메일을 입력해주세요." }, { status: 400 });
+    }
+    if (!password || password.length < 4) {
+      return Response.json({ error: "비밀번호는 4자 이상이어야 합니다." }, { status: 400 });
+    }
+    if (!name || !name.trim()) {
+      return Response.json({ error: "이름을 입력해주세요." }, { status: 400 });
+    }
+
+    const sheetId = process.env.GOOGLE_SHEETS_ID;
+    if (!sheetId) return Response.json({ error: "서버 설정 오류" }, { status: 500 });
+
+    const sheets = getSheets();
+    const normalizedEmail = email.trim().toLowerCase();
+
+    // users 시트 존재 확인 (없으면 에러 → 시트 만들어야 함)
+    let existing;
+    try {
+      existing = await sheets.spreadsheets.values.get({
+        spreadsheetId: sheetId,
+        range: "users!A:A",
+      });
+    } catch (e) {
+      // users 시트가 없으면 생성 시도
+      try {
+        await sheets.spreadsheets.batchUpdate({
+          spreadsheetId: sheetId,
+          requestBody: {
+            requests: [{ addSheet: { properties: { title: "users" } } }],
+          },
+        });
+        // 헤더 추가
+        await sheets.spreadsheets.values.update({
+          spreadsheetId: sheetId,
+          range: "users!A1:E1",
+          valueInputOption: "USER_ENTERED",
+          requestBody: { values: [["이메일", "비밀번호(해시)", "이름", "가입일", "상태"]] },
+        });
+        existing = { data: { values: [["이메일"]] } };
+      } catch (e2) {
+        return Response.json({ error: "서버 오류: " + e2.message }, { status: 500 });
+      }
+    }
+
+    // 중복 체크
+    const existingEmails = (existing.data.values || []).flat().map(e => e.toString().trim().toLowerCase());
+    if (existingEmails.includes(normalizedEmail)) {
+      return Response.json({ error: "이미 가입된 이메일입니다." }, { status: 409 });
+    }
+
+    // 저장
+    const today = new Date().toISOString().split("T")[0];
+    const hashedPw = hashPassword(password);
+
+    await sheets.spreadsheets.values.append({
+      spreadsheetId: sheetId,
+      range: "users!A:E",
+      valueInputOption: "USER_ENTERED",
+      requestBody: {
+        values: [[normalizedEmail, hashedPw, name.trim(), today, "active"]],
+      },
+    });
+
+    return Response.json({ success: true, email: normalizedEmail, name: name.trim() });
+  } catch (err) {
+    console.error("Signup error:", err);
+    return Response.json({ error: "회원가입 처리 중 오류가 발생했습니다." }, { status: 500 });
+  }
+}
