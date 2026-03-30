@@ -106,13 +106,13 @@ const styles = `
     overflow-y: auto; z-index: 100; transition: transform 0.3s ease;
   }
   .sidebar-logo {
-    padding: 28px 24px 20px; display: flex; flex-direction: column; gap: 0;
+    padding: 20px 24px 18px; display: flex; align-items: center; gap: 12px;
     margin: 0 0 8px; border-bottom: 1px solid var(--border);
   }
   .sidebar-logo::before { display: none; }
   .sidebar-logo::after { display: none; }
-  .logo-text { font-size: 28px; font-weight: 800; color: var(--text-primary); letter-spacing: -1px; line-height: 1.2; }
-  .logo-sub { font-size: 11px; color: var(--text-tertiary); font-weight: 500; margin-top: 4px; letter-spacing: 0.2px; }
+  .logo-text { font-size: 22px; font-weight: 800; color: var(--text-primary); letter-spacing: -0.8px; line-height: 1.2; }
+  .logo-sub { font-size: 10px; color: var(--text-tertiary); font-weight: 500; margin-top: 2px; letter-spacing: 0.2px; }
   .sidebar-section { padding: 0 12px; margin-bottom: 8px; }
   .sidebar-section-label { font-size: 11px; font-weight: 600; color: var(--text-tertiary); text-transform: uppercase; letter-spacing: 0.5px; padding: 0 12px; margin-bottom: 6px; }
   .sidebar-item { display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-radius: var(--radius-sm); cursor: pointer; transition: all 0.15s ease; font-size: 14px; font-weight: 500; color: var(--text-secondary); position: relative; }
@@ -1150,7 +1150,7 @@ function MarketPage() {
 
       {showUS && liveIdxUS.length > 0 && (
         <div className="fade-up fade-up-d1">
-          <div className="country-label"><span className="country-flag">🇺🇸</span> 미국</div>
+          <div className="country-label">미국</div>
           <div className="index-strip">
             {liveIdxUS.map((idx, i) => (
               <div className={`index-card index-card-lg clickable ${isSelected("idxUS", idx.name) ? "selected" : ""}`} key={i} onClick={() => toggle("idxUS", idx)}>
@@ -1167,7 +1167,7 @@ function MarketPage() {
 
       {showKR && liveIdxKR.length > 0 && (
         <div className="fade-up fade-up-d1" style={{ marginTop: showUS ? 8 : 0 }}>
-          <div className="country-label"><span className="country-flag">🇰🇷</span> 한국</div>
+          <div className="country-label">한국</div>
           <div className="index-strip index-strip-three">
             {liveIdxKR.map((idx, i) => (
               <div className={`index-card index-card-lg index-card-fixed clickable ${isSelected("idxKR", idx.name) ? "selected" : ""}`} key={i} onClick={() => toggle("idxKR", idx)}>
@@ -1188,7 +1188,7 @@ function MarketPage() {
 
       {showUS && liveEconUS.length > 0 && (
         <div className="fade-up fade-up-d2">
-          <div className="country-label"><span className="country-flag">🇺🇸</span> 미국</div>
+          <div className="country-label">미국</div>
           <div className="econ-grid">
             {liveEconUS.map((ind, i) => (
               <div className={`econ-card ${ind.isStatic ? "" : "clickable"} ${isSelected("econUS", ind.name) ? "selected" : ""}`} key={i} onClick={() => { if (!ind.isStatic) toggle("econUS", ind); }}>
@@ -1206,7 +1206,7 @@ function MarketPage() {
 
       {showKR && liveEconKR.length > 0 && (
         <div className="fade-up fade-up-d3" style={{ marginTop: showUS ? 4 : 0 }}>
-          <div className="country-label"><span className="country-flag">🇰🇷</span> 한국</div>
+          <div className="country-label">한국</div>
           <div className="econ-grid">
             {liveEconKR.map((ind, i) => (
               <div className={`econ-card ${ind.isStatic ? "" : "clickable"} ${isSelected("econKR", ind.name) ? "selected" : ""}`} key={i} onClick={() => { if (!ind.isStatic) toggle("econKR", ind); }}>
@@ -1685,70 +1685,77 @@ function BriefingPage() {
 
   return (
     <div className="content-area">
-      {/* Hero */}
-      <div className="briefing-hero fade-up">
-        <h2>🥜 호두 브리핑</h2>
-        <p>매일 아침, 시장 핵심 이슈를 한눈에 정리해드립니다.<br />복잡한 경제 뉴스를 10분 안에 읽을 수 있도록.</p>
+      {/* ── Section 1: 호두 브리핑 소개 ── */}
+      <div className="card fade-up" style={{ textAlign: "center", padding: "40px 28px 36px", marginBottom: 0, borderBottom: "none", borderRadius: "var(--radius-lg) var(--radius-lg) 0 0" }}>
+        <img src="/hodumoney-character.jpg" alt="호두머니" style={{ width: 72, height: 72, borderRadius: 16, objectFit: "cover", marginBottom: 16, border: "2px solid var(--border)" }} />
+        <h2 style={{ fontSize: 26, fontWeight: 800, letterSpacing: "-0.6px", marginBottom: 8 }}>호두 브리핑</h2>
+        <p style={{ fontSize: 15, color: "var(--text-secondary)", lineHeight: 1.6, maxWidth: 400, margin: "0 auto" }}>매일 아침, 시장 핵심 이슈를 한눈에 정리해드립니다.<br />복잡한 경제 뉴스를 10분 안에 읽을 수 있도록.</p>
       </div>
 
-      {/* Subscribe Box */}
-      <div className="subscribe-box fade-up fade-up-d1">
-        <h3>📬 호두레터 구독하기</h3>
-        <p>이메일을 입력하시면 매일 아침 뉴스 브리핑을 보내드립니다.</p>
-        <div className="subscribe-form">
-          <input
-            className="subscribe-input"
-            type="email"
-            placeholder="이메일 주소 입력"
-            value={email}
-            onChange={e => { setEmail(e.target.value); setSubStatus(null); }}
-            onKeyDown={e => { if (e.key === "Enter") handleSubscribe(); }}
-          />
-          <button className="subscribe-btn" onClick={handleSubscribe} disabled={subStatus === "loading"}>
-            {subStatus === "loading" ? "처리중..." : "구독하기"}
-          </button>
+      {/* ── Section 2: 이메일 구독 ── */}
+      <div className="card fade-up fade-up-d1" style={{ padding: "28px", marginBottom: 28, borderRadius: "0 0 var(--radius-lg) var(--radius-lg)", borderTop: "1px dashed var(--border)", background: "#FDFBF9" }}>
+        <div style={{ textAlign: "center", marginBottom: 16 }}>
+          <h3 style={{ fontSize: 17, fontWeight: 700, marginBottom: 4 }}>📬 호두레터 구독하기</h3>
+          <p style={{ fontSize: 13, color: "var(--text-tertiary)" }}>이메일을 입력하시면 매일 아침 뉴스 브리핑을 보내드립니다.</p>
         </div>
-        {subMsg && <div className={`subscribe-msg ${subStatus}`}>{subMsg}</div>}
+        <div style={{ maxWidth: 440, margin: "0 auto" }}>
+          <div className="subscribe-form">
+            <input
+              className="subscribe-input"
+              type="email"
+              placeholder="이메일 주소 입력"
+              value={email}
+              onChange={e => { setEmail(e.target.value); setSubStatus(null); }}
+              onKeyDown={e => { if (e.key === "Enter") handleSubscribe(); }}
+            />
+            <button className="subscribe-btn" onClick={handleSubscribe} disabled={subStatus === "loading"}>
+              {subStatus === "loading" ? "처리중..." : "구독하기"}
+            </button>
+          </div>
+          {subMsg && <div className={`subscribe-msg ${subStatus}`}>{subMsg}</div>}
+        </div>
       </div>
 
-      {/* Newsletter Archive */}
-      <div className="section-header fade-up fade-up-d2" style={{ marginBottom: 20 }}>
-        <div>
+      {/* ── Section 3: 지난 브리핑 아카이브 ── */}
+      <div style={{ marginTop: 8 }}>
+        <div className="section-header section-header-distinct fade-up fade-up-d2" style={{ marginBottom: 20 }}>
           <div className="section-title">지난 브리핑</div>
           <div className="section-subtitle">매일 발행되는 호두레터를 다시 읽어보세요</div>
         </div>
-      </div>
 
-      {loadingNL ? (
-        <div className="empty-state fade-up">
-          <div style={{ fontSize: 40, animation: "pulse 1.5s infinite" }}>⏳</div>
-          <p style={{ marginTop: 12, color: "var(--text-tertiary)" }}>브리핑을 불러오는 중...</p>
-          <style>{`@keyframes pulse { 0%,100% { opacity:1; } 50% { opacity:0.4; } }`}</style>
-        </div>
-      ) : newsletters.length === 0 ? (
-        <div className="empty-state fade-up">
-          <div style={{ fontSize: 48, marginBottom: 12 }}>📭</div>
-          <h3>아직 발행된 브리핑이 없습니다</h3>
-          <p style={{ color: "var(--text-tertiary)" }}>구독하시면 첫 번째 브리핑부터 받아보실 수 있어요!</p>
-        </div>
-      ) : (
-        <div className="newsletter-grid fade-up fade-up-d2">
-          {newsletters.map((nl, i) => (
-            <div className="newsletter-card" key={i} onClick={() => setSelectedNL(nl)}>
-              {nl.imageUrl ? (
-                <img className="newsletter-thumb" src={nl.imageUrl} alt={nl.title || nl.date} />
-              ) : (
-                <div className="newsletter-thumb-placeholder">🥜</div>
-              )}
-              <div className="newsletter-body">
-                <div className="newsletter-date">{nl.date}</div>
-                <div className="newsletter-title">{nl.title || "호두 브리핑"}</div>
-                <div className="newsletter-preview">{nl.overallInsight || ""}</div>
+        {loadingNL ? (
+          <div className="empty-state fade-up">
+            <div style={{ fontSize: 40, animation: "pulse 1.5s infinite" }}>⏳</div>
+            <p style={{ marginTop: 12, color: "var(--text-tertiary)" }}>브리핑을 불러오는 중...</p>
+            <style>{`@keyframes pulse { 0%,100% { opacity:1; } 50% { opacity:0.4; } }`}</style>
+          </div>
+        ) : newsletters.length === 0 ? (
+          <div className="empty-state fade-up">
+            <div style={{ fontSize: 48, marginBottom: 12 }}>📭</div>
+            <h3>아직 발행된 브리핑이 없습니다</h3>
+            <p style={{ color: "var(--text-tertiary)" }}>구독하시면 첫 번째 브리핑부터 받아보실 수 있어요!</p>
+          </div>
+        ) : (
+          <div className="newsletter-grid fade-up fade-up-d2">
+            {newsletters.map((nl, i) => (
+              <div className="newsletter-card" key={i} onClick={() => setSelectedNL(nl)}>
+                {nl.imageUrl ? (
+                  <img className="newsletter-thumb" src={nl.imageUrl} alt={nl.title || nl.date} />
+                ) : (
+                  <div className="newsletter-thumb-placeholder">
+                    <img src="/hodumoney-character.jpg" alt="" style={{ width: 64, height: 64, borderRadius: 12, objectFit: "cover" }} />
+                  </div>
+                )}
+                <div className="newsletter-body">
+                  <div className="newsletter-date">{nl.date}</div>
+                  <div className="newsletter-title">{nl.title || "호두 브리핑"}</div>
+                  <div className="newsletter-preview">{nl.overallInsight || ""}</div>
+                </div>
               </div>
-            </div>
-          ))}
-        </div>
-      )}
+            ))}
+          </div>
+        )}
+      </div>
     </div>
   );
 }
@@ -1861,8 +1868,11 @@ export default function App() {
 
       <aside className={`sidebar ${sidebarOpen ? "open" : ""}`}>
         <div className="sidebar-logo">
-          <div className="logo-text">🥜 호두머니</div>
-          <div className="logo-sub">©hodusolution</div>
+          <img src="/hodumoney-character.jpg" alt="호두머니" style={{ width: 48, height: 48, borderRadius: 12, objectFit: "cover" }} />
+          <div>
+            <div className="logo-text">호두머니</div>
+            <div className="logo-sub">©hodusolution</div>
+          </div>
         </div>
         <div className="sidebar-section">
           <div className="sidebar-section-label">분석 도구</div>
