@@ -1834,11 +1834,7 @@ function BriefingPage() {
 }
 
 // ─── Auth Modal (Firebase: 구글 로그인 + 이메일/비번) ────────────
-function AuthModal({ mode, onClose, onLogin }) {
-  const [isSignup, setIsSignup] = useState(mode === "signup");
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [name, setName] = useState("");
+function AuthModal({ onClose, onLogin }) {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
@@ -1855,44 +1851,8 @@ function AuthModal({ mode, onClose, onLogin }) {
       onClose();
     } catch (e) {
       if (e.code !== "auth/popup-closed-by-user") {
-        setError("구글 로그인에 실패했습니다.");
+        setError("구글 로그인에 실패했습니다. 다시 시도해주세요.");
       }
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleEmailSubmit = async () => {
-    setError("");
-    if (!email || !email.includes("@")) { setError("올바른 이메일을 입력해주세요."); return; }
-    if (!password || password.length < 6) { setError("비밀번호는 6자 이상이어야 합니다."); return; }
-
-    setLoading(true);
-    try {
-      const { createUserWithEmailAndPassword, signInWithEmailAndPassword, updateProfile } = await import("firebase/auth");
-      const auth = await getFirebaseAuth();
-
-      if (isSignup) {
-        if (!name.trim()) { setError("이름을 입력해주세요."); setLoading(false); return; }
-        const result = await createUserWithEmailAndPassword(auth, email, password);
-        await updateProfile(result.user, { displayName: name.trim() });
-        onLogin({ email: result.user.email, name: name.trim(), uid: result.user.uid });
-      } else {
-        const result = await signInWithEmailAndPassword(auth, email, password);
-        onLogin({ email: result.user.email, name: result.user.displayName || result.user.email.split("@")[0], uid: result.user.uid });
-      }
-      onClose();
-    } catch (e) {
-      const msg = {
-        "auth/email-already-in-use": "이미 가입된 이메일입니다.",
-        "auth/invalid-email": "올바른 이메일 형식이 아닙니다.",
-        "auth/weak-password": "비밀번호가 너무 약합니다. 6자 이상 입력하세요.",
-        "auth/user-not-found": "등록되지 않은 이메일입니다.",
-        "auth/wrong-password": "비밀번호가 올바르지 않습니다.",
-        "auth/invalid-credential": "이메일 또는 비밀번호가 올바르지 않습니다.",
-        "auth/too-many-requests": "너무 많은 시도가 있었습니다. 잠시 후 다시 시도하세요.",
-      };
-      setError(msg[e.code] || "오류가 발생했습니다: " + (e.message || ""));
     } finally {
       setLoading(false);
     }
@@ -1903,50 +1863,20 @@ function AuthModal({ mode, onClose, onLogin }) {
       <div className="auth-modal" onClick={e => e.stopPropagation()} style={{ position: "relative" }}>
         <button className="auth-close" onClick={onClose}>✕</button>
         <div style={{ fontSize: 36, textAlign: "center", marginBottom: 8 }}>🥜</div>
-        <h3>{isSignup ? "회원가입" : "로그인"}</h3>
-        <div className="auth-sub">{isSignup ? "호두머니에 가입하고 더 많은 기능을 이용하세요" : "호두머니 계정으로 로그인하세요"}</div>
+        <h3>호두머니 로그인</h3>
+        <div className="auth-sub">Google 계정으로 간편하게 시작하세요</div>
 
-        {/* 구글 로그인 버튼 */}
         <button onClick={handleGoogleLogin} disabled={loading}
-          style={{ width: "100%", padding: "11px", marginBottom: 16, border: "1px solid var(--border)", borderRadius: 10, background: "white", fontFamily: "inherit", fontSize: 14, fontWeight: 600, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 8, color: "var(--text-primary)", transition: "background 0.15s" }}>
-          <svg width="18" height="18" viewBox="0 0 48 48"><path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/><path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/><path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/><path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/></svg>
-          Google로 계속하기
+          style={{ width: "100%", padding: "13px", border: "1px solid var(--border)", borderRadius: 10, background: "white", fontFamily: "inherit", fontSize: 15, fontWeight: 600, cursor: loading ? "not-allowed" : "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 10, color: "var(--text-primary)", transition: "all 0.15s", opacity: loading ? 0.6 : 1 }}>
+          <svg width="20" height="20" viewBox="0 0 48 48"><path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/><path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/><path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/><path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/></svg>
+          {loading ? "로그인 중..." : "Google로 계속하기"}
         </button>
 
-        <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 16 }}>
-          <div style={{ flex: 1, height: 1, background: "var(--border)" }} />
-          <span style={{ fontSize: 12, color: "var(--text-tertiary)", fontWeight: 500 }}>또는</span>
-          <div style={{ flex: 1, height: 1, background: "var(--border)" }} />
-        </div>
+        {error && <div className="auth-error" style={{ marginTop: 12 }}>{error}</div>}
 
-        {isSignup && (
-          <div className="auth-field">
-            <label>이름</label>
-            <input type="text" placeholder="이름 입력" value={name} onChange={e => setName(e.target.value)} />
-          </div>
-        )}
-        <div className="auth-field">
-          <label>이메일</label>
-          <input type="email" placeholder="이메일 주소" value={email} onChange={e => setEmail(e.target.value)} />
-        </div>
-        <div className="auth-field">
-          <label>비밀번호</label>
-          <input type="password" placeholder="비밀번호 (6자 이상)" value={password} onChange={e => setPassword(e.target.value)}
-            onKeyDown={e => { if (e.key === "Enter") handleEmailSubmit(); }} />
-        </div>
-
-        {error && <div className="auth-error">{error}</div>}
-        <button className="auth-submit" onClick={handleEmailSubmit} disabled={loading}>
-          {loading ? "처리중..." : (isSignup ? "이메일로 가입하기" : "이메일로 로그인")}
-        </button>
-
-        <div className="auth-toggle">
-          {isSignup ? (
-            <>이미 계정이 있으신가요? <button onClick={() => { setIsSignup(false); setError(""); }}>로그인</button></>
-          ) : (
-            <>계정이 없으신가요? <button onClick={() => { setIsSignup(true); setError(""); }}>회원가입</button></>
-          )}
-        </div>
+        <p style={{ textAlign: "center", marginTop: 20, fontSize: 11, color: "var(--text-tertiary)", lineHeight: 1.5 }}>
+          로그인 시 호두머니의 서비스 이용약관에 동의하게 됩니다.
+        </p>
       </div>
     </div>
   );
@@ -2087,7 +2017,7 @@ export default function App() {
       {noticeMsg && <UsageNotice message={noticeMsg} onClose={() => setNoticeMsg(null)} />}
 
       {/* Auth modal */}
-      {showAuth && <AuthModal mode={showAuth} onClose={() => setShowAuth(null)} onLogin={(u) => setUser(u)} />}
+      {showAuth && <AuthModal onClose={() => setShowAuth(null)} onLogin={(u) => setUser(u)} />}
 
       <aside className={`sidebar ${sidebarOpen ? "open" : ""}`}>
         <div className="sidebar-logo">
@@ -2125,10 +2055,7 @@ export default function App() {
         ) : (
           <div style={{ padding: "0 12px 4px" }}>
             <button className="auth-trigger" onClick={() => setShowAuth("login")}>
-              <span>👤</span><span>로그인</span>
-            </button>
-            <button className="auth-trigger" onClick={() => setShowAuth("signup")} style={{ color: "var(--accent-blue)" }}>
-              <span>✨</span><span>회원가입</span>
+              <span>👤</span><span>로그인 / 회원가입</span>
             </button>
           </div>
         )}
