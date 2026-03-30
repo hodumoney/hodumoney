@@ -1,0 +1,71 @@
+// app/api/auth/login/route.js
+// 로그인: Google Sheets의 users 시트에서 확인
+import { google } from "googleapis";
+import crypto from "crypto";
+
+export const dynamic = "force-dynamic";
+
+function getSheets() {
+  const auth = new google.auth.JWT(
+    process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL,
+    null,
+    (process.env.GOOGLE_PRIVATE_KEY || "").replace(/\\n/g, "\n"),
+    ["https://www.googleapis.com/auth/spreadsheets.readonly"]
+  );
+  return google.sheets({ version: "v4", auth });
+}
+
+function hashPassword(password) {
+  return crypto.createHash("sha256").update(password + "hodumoney_salt").digest("hex");
+}
+
+export async function POST(request) {
+  try {
+    const { email, password } = await request.json();
+
+    if (!email || !password) {
+      return Response.json({ error: "이메일과 비밀번호를 입력해주세요." }, { status: 400 });
+    }
+
+    const sheetId = process.env.GOOGLE_SHEETS_ID;
+    if (!sheetId) return Response.json({ error: "서버 설정 오류" }, { status: 500 });
+
+    const sheets = getSheets();
+    const normalizedEmail = email.trim().toLowerCase();
+    const hashedPw = hashPassword(password);
+
+    let rows;
+    try {
+      const res = await sheets.spreadsheets.values.get({
+        spreadsheetId: sheetId,
+        range: "users!A:E",
+      });
+      rows = res.data.values || [];
+    } catch (e) {
+      return Response.json({ error: "등록된 회원이 없습니다. 회원가입을 해주세요." }, { status: 404 });
+    }
+
+    // 1행은 헤더, 2행부터 데이터
+    for (let i = 1; i < rows.length; i++) {
+      const [storedEmail, storedPw, storedName, , status] = rows[i];
+      if (
+        storedEmail.toString().trim().toLowerCase() === normalizedEmail &&
+        storedPw === hashedPw
+      ) {
+        if (status === "inactive") {
+          return Response.json({ error: "비활성화된 계정입니다." }, { status: 403 });
+        }
+        return Response.json({
+          success: true,
+          email: normalizedEmail,
+          name: storedName || "",
+        });
+      }
+    }
+
+    return Response.json({ error: "이메일 또는 비밀번호가 올바르지 않습니다." }, { status: 401 });
+  } catch (err) {
+    console.error("Login error:", err);
+    return Response.json({ error: "로그인 처리 중 오류가 발생했습니다." }, { status: 500 });
+  }
+}
