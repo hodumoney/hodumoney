@@ -4,12 +4,12 @@ import { LineChart, Line, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip,
 // ─── Firebase 설정 (lazy load — 빌드 시 실행 안 됨) ─────────────
 // 이 값들을 본인의 Firebase 프로젝트 설정으로 교체하세요
 const FIREBASE_CONFIG = {
-  apiKey: "YOUR_FIREBASE_API_KEY",
-  authDomain: "YOUR_PROJECT.firebaseapp.com",
-  projectId: "YOUR_PROJECT_ID",
-  storageBucket: "YOUR_PROJECT.appspot.com",
-  messagingSenderId: "YOUR_SENDER_ID",
-  appId: "YOUR_APP_ID",
+  apiKey: "AIzaSyABrvoetmfs4pFYMR2IFjBXKhxeYa_eZbs",
+  authDomain: "hodumoney-1e015.firebaseapp.com",
+  projectId: "hodumoney-1e015",
+  storageBucket: "hodumoney-1e015.firebasestorage.app",
+  messagingSenderId: "674599618160",
+  appId: "1:674599618160:web:2492e68229f14d4324d6b5",
 };
 
 let _firebaseAuth = null;
