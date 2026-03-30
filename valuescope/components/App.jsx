@@ -1812,7 +1812,35 @@ function BriefingPage() {
   );
 }
 
-// ─── Auth Modal (회원가입 / 로그인) ─────────────────────────────
+// ─── Firebase Auth ──────────────────────────────────────────────
+// Firebase는 CDN으로 로드 (React 컴포넌트 내에서 dynamic import)
+let firebaseApp = null;
+let firebaseAuth = null;
+
+async function initFirebase() {
+  if (firebaseAuth) return firebaseAuth;
+  const { initializeApp } = await import("https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js");
+  const { getAuth, setPersistence, browserLocalPersistence } = await import("https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js");
+
+  // 이 값들을 본인의 Firebase 프로젝트 설정으로 교체하세요
+  const firebaseConfig = {
+    apiKey: "AIzaSyABrvoetmfs4pFYMR2IFjBXKhxeYa_eZbs",
+    authDomain: "hodumoney-1e015.firebaseapp.com",
+    projectId: "hodumoney-1e015",
+    storageBucket: "hodumoney-1e015.firebasestorage.app",
+    messagingSenderId: "674599618160",
+    appId: "1:674599618160:web:2492e68229f14d4324d6b5",
+  };
+
+  if (!firebaseApp) {
+    firebaseApp = initializeApp(firebaseConfig);
+  }
+  firebaseAuth = getAuth(firebaseApp);
+  await setPersistence(firebaseAuth, browserLocalPersistence);
+  return firebaseAuth;
+}
+
+// ─── Auth Modal (Firebase: 구글 로그인 + 이메일/비번) ────────────
 function AuthModal({ mode, onClose, onLogin }) {
   const [isSignup, setIsSignup] = useState(mode === "signup");
   const [email, setEmail] = useState("");
@@ -1821,30 +1849,57 @@ function AuthModal({ mode, onClose, onLogin }) {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
-  const handleSubmit = async () => {
+  const handleGoogleLogin = async () => {
+    setError("");
+    setLoading(true);
+    try {
+      const { GoogleAuthProvider, signInWithPopup } = await import("https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js");
+      const auth = await initFirebase();
+      const provider = new GoogleAuthProvider();
+      const result = await signInWithPopup(auth, provider);
+      const u = result.user;
+      onLogin({ email: u.email, name: u.displayName || u.email.split("@")[0], uid: u.uid, photoURL: u.photoURL });
+      onClose();
+    } catch (e) {
+      if (e.code !== "auth/popup-closed-by-user") {
+        setError("구글 로그인에 실패했습니다: " + (e.message || ""));
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleEmailSubmit = async () => {
     setError("");
     if (!email || !email.includes("@")) { setError("올바른 이메일을 입력해주세요."); return; }
-    if (!password || password.length < 4) { setError("비밀번호는 4자 이상이어야 합니다."); return; }
-    if (isSignup && !name.trim()) { setError("이름을 입력해주세요."); return; }
+    if (!password || password.length < 6) { setError("비밀번호는 6자 이상이어야 합니다."); return; }
 
     setLoading(true);
     try {
-      const endpoint = isSignup ? "/api/auth/signup" : "/api/auth/login";
-      const body = isSignup ? { email, password, name } : { email, password };
-      const res = await fetch(endpoint, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(body),
-      });
-      const data = await res.json();
-      if (res.ok) {
-        onLogin({ email: data.email || email, name: data.name || name });
-        onClose();
+      const { createUserWithEmailAndPassword, signInWithEmailAndPassword, updateProfile } = await import("https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js");
+      const auth = await initFirebase();
+
+      if (isSignup) {
+        if (!name.trim()) { setError("이름을 입력해주세요."); setLoading(false); return; }
+        const result = await createUserWithEmailAndPassword(auth, email, password);
+        await updateProfile(result.user, { displayName: name.trim() });
+        onLogin({ email: result.user.email, name: name.trim(), uid: result.user.uid });
       } else {
-        setError(data.error || (isSignup ? "회원가입에 실패했습니다." : "로그인에 실패했습니다."));
+        const result = await signInWithEmailAndPassword(auth, email, password);
+        onLogin({ email: result.user.email, name: result.user.displayName || result.user.email.split("@")[0], uid: result.user.uid });
       }
-    } catch {
-      setError("네트워크 오류가 발생했습니다.");
+      onClose();
+    } catch (e) {
+      const msg = {
+        "auth/email-already-in-use": "이미 가입된 이메일입니다.",
+        "auth/invalid-email": "올바른 이메일 형식이 아닙니다.",
+        "auth/weak-password": "비밀번호가 너무 약합니다. 6자 이상 입력하세요.",
+        "auth/user-not-found": "등록되지 않은 이메일입니다.",
+        "auth/wrong-password": "비밀번호가 올바르지 않습니다.",
+        "auth/invalid-credential": "이메일 또는 비밀번호가 올바르지 않습니다.",
+        "auth/too-many-requests": "너무 많은 시도가 있었습니다. 잠시 후 다시 시도하세요.",
+      };
+      setError(msg[e.code] || "오류가 발생했습니다: " + (e.message || ""));
     } finally {
       setLoading(false);
     }
@@ -1858,6 +1913,19 @@ function AuthModal({ mode, onClose, onLogin }) {
         <h3>{isSignup ? "회원가입" : "로그인"}</h3>
         <div className="auth-sub">{isSignup ? "호두머니에 가입하고 더 많은 기능을 이용하세요" : "호두머니 계정으로 로그인하세요"}</div>
 
+        {/* 구글 로그인 버튼 */}
+        <button onClick={handleGoogleLogin} disabled={loading}
+          style={{ width: "100%", padding: "11px", marginBottom: 16, border: "1px solid var(--border)", borderRadius: 10, background: "white", fontFamily: "inherit", fontSize: 14, fontWeight: 600, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 8, color: "var(--text-primary)", transition: "background 0.15s" }}>
+          <svg width="18" height="18" viewBox="0 0 48 48"><path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/><path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/><path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/><path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/></svg>
+          Google로 계속하기
+        </button>
+
+        <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 16 }}>
+          <div style={{ flex: 1, height: 1, background: "var(--border)" }} />
+          <span style={{ fontSize: 12, color: "var(--text-tertiary)", fontWeight: 500 }}>또는</span>
+          <div style={{ flex: 1, height: 1, background: "var(--border)" }} />
+        </div>
+
         {isSignup && (
           <div className="auth-field">
             <label>이름</label>
@@ -1870,13 +1938,13 @@ function AuthModal({ mode, onClose, onLogin }) {
         </div>
         <div className="auth-field">
           <label>비밀번호</label>
-          <input type="password" placeholder="비밀번호" value={password} onChange={e => setPassword(e.target.value)}
-            onKeyDown={e => { if (e.key === "Enter") handleSubmit(); }} />
+          <input type="password" placeholder="비밀번호 (6자 이상)" value={password} onChange={e => setPassword(e.target.value)}
+            onKeyDown={e => { if (e.key === "Enter") handleEmailSubmit(); }} />
         </div>
 
         {error && <div className="auth-error">{error}</div>}
-        <button className="auth-submit" onClick={handleSubmit} disabled={loading}>
-          {loading ? "처리중..." : (isSignup ? "가입하기" : "로그인")}
+        <button className="auth-submit" onClick={handleEmailSubmit} disabled={loading}>
+          {loading ? "처리중..." : (isSignup ? "이메일로 가입하기" : "이메일로 로그인")}
         </button>
 
         <div className="auth-toggle">
@@ -1905,8 +1973,34 @@ export default function App() {
   const [showWelcome, setShowWelcome] = useState(false);
   const [welcomeShown, setWelcomeShown] = useState(false);
   const [noticeMsg, setNoticeMsg] = useState(null);
-  const [user, setUser] = useState(null); // { email, name }
+  const [user, setUser] = useState(null); // { email, name, uid, photoURL }
   const [showAuth, setShowAuth] = useState(null); // null | "login" | "signup"
+
+  // Firebase 로그인 상태 유지 (페이지 새로고침 시 자동 복원)
+  useEffect(() => {
+    let unsubscribe = () => {};
+    (async () => {
+      try {
+        const { onAuthStateChanged } = await import("https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js");
+        const auth = await initFirebase();
+        unsubscribe = onAuthStateChanged(auth, (firebaseUser) => {
+          if (firebaseUser) {
+            setUser({
+              email: firebaseUser.email,
+              name: firebaseUser.displayName || firebaseUser.email.split("@")[0],
+              uid: firebaseUser.uid,
+              photoURL: firebaseUser.photoURL,
+            });
+          } else {
+            setUser(null);
+          }
+        });
+      } catch (e) {
+        // Firebase 초기화 실패 시 무시 (로컬 개발 환경 등)
+      }
+    })();
+    return () => unsubscribe();
+  }, []);
 
   // Show welcome popup when entering company tab for the first time
   const handlePageChange = (pageId) => {
@@ -2026,7 +2120,14 @@ export default function App() {
           <div className="auth-user">
             <span>👤</span>
             <span className="auth-user-email">{user.name || user.email}</span>
-            <button className="auth-logout" onClick={() => setUser(null)}>로그아웃</button>
+            <button className="auth-logout" onClick={async () => {
+              try {
+                const { signOut } = await import("https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js");
+                const auth = await initFirebase();
+                await signOut(auth);
+              } catch (e) {}
+              setUser(null);
+            }}>로그아웃</button>
           </div>
         ) : (
           <div style={{ padding: "0 12px 4px" }}>
