@@ -494,6 +494,55 @@ const styles = `
   .newsletter-article h4 { font-size: 16px; font-weight: 700; margin-bottom: 10px; color: var(--text-primary); }
   .newsletter-article p { font-size: 14px; line-height: 1.7; color: var(--text-secondary); margin-bottom: 8px; }
   .newsletter-article .interp { padding: 12px 16px; background: #FFF8F0; border-left: 3px solid #A67B5B; border-radius: 4px; font-size: 13px; line-height: 1.6; color: #6b4c2a; }
+
+  /* ── Auth ── */
+  .auth-trigger {
+    display: flex; align-items: center; gap: 8px; padding: 10px 12px; margin: 0 12px 8px;
+    border-radius: var(--radius-sm); cursor: pointer; font-size: 13px; font-weight: 600;
+    color: var(--text-secondary); transition: all 0.15s; border: none; background: none;
+    font-family: inherit; width: calc(100% - 24px);
+  }
+  .auth-trigger:hover { background: var(--bg-hover); color: var(--text-primary); }
+  .auth-user {
+    display: flex; align-items: center; gap: 8px; padding: 10px 12px; margin: 0 12px 8px;
+    border-radius: var(--radius-sm); font-size: 13px; background: var(--accent-blue-light);
+    color: var(--accent-blue); font-weight: 600;
+  }
+  .auth-user-email { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .auth-logout {
+    background: none; border: none; color: var(--text-tertiary); font-size: 11px;
+    cursor: pointer; font-family: inherit; font-weight: 600; padding: 2px 6px;
+    border-radius: 4px; transition: all 0.15s;
+  }
+  .auth-logout:hover { color: var(--accent-red); background: var(--accent-red-light); }
+  .auth-modal-overlay {
+    position: fixed; inset: 0; background: rgba(0,0,0,0.4); backdrop-filter: blur(4px);
+    z-index: 310; display: flex; align-items: center; justify-content: center;
+  }
+  .auth-modal {
+    background: white; border-radius: 20px; padding: 36px 32px; max-width: 380px; width: 90%;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.15);
+  }
+  .auth-modal h3 { font-size: 20px; font-weight: 800; text-align: center; margin-bottom: 4px; letter-spacing: -0.4px; }
+  .auth-modal .auth-sub { font-size: 13px; color: var(--text-tertiary); text-align: center; margin-bottom: 20px; }
+  .auth-modal .auth-field { margin-bottom: 12px; }
+  .auth-modal .auth-field label { display: block; font-size: 12px; font-weight: 600; color: var(--text-secondary); margin-bottom: 4px; }
+  .auth-modal .auth-field input {
+    width: 100%; padding: 11px 14px; border: 1.5px solid var(--border); border-radius: 10px;
+    font-size: 14px; font-family: inherit; outline: none; transition: border-color 0.15s;
+    box-sizing: border-box;
+  }
+  .auth-modal .auth-field input:focus { border-color: var(--accent-blue); box-shadow: 0 0 0 3px rgba(49,130,246,0.12); }
+  .auth-modal .auth-submit {
+    width: 100%; padding: 12px; margin-top: 8px; border: none; border-radius: 10px;
+    background: #5D4037; color: white; font-size: 15px; font-weight: 700;
+    cursor: pointer; font-family: inherit; transition: background 0.15s;
+  }
+  .auth-modal .auth-submit:hover { background: #4E342E; }
+  .auth-modal .auth-toggle { text-align: center; margin-top: 16px; font-size: 13px; color: var(--text-tertiary); }
+  .auth-modal .auth-toggle button { background: none; border: none; color: var(--accent-blue); font-weight: 600; cursor: pointer; font-family: inherit; font-size: 13px; }
+  .auth-modal .auth-error { font-size: 12px; color: var(--accent-red); margin-top: 8px; text-align: center; font-weight: 600; }
+  .auth-modal .auth-close { position: absolute; top: 14px; right: 14px; background: none; border: none; font-size: 18px; color: var(--text-tertiary); cursor: pointer; }
 `;
 
 // ─── Format Helpers ──────────────────────────────────────────────
@@ -1685,18 +1734,23 @@ function BriefingPage() {
 
   return (
     <div className="content-area">
-      {/* ── Section 1: 호두 브리핑 소개 ── */}
-      <div className="card fade-up" style={{ textAlign: "center", padding: "40px 28px 36px", marginBottom: 0, borderBottom: "none", borderRadius: "var(--radius-lg) var(--radius-lg) 0 0" }}>
-        <img src="/hodumoney-character.jpg" alt="호두머니" style={{ width: 72, height: 72, borderRadius: 16, objectFit: "cover", marginBottom: 16, border: "2px solid var(--border)" }} />
-        <h2 style={{ fontSize: 26, fontWeight: 800, letterSpacing: "-0.6px", marginBottom: 8 }}>호두 브리핑</h2>
-        <p style={{ fontSize: 15, color: "var(--text-secondary)", lineHeight: 1.6, maxWidth: 400, margin: "0 auto" }}>매일 아침, 시장 핵심 이슈를 한눈에 정리해드립니다.<br />복잡한 경제 뉴스를 10분 안에 읽을 수 있도록.</p>
+      {/* ── Section 1: 호두 브리핑 소개 (후킹) ── */}
+      <div className="card fade-up" style={{ textAlign: "center", padding: "44px 28px 36px", marginBottom: 0, borderBottom: "none", borderRadius: "var(--radius-lg) var(--radius-lg) 0 0" }}>
+        <div style={{ fontSize: 48, marginBottom: 14 }}>🥜</div>
+        <h2 style={{ fontSize: 26, fontWeight: 800, letterSpacing: "-0.6px", marginBottom: 12 }}>호두 브리핑</h2>
+        <p style={{ fontSize: 16, color: "var(--text-primary)", lineHeight: 1.7, maxWidth: 420, margin: "0 auto", fontWeight: 600 }}>
+          "오늘 시장 왜 빠졌지?"<br />매일 아침 10분이면 충분합니다.
+        </p>
+        <p style={{ fontSize: 14, color: "var(--text-tertiary)", lineHeight: 1.6, maxWidth: 400, margin: "12px auto 0" }}>
+          뉴스는 많은데 뭘 봐야 할지 모르겠다면,<br />호두가 골라서 쉽게 정리해드립니다.
+        </p>
       </div>
 
       {/* ── Section 2: 이메일 구독 ── */}
       <div className="card fade-up fade-up-d1" style={{ padding: "28px", marginBottom: 28, borderRadius: "0 0 var(--radius-lg) var(--radius-lg)", borderTop: "1px dashed var(--border)", background: "#FDFBF9" }}>
         <div style={{ textAlign: "center", marginBottom: 16 }}>
-          <h3 style={{ fontSize: 17, fontWeight: 700, marginBottom: 4 }}>📬 호두레터 구독하기</h3>
-          <p style={{ fontSize: 13, color: "var(--text-tertiary)" }}>이메일을 입력하시면 매일 아침 뉴스 브리핑을 보내드립니다.</p>
+          <h3 style={{ fontSize: 17, fontWeight: 700, marginBottom: 4 }}>📬 호두레터 무료 구독하기</h3>
+          <p style={{ fontSize: 13, color: "var(--text-tertiary)" }}>이메일만 입력하면 매일 아침 무료로 뉴스 브리핑을 보내드립니다.</p>
         </div>
         <div style={{ maxWidth: 440, margin: "0 auto" }}>
           <div className="subscribe-form">
@@ -1709,7 +1763,7 @@ function BriefingPage() {
               onKeyDown={e => { if (e.key === "Enter") handleSubscribe(); }}
             />
             <button className="subscribe-btn" onClick={handleSubscribe} disabled={subStatus === "loading"}>
-              {subStatus === "loading" ? "처리중..." : "구독하기"}
+              {subStatus === "loading" ? "처리중..." : "무료 구독"}
             </button>
           </div>
           {subMsg && <div className={`subscribe-msg ${subStatus}`}>{subMsg}</div>}
@@ -1742,9 +1796,7 @@ function BriefingPage() {
                 {nl.imageUrl ? (
                   <img className="newsletter-thumb" src={nl.imageUrl} alt={nl.title || nl.date} />
                 ) : (
-                  <div className="newsletter-thumb-placeholder">
-                    <img src="/hodumoney-character.jpg" alt="" style={{ width: 64, height: 64, borderRadius: 12, objectFit: "cover" }} />
-                  </div>
+                  <div className="newsletter-thumb-placeholder">🥜</div>
                 )}
                 <div className="newsletter-body">
                   <div className="newsletter-date">{nl.date}</div>
@@ -1755,6 +1807,85 @@ function BriefingPage() {
             ))}
           </div>
         )}
+      </div>
+    </div>
+  );
+}
+
+// ─── Auth Modal (회원가입 / 로그인) ─────────────────────────────
+function AuthModal({ mode, onClose, onLogin }) {
+  const [isSignup, setIsSignup] = useState(mode === "signup");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [name, setName] = useState("");
+  const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
+
+  const handleSubmit = async () => {
+    setError("");
+    if (!email || !email.includes("@")) { setError("올바른 이메일을 입력해주세요."); return; }
+    if (!password || password.length < 4) { setError("비밀번호는 4자 이상이어야 합니다."); return; }
+    if (isSignup && !name.trim()) { setError("이름을 입력해주세요."); return; }
+
+    setLoading(true);
+    try {
+      const endpoint = isSignup ? "/api/auth/signup" : "/api/auth/login";
+      const body = isSignup ? { email, password, name } : { email, password };
+      const res = await fetch(endpoint, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
+      const data = await res.json();
+      if (res.ok) {
+        onLogin({ email: data.email || email, name: data.name || name });
+        onClose();
+      } else {
+        setError(data.error || (isSignup ? "회원가입에 실패했습니다." : "로그인에 실패했습니다."));
+      }
+    } catch {
+      setError("네트워크 오류가 발생했습니다.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="auth-modal-overlay" onClick={onClose}>
+      <div className="auth-modal" onClick={e => e.stopPropagation()} style={{ position: "relative" }}>
+        <button className="auth-close" onClick={onClose}>✕</button>
+        <div style={{ fontSize: 36, textAlign: "center", marginBottom: 8 }}>🥜</div>
+        <h3>{isSignup ? "회원가입" : "로그인"}</h3>
+        <div className="auth-sub">{isSignup ? "호두머니에 가입하고 더 많은 기능을 이용하세요" : "호두머니 계정으로 로그인하세요"}</div>
+
+        {isSignup && (
+          <div className="auth-field">
+            <label>이름</label>
+            <input type="text" placeholder="이름 입력" value={name} onChange={e => setName(e.target.value)} />
+          </div>
+        )}
+        <div className="auth-field">
+          <label>이메일</label>
+          <input type="email" placeholder="이메일 주소" value={email} onChange={e => setEmail(e.target.value)} />
+        </div>
+        <div className="auth-field">
+          <label>비밀번호</label>
+          <input type="password" placeholder="비밀번호" value={password} onChange={e => setPassword(e.target.value)}
+            onKeyDown={e => { if (e.key === "Enter") handleSubmit(); }} />
+        </div>
+
+        {error && <div className="auth-error">{error}</div>}
+        <button className="auth-submit" onClick={handleSubmit} disabled={loading}>
+          {loading ? "처리중..." : (isSignup ? "가입하기" : "로그인")}
+        </button>
+
+        <div className="auth-toggle">
+          {isSignup ? (
+            <>이미 계정이 있으신가요? <button onClick={() => { setIsSignup(false); setError(""); }}>로그인</button></>
+          ) : (
+            <>계정이 없으신가요? <button onClick={() => { setIsSignup(true); setError(""); }}>회원가입</button></>
+          )}
+        </div>
       </div>
     </div>
   );
@@ -1774,6 +1905,8 @@ export default function App() {
   const [showWelcome, setShowWelcome] = useState(false);
   const [welcomeShown, setWelcomeShown] = useState(false);
   const [noticeMsg, setNoticeMsg] = useState(null);
+  const [user, setUser] = useState(null); // { email, name }
+  const [showAuth, setShowAuth] = useState(null); // null | "login" | "signup"
 
   // Show welcome popup when entering company tab for the first time
   const handlePageChange = (pageId) => {
@@ -1866,9 +1999,12 @@ export default function App() {
       {/* Centered usage notice */}
       {noticeMsg && <UsageNotice message={noticeMsg} onClose={() => setNoticeMsg(null)} />}
 
+      {/* Auth modal */}
+      {showAuth && <AuthModal mode={showAuth} onClose={() => setShowAuth(null)} onLogin={(u) => setUser(u)} />}
+
       <aside className={`sidebar ${sidebarOpen ? "open" : ""}`}>
         <div className="sidebar-logo">
-          <img src="/hodumoney-character.jpg" alt="호두머니" style={{ width: 48, height: 48, borderRadius: 12, objectFit: "cover" }} />
+          <div style={{ width: 42, height: 42, borderRadius: 10, background: "linear-gradient(135deg, #5D4037, #795548)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 22, flexShrink: 0 }}>🥜</div>
           <div>
             <div className="logo-text">호두머니</div>
             <div className="logo-sub">©hodusolution</div>
@@ -1885,6 +2021,23 @@ export default function App() {
             </div>
           ))}
         </div>
+        <div className="sidebar-divider" />
+        {user ? (
+          <div className="auth-user">
+            <span>👤</span>
+            <span className="auth-user-email">{user.name || user.email}</span>
+            <button className="auth-logout" onClick={() => setUser(null)}>로그아웃</button>
+          </div>
+        ) : (
+          <div style={{ padding: "0 12px 4px" }}>
+            <button className="auth-trigger" onClick={() => setShowAuth("login")}>
+              <span>👤</span><span>로그인</span>
+            </button>
+            <button className="auth-trigger" onClick={() => setShowAuth("signup")} style={{ color: "var(--accent-blue)" }}>
+              <span>✨</span><span>회원가입</span>
+            </button>
+          </div>
+        )}
         <div className="sidebar-divider" />
         <div className="sidebar-section">
           <div className="sidebar-section-label">정보</div>
@@ -1905,6 +2058,14 @@ export default function App() {
             <div className="top-bar-title">{pageTitle[activePage]}</div>
           </div>
           {activePage === "company" && searchedTicker && <SearchBox onSelect={handleSearchSelect} />}
+          {!user && (
+            <button onClick={() => setShowAuth("login")} style={{ padding: "7px 16px", borderRadius: 8, border: "1px solid var(--border)", background: "white", fontFamily: "inherit", fontSize: 13, fontWeight: 600, cursor: "pointer", color: "var(--text-secondary)", transition: "all 0.15s", whiteSpace: "nowrap" }}>로그인</button>
+          )}
+          {user && (
+            <div style={{ fontSize: 13, fontWeight: 600, color: "var(--text-secondary)", display: "flex", alignItems: "center", gap: 6 }}>
+              <span>👤</span> {user.name || user.email.split("@")[0]}
+            </div>
+          )}
         </div>
 
         {activePage === "market" && <MarketPage />}
