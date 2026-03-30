@@ -1,5 +1,21 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { LineChart, Line, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
+import { initializeApp, getApps } from "firebase/app";
+import { getAuth, setPersistence, browserLocalPersistence, onAuthStateChanged, signInWithPopup, GoogleAuthProvider, createUserWithEmailAndPassword, signInWithEmailAndPassword, updateProfile, signOut } from "firebase/auth";
+
+// ─── Firebase 초기화 ────────────────────────────────────────────
+// 이 값들을 본인의 Firebase 프로젝트 설정으로 교체하세요
+const firebaseConfig = {
+  apiKey: "AIzaSyABrvoetmfs4pFYMR2IFjBXKhxeYa_eZbs",
+  authDomain: "hodumoney-1e015.firebaseapp.com",
+  projectId: "hodumoney-1e015",
+  storageBucket: "hodumoney-1e015.firebasestorage.app",
+  messagingSenderId: "674599618160",
+  appId: "1:674599618160:web:2492e68229f14d4324d6b5",
+};
+
+const firebaseApp = getApps().length === 0 ? initializeApp(firebaseConfig) : getApps()[0];
+const firebaseAuth = getAuth(firebaseApp);
 
 // ─── Helper: generate fake historical data ───────────────────────
 function genHistory(current, months = 12, volatility = 0.02, trend = 0) {
@@ -1812,34 +1828,6 @@ function BriefingPage() {
   );
 }
 
-// ─── Firebase Auth ──────────────────────────────────────────────
-// Firebase는 CDN으로 로드 (React 컴포넌트 내에서 dynamic import)
-let firebaseApp = null;
-let firebaseAuth = null;
-
-async function initFirebase() {
-  if (firebaseAuth) return firebaseAuth;
-  const { initializeApp } = await import("https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js");
-  const { getAuth, setPersistence, browserLocalPersistence } = await import("https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js");
-
-  // 이 값들을 본인의 Firebase 프로젝트 설정으로 교체하세요
-  const firebaseConfig = {
-    apiKey: "AIzaSyABrvoetmfs4pFYMR2IFjBXKhxeYa_eZbs",
-    authDomain: "hodumoney-1e015.firebaseapp.com",
-    projectId: "hodumoney-1e015",
-    storageBucket: "hodumoney-1e015.firebasestorage.app",
-    messagingSenderId: "674599618160",
-    appId: "1:674599618160:web:2492e68229f14d4324d6b5",
-  };
-
-  if (!firebaseApp) {
-    firebaseApp = initializeApp(firebaseConfig);
-  }
-  firebaseAuth = getAuth(firebaseApp);
-  await setPersistence(firebaseAuth, browserLocalPersistence);
-  return firebaseAuth;
-}
-
 // ─── Auth Modal (Firebase: 구글 로그인 + 이메일/비번) ────────────
 function AuthModal({ mode, onClose, onLogin }) {
   const [isSignup, setIsSignup] = useState(mode === "signup");
@@ -1853,16 +1841,14 @@ function AuthModal({ mode, onClose, onLogin }) {
     setError("");
     setLoading(true);
     try {
-      const { GoogleAuthProvider, signInWithPopup } = await import("https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js");
-      const auth = await initFirebase();
       const provider = new GoogleAuthProvider();
-      const result = await signInWithPopup(auth, provider);
+      const result = await signInWithPopup(firebaseAuth, provider);
       const u = result.user;
       onLogin({ email: u.email, name: u.displayName || u.email.split("@")[0], uid: u.uid, photoURL: u.photoURL });
       onClose();
     } catch (e) {
       if (e.code !== "auth/popup-closed-by-user") {
-        setError("구글 로그인에 실패했습니다: " + (e.message || ""));
+        setError("구글 로그인에 실패했습니다.");
       }
     } finally {
       setLoading(false);
@@ -1876,16 +1862,13 @@ function AuthModal({ mode, onClose, onLogin }) {
 
     setLoading(true);
     try {
-      const { createUserWithEmailAndPassword, signInWithEmailAndPassword, updateProfile } = await import("https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js");
-      const auth = await initFirebase();
-
       if (isSignup) {
         if (!name.trim()) { setError("이름을 입력해주세요."); setLoading(false); return; }
-        const result = await createUserWithEmailAndPassword(auth, email, password);
+        const result = await createUserWithEmailAndPassword(firebaseAuth, email, password);
         await updateProfile(result.user, { displayName: name.trim() });
         onLogin({ email: result.user.email, name: name.trim(), uid: result.user.uid });
       } else {
-        const result = await signInWithEmailAndPassword(auth, email, password);
+        const result = await signInWithEmailAndPassword(firebaseAuth, email, password);
         onLogin({ email: result.user.email, name: result.user.displayName || result.user.email.split("@")[0], uid: result.user.uid });
       }
       onClose();
@@ -1978,27 +1961,18 @@ export default function App() {
 
   // Firebase 로그인 상태 유지 (페이지 새로고침 시 자동 복원)
   useEffect(() => {
-    let unsubscribe = () => {};
-    (async () => {
-      try {
-        const { onAuthStateChanged } = await import("https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js");
-        const auth = await initFirebase();
-        unsubscribe = onAuthStateChanged(auth, (firebaseUser) => {
-          if (firebaseUser) {
-            setUser({
-              email: firebaseUser.email,
-              name: firebaseUser.displayName || firebaseUser.email.split("@")[0],
-              uid: firebaseUser.uid,
-              photoURL: firebaseUser.photoURL,
-            });
-          } else {
-            setUser(null);
-          }
+    const unsubscribe = onAuthStateChanged(firebaseAuth, (firebaseUser) => {
+      if (firebaseUser) {
+        setUser({
+          email: firebaseUser.email,
+          name: firebaseUser.displayName || firebaseUser.email.split("@")[0],
+          uid: firebaseUser.uid,
+          photoURL: firebaseUser.photoURL,
         });
-      } catch (e) {
-        // Firebase 초기화 실패 시 무시 (로컬 개발 환경 등)
+      } else {
+        setUser(null);
       }
-    })();
+    });
     return () => unsubscribe();
   }, []);
 
@@ -2121,11 +2095,7 @@ export default function App() {
             <span>👤</span>
             <span className="auth-user-email">{user.name || user.email}</span>
             <button className="auth-logout" onClick={async () => {
-              try {
-                const { signOut } = await import("https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js");
-                const auth = await initFirebase();
-                await signOut(auth);
-              } catch (e) {}
+              try { await signOut(firebaseAuth); } catch (e) {}
               setUser(null);
             }}>로그아웃</button>
           </div>
