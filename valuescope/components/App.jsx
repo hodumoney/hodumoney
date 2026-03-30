@@ -17,7 +17,7 @@ function genHistory(current, months = 12, volatility = 0.02, trend = 0) {
 const MENU_ITEMS = [
   { id: "market", label: "시장 동향", icon: "📊", ready: true },
   { id: "company", label: "기업 분석", icon: "🔍", ready: true },
-  { id: "briefing", label: "호두 브리핑", icon: "🗞️", ready: false },
+  { id: "briefing", label: "호두 브리핑", icon: "🗞️", ready: true },
   { id: "etf", label: "ETF 단일 분석", icon: "📦", ready: false },
   { id: "etf-compare", label: "ETF 비교 분석", icon: "⚖️", ready: false },
   { id: "correlation", label: "상관관계 분석", icon: "🔗", ready: false },
@@ -420,6 +420,80 @@ const styles = `
   .insight-col-title.comment { color: #5D4037; }
   .insight-col-text { font-size: 13px; color: var(--text-primary); line-height: 1.65; font-weight: 500; }
   @media (max-width: 768px) { .insight-panel { grid-template-columns: 1fr; } .insight-col { border-right: none; border-bottom: 1px solid #E5E8EB; } .insight-col:last-child { border-bottom: none; } }
+
+  /* ── Briefing Page ── */
+  .briefing-hero { text-align: center; padding: 40px 20px 32px; }
+  .briefing-hero h2 { font-size: 28px; font-weight: 800; letter-spacing: -0.8px; margin-bottom: 8px; }
+  .briefing-hero p { font-size: 15px; color: var(--text-secondary); line-height: 1.6; }
+
+  .subscribe-box {
+    max-width: 480px; margin: 0 auto 40px; padding: 28px; background: var(--bg-card);
+    border: 1px solid var(--border); border-radius: var(--radius-lg); text-align: center;
+  }
+  .subscribe-box h3 { font-size: 18px; font-weight: 700; margin-bottom: 6px; }
+  .subscribe-box p { font-size: 13px; color: var(--text-tertiary); margin-bottom: 16px; }
+  .subscribe-form { display: flex; gap: 8px; }
+  .subscribe-input {
+    flex: 1; padding: 12px 16px; border: 1.5px solid var(--border); border-radius: 10px;
+    font-size: 14px; font-family: inherit; outline: none; transition: border-color 0.15s;
+  }
+  .subscribe-input:focus { border-color: var(--accent-blue); box-shadow: 0 0 0 3px rgba(49,130,246,0.12); }
+  .subscribe-btn {
+    padding: 12px 24px; border: none; border-radius: 10px; background: #5D4037; color: white;
+    font-size: 14px; font-weight: 700; cursor: pointer; font-family: inherit; white-space: nowrap;
+    transition: background 0.15s;
+  }
+  .subscribe-btn:hover { background: #4E342E; }
+  .subscribe-btn:disabled { background: #aaa; cursor: not-allowed; }
+  .subscribe-msg { font-size: 13px; margin-top: 10px; font-weight: 600; }
+  .subscribe-msg.success { color: var(--accent-green); }
+  .subscribe-msg.error { color: var(--accent-red); }
+
+  .briefing-tabs { display: flex; gap: 8px; margin-bottom: 24px; }
+  .briefing-tab {
+    padding: 8px 18px; border-radius: 20px; font-size: 13px; font-weight: 600;
+    cursor: pointer; border: 1px solid var(--border); background: white;
+    color: var(--text-secondary); font-family: inherit; transition: all 0.15s;
+  }
+  .briefing-tab.active { background: #5D4037; color: white; border-color: #5D4037; }
+  .briefing-tab:hover:not(.active) { background: var(--bg-hover); }
+
+  .newsletter-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px; }
+  @media (max-width: 768px) { .newsletter-grid { grid-template-columns: 1fr; } }
+  .newsletter-card {
+    background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius-lg);
+    overflow: hidden; cursor: pointer; transition: all 0.2s ease;
+  }
+  .newsletter-card:hover { box-shadow: var(--shadow-md); transform: translateY(-2px); }
+  .newsletter-thumb {
+    width: 100%; height: 200px; object-fit: cover; display: block;
+    background: linear-gradient(135deg, #f5f0eb 0%, #e8ddd4 100%);
+  }
+  .newsletter-thumb-placeholder {
+    width: 100%; height: 200px; display: flex; align-items: center; justify-content: center;
+    background: linear-gradient(135deg, #f5f0eb 0%, #e8ddd4 100%); font-size: 48px;
+  }
+  .newsletter-body { padding: 16px 18px; }
+  .newsletter-date { font-size: 12px; color: var(--text-tertiary); font-weight: 500; margin-bottom: 6px; }
+  .newsletter-title { font-size: 15px; font-weight: 700; color: var(--text-primary); line-height: 1.4; margin-bottom: 8px; letter-spacing: -0.3px; }
+  .newsletter-preview { font-size: 13px; color: var(--text-secondary); line-height: 1.5; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+
+  .newsletter-detail { background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 28px; }
+  .newsletter-detail-back {
+    display: inline-flex; align-items: center; gap: 6px; font-size: 13px; font-weight: 600;
+    color: var(--text-secondary); cursor: pointer; margin-bottom: 20px; padding: 6px 12px;
+    border-radius: 8px; border: none; background: var(--bg-primary); font-family: inherit;
+    transition: background 0.15s;
+  }
+  .newsletter-detail-back:hover { background: var(--border); }
+  .newsletter-detail-date { font-size: 13px; color: var(--text-tertiary); margin-bottom: 8px; }
+  .newsletter-detail-title { font-size: 22px; font-weight: 800; letter-spacing: -0.5px; margin-bottom: 20px; }
+  .newsletter-detail-insight { padding: 16px 20px; background: #FFF8F0; border-left: 3px solid #A67B5B; border-radius: 6px; margin-bottom: 24px; font-size: 14px; line-height: 1.7; color: #5D4037; }
+  .newsletter-article { margin-bottom: 24px; padding-bottom: 20px; border-bottom: 1px solid #F2F3F5; }
+  .newsletter-article:last-child { border-bottom: none; }
+  .newsletter-article h4 { font-size: 16px; font-weight: 700; margin-bottom: 10px; color: var(--text-primary); }
+  .newsletter-article p { font-size: 14px; line-height: 1.7; color: var(--text-secondary); margin-bottom: 8px; }
+  .newsletter-article .interp { padding: 12px 16px; background: #FFF8F0; border-left: 3px solid #A67B5B; border-radius: 4px; font-size: 13px; line-height: 1.6; color: #6b4c2a; }
 `;
 
 // ─── Format Helpers ──────────────────────────────────────────────
@@ -1189,36 +1263,36 @@ const PERIOD_LABELS = {
 const METRIC_INSIGHTS = {
   // 핵심 밸류에이션
   per: { up: "투자자들이 기업의 미래 성장을 높게 평가하고 있어, 주가가 이익 대비 비싸게 거래되고 있는 상태입니다.", down: "시장에서 기업의 성장성에 대한 기대가 낮아져, 주가가 이익 대비 저렴하게 거래되고 있는 상태입니다.", comment: "PER이 높게 형성되기도 하는 성장주(예:반도체)의 경우 PEG를 함께 보는 것이 좋습니다." },
-  pbr: { up: "시장이 회사의 자산 가치를 높게 평가하고 있으며, 우량 기업이나 성장 기대가 반영된 상태입니다.", down: "기업의 가치가 보유 자산 대비 저평가되어 있거나, 수익성이 낮다고 시장이 판단하고 있는 상태입니다.", comment: "회사가 보유한 건물이나 기계 등 자산은 늘어도, 산업 자체가 사양이라면 PBR은 계속 1.0 미만에 머물 수 있습니다. PBR이 낮다고 곧바로 투자하지 말고, 성장성과 함께 보세요." },
+  pbr: { up: "시장이 회사의 자산 가치를 높게 평가하고 있는 상태입니다. 우량 기업이거나 향후 성장에 대한 기대가 반영된 결과일 수 있습니다.", down: "보유 자산 대비 주가가 저렴하게 거래되고 있는 상태입니다. 저평가일 수도 있고, 수익성이 낮다는 시장의 판단일 수도 있습니다.", comment: "회사가 보유한 건물이나 기계 등 자산은 늘어도, 산업 자체가 사양이라면 PBR은 계속 1.0 미만에 머물 수 있습니다. PBR이 낮다고 곧바로 투자하지 말고, 성장성과 함께 보세요." },
   eps: { up: "기업이 주당 벌어들이는 순이익이 증가하고 있어, 실질적인 수익 개선이 이루어지고 있습니다.", down: "기업의 주당 순이익이 줄어들고 있어, 실적이 악화되고 있다는 신호입니다.", comment: "절대적인 수치보다는 과거 EPS와의 비교가 기업의 실적 개선 여부를 판단하는 기준이 됩니다. 동종 업계 평균 EPS와도 비교해보세요." },
   de: { up: "회사가 자기자본 대비 빚에 대한 의존도가 높아지고 있어, 재무 건전성에 주의가 필요합니다.", down: "부채를 줄이며 재무 구조가 안정적으로 개선되고 있는 상태입니다.", comment: "신규 산업에 투자하는 경우(ex. 인공지능) 빠른 시장 점유를 위해 투자하므로 부채 비율이 일시적으로 높아지기도 합니다. 제조업은 100~200%, 금융업은 400% 이상, IT 기업은 100% 정도의 부채비율이 일반적입니다." },
   roe: { up: "주주의 돈(자본)을 효율적으로 운용하여 높은 수익을 내고 있어, 경영 성과가 우수합니다.", down: "자본 대비 이익 창출 능력이 떨어지고 있어, 경영 효율이 저하되고 있는 상태입니다.", comment: "ROE는 부채가 많아져도 높아질 수 있기 때문에 부채비율과 함께 확인하세요." },
-  div: { up: "안정적으로 현금을 창출하며 주주환원 의지가 강해지고 있는 상태입니다.", down: "배당을 축소하고 있으며, 기업이 현금 보전을 우선시하고 있는 상태입니다.", comment: "주가가 하락할 경우 상대적으로 배당수익률이 높아져 보이지만, 실제 배당 규모 유지 여부를 확인해야 합니다." },
-  ebitda: { up: "본업에서 현금을 잘 창출하고 있으며, 재무구조가 양호한 상태입니다.", down: "본업에서의 현금 창출 능력이 약해지고 있어 주의가 필요합니다.", comment: "EBITDA는 현금 창출 능력을 보여주지만, 장비 교체나 시설 투자 비용(CAPEX)은 반영하지 않습니다. 따라서 아래 자유현금흐름과 투자활동 현금흐름을 함께 보시는 것이 좋습니다." },
+  div: { up: "안정적으로 현금을 창출하고 있는 상태입니다. 주주환원 의지도 강해지고 있습니다.", down: "배당을 축소하고 있는 상태입니다. 기업이 현금 보전을 우선시하고 있을 수 있습니다.", comment: "주가가 하락할 경우 상대적으로 배당수익률이 높아져 보이지만, 실제 배당 규모 유지 여부를 확인해야 합니다." },
+  ebitda: { up: "본업에서 현금을 잘 창출하고 있는 상태입니다. 재무구조도 양호합니다.", down: "본업에서의 현금 창출 능력이 약해지고 있어 주의가 필요합니다.", comment: "EBITDA는 현금 창출 능력을 보여주지만, 장비 교체나 시설 투자 비용(CAPEX)은 반영하지 않습니다. 따라서 아래 자유현금흐름과 투자활동 현금흐름을 함께 보시는 것이 좋습니다." },
   // 손익계산서
-  revenue: { up: "제품이나 서비스의 판매량이 늘어나 시장 점유율이 확대되고 있는 상태입니다.", down: "시장 수요가 줄거나 경쟁이 심화되어 매출이 감소하고 있는 상태입니다.", comment: "매출이 꾸준히 성장하는 기업은 시장에서 경쟁력을 유지하고 있다는 뜻입니다. 다만 매출이 늘어도 이익이 줄면 '저수익 성장'일 수 있으니 영업이익과 함께 확인하세요." },
-  grossProfit: { up: "원가를 절감하거나 고수익 제품의 판매 비중이 높아져 수익성이 개선되고 있습니다.", down: "원재료비 상승이나 저마진 제품 비중 증가로 수익성이 악화되고 있는 상태입니다.", comment: "매출 총이익률(매출 총이익/매출)이 높을수록 원가 경쟁력이 뛰어난 기업입니다. 같은 업종 내에서 비교하면 어떤 회사가 더 효율적인지 한눈에 보입니다." },
+  revenue: { up: "제품이나 서비스의 판매량이 늘어나고 있는 상태입니다. 시장 점유율이 확대되고 있을 수 있습니다.", down: "시장 수요가 줄고 있는 상태입니다. 경쟁 심화로 매출이 빠지고 있을 수도 있습니다.", comment: "매출이 꾸준히 성장하는 기업은 시장에서 경쟁력을 유지하고 있다는 뜻입니다. 다만 매출이 늘어도 이익이 줄면 '저수익 성장'일 수 있으니 영업이익과 함께 확인하세요." },
+  grossProfit: { up: "원가 경쟁력이 좋아지고 있는 상태입니다. 고수익 제품의 판매 비중이 높아졌을 수도 있습니다.", down: "원재료비가 상승하고 있는 상태입니다. 저마진 제품의 비중이 늘어났을 수도 있습니다.", comment: "매출 총이익률(매출 총이익/매출)이 높을수록 원가 경쟁력이 뛰어난 기업입니다. 같은 업종 내에서 비교하면 어떤 회사가 더 효율적인지 한눈에 보입니다." },
   opIncome: { up: "핵심 영업활동의 효율성이 개선되어 본업에서 더 많은 이익을 내고 있습니다.", down: "인건비·마케팅비 등 비용이 늘어나 본업의 수익성이 악화되고 있는 상태입니다.", comment: "영업이익은 회사가 '본업'으로 얼마나 벌고 있는지를 보여주는 핵심 지표입니다. 매출은 늘어도 영업이익이 줄어드는 회사는 비용 관리에 문제가 있을 수 있습니다." },
-  netIncome: { up: "모든 비용을 제외한 최종 이익이 늘어나 회사의 전체 수익성이 개선되고 있습니다.", down: "세금·이자·일회성 비용 등으로 인해 최종 이익이 줄어들고 있는 상태입니다.", comment: "순이익은 세금, 이자 등 모든 비용을 뺀 최종 이익입니다. 영업이익은 좋은데 순이익이 급감했다면 일회성 손실이나 환차손 등 영업 외 요인을 의심해보세요." },
+  netIncome: { up: "모든 비용을 제외한 최종 이익이 늘어나고 있는 상태입니다. 회사의 전체 수익성이 개선되고 있습니다.", down: "세금·이자·일회성 비용 등으로 인해 최종 이익이 줄어들고 있는 상태입니다.", comment: "순이익은 세금, 이자 등 모든 비용을 뺀 최종 이익입니다. 영업이익은 좋은데 순이익이 급감했다면 일회성 손실이나 환차손 등 영업 외 요인을 의심해보세요." },
   // 재무상태표
-  totalAssets: { up: "사업 확장, 신규 자산 취득 등으로 회사의 규모가 성장하고 있는 상태입니다.", down: "자산 매각이나 경영 축소로 회사의 총 자산이 줄어들고 있어 유동성에 주의가 필요합니다.", comment: "총 자산이 커지는 것이 무조건 좋은 건 아닙니다. 부채로 자산을 늘린 건지, 이익 잉여금으로 쌓인 건지 자본 총계와 함께 확인해야 합니다." },
-  currentLiab: { up: "단기 자금 조달이 증가하고 있으며, 성장을 위한 투자 목적일 수 있습니다.", down: "단기 부채를 상환하며 재무 건전성이 개선되고 있는 상태입니다.", comment: "유동 부채가 유동 자산보다 크면 단기 지급 능력에 문제가 생길 수 있습니다. '유동비율(유동자산/유동부채)' 200% 이상이면 안정적이라 판단합니다." },
-  equity: { up: "이익 잉여금이 쌓이며 회사의 재무 건전성과 순자산이 강화되고 있습니다.", down: "순손실 누적이나 과도한 배당으로 순자산이 줄어들고 있어 자본 잠식 위험에 주의해야 합니다.", comment: "자본 총계가 꾸준히 늘어나는 기업은 매년 이익을 쌓아가며 체력이 강해지고 있다는 뜻입니다. 반대로 줄어들면 배당이나 손실로 체력이 빠지고 있는 것이니 주의하세요." },
+  totalAssets: { up: "회사의 규모가 성장하고 있는 상태입니다. 사업 확장이나 신규 자산 취득이 원인일 수 있습니다.", down: "회사의 총 자산이 줄어들고 있는 상태입니다. 자산 매각이나 경영 축소가 원인일 수 있습니다.", comment: "총 자산이 커지는 것이 무조건 좋은 건 아닙니다. 부채로 자산을 늘린 건지, 이익 잉여금으로 쌓인 건지 자본 총계와 함께 확인해야 합니다." },
+  currentLiab: { up: "단기 자금 조달이 증가하고 있는 상태입니다. 성장을 위한 투자 목적일 수 있습니다.", down: "단기 부채를 상환하고 있는 상태입니다. 재무 건전성이 개선되고 있습니다.", comment: "유동 부채가 유동 자산보다 크면 단기 지급 능력에 문제가 생길 수 있습니다. '유동비율(유동자산/유동부채)' 200% 이상이면 안정적이라 판단합니다." },
+  equity: { up: "이익 잉여금이 쌓이고 있는 상태입니다. 회사의 재무 건전성과 순자산이 강화되고 있습니다.", down: "순자산이 줄어들고 있는 상태입니다. 순손실 누적이나 과도한 배당이 원인일 수 있으며, 자본 잠식 위험에 주의해야 합니다.", comment: "자본 총계가 꾸준히 늘어나는 기업은 매년 이익을 쌓아가며 체력이 강해지고 있다는 뜻입니다. 반대로 줄어들면 배당이나 손실로 체력이 빠지고 있는 것이니 주의하세요." },
   // 현금흐름표
-  fcf: { up: "기업이 자유롭게 쓸 수 있는 현금이 늘어나, 배당이나 신규 투자 여력이 확대되고 있습니다.", down: "설비 투자나 부채 상환으로 자유롭게 쓸 수 있는 현금이 줄어들고 있는 상태입니다.", comment: "자유현금흐름은 기업이 진짜로 자유롭게 쓸 수 있는 돈입니다. 이 숫자가 꾸준히 플러스인 기업은 주주환원(배당, 자사주 매입)에 여유가 있어 장기 투자에 유리합니다." },
-  opCash: { up: "본업에서 안정적으로 현금을 벌어들이고 있어 현금 창출 능력이 우수합니다.", down: "재고 증가나 매출채권 회수 지연 등으로 본업의 현금 흐름이 악화되고 있습니다.", comment: "순이익은 높은데 영업활동 현금흐름이 마이너스라면 '이익의 질'을 의심해야 합니다. 실제 현금이 들어오지 않는 이익은 회계상 숫자에 불과할 수 있습니다." },
-  invCash: { up: "투자를 줄이거나 자산을 매각하여 단기적으로 현금을 확보하고 있는 상태입니다.", down: "설비나 기술에 적극적으로 투자하여 미래 성장을 준비하고 있는 상태입니다.", comment: "투자활동 현금흐름이 마이너스(-)라고 나쁜 것이 아닙니다. 적극적으로 설비에 투자하는 기업은 미래 매출 성장을 준비하고 있는 것이니, 영업이익과 매출 추세를 함께 보세요." },
-  finCash: { up: "외부에서 대출이나 주식 발행을 통해 자금을 조달하고 있는 상태입니다.", down: "대출을 상환하거나 배당·자사주 매입으로 주주에게 자금을 환원하고 있는 상태입니다.", comment: "재무활동에서 마이너스가 크다면 빚을 갚거나 주주에게 환원 중인 것입니다. 건전한 기업일수록 본업으로 번 돈을 재무활동에서 나눠주는 패턴을 보입니다." },
-  netChange: { up: "일정 기간 동안 현금 보유량이 늘어나 유동성이 확보되고 있는 상태입니다.", down: "현금 유출이 유입보다 커서 단기적으로 유동성이 부족해질 수 있으니 주의가 필요합니다.", comment: "현금 증감이 마이너스여도 투자 때문이라면 걱정할 필요 없습니다. 문제는 영업에서도 돈을 못 벌면서 현금이 줄어드는 경우이니, 영업활동 현금흐름과 함께 판단하세요." },
+  fcf: { up: "기업이 자유롭게 쓸 수 있는 현금이 늘어나고 있는 상태입니다. 배당이나 신규 투자 여력이 확대되고 있습니다.", down: "자유롭게 쓸 수 있는 현금이 줄어들고 있는 상태입니다. 설비 투자나 부채 상환이 원인일 수 있습니다.", comment: "자유현금흐름은 기업이 진짜로 자유롭게 쓸 수 있는 돈입니다. 이 숫자가 꾸준히 플러스인 기업은 주주환원(배당, 자사주 매입)에 여유가 있어 장기 투자에 유리합니다." },
+  opCash: { up: "본업에서 안정적으로 현금을 벌어들이고 있어 현금 창출 능력이 우수합니다.", down: "본업의 현금 흐름이 악화되고 있는 상태입니다. 재고 증가나 매출채권 회수 지연이 원인일 수 있습니다.", comment: "순이익은 높은데 영업활동 현금흐름이 마이너스라면 '이익의 질'을 의심해야 합니다. 실제 현금이 들어오지 않는 이익은 회계상 숫자에 불과할 수 있습니다." },
+  invCash: { up: "투자를 줄이고 있는 상태입니다. 자산 매각을 통해 단기적으로 현금을 확보하고 있을 수 있습니다.", down: "설비나 기술에 적극적으로 투자하고 있는 상태입니다. 미래 성장을 준비하고 있습니다.", comment: "투자활동 현금흐름이 마이너스(-)라고 나쁜 것이 아닙니다. 적극적으로 설비에 투자하는 기업은 미래 매출 성장을 준비하고 있는 것이니, 영업이익과 매출 추세를 함께 보세요." },
+  finCash: { up: "외부에서 자금을 조달하고 있는 상태입니다. 대출이나 주식 발행이 원인일 수 있습니다.", down: "대출을 상환하고 있는 상태입니다. 배당이나 자사주 매입으로 주주에게 환원하고 있을 수도 있습니다.", comment: "재무활동에서 마이너스가 크다면 빚을 갚거나 주주에게 환원 중인 것입니다. 건전한 기업일수록 본업으로 번 돈을 재무활동에서 나눠주는 패턴을 보입니다." },
+  netChange: { up: "일정 기간 동안 현금 보유량이 늘어나고 있는 상태입니다. 유동성이 확보되고 있습니다.", down: "현금 유출이 유입보다 큰 상태입니다. 단기적으로 유동성이 부족해질 수 있으니 주의가 필요합니다.", comment: "현금 증감이 마이너스여도 투자 때문이라면 걱정할 필요 없습니다. 문제는 영업에서도 돈을 못 벌면서 현금이 줄어드는 경우이니, 영업활동 현금흐름과 함께 판단하세요." },
   // 심화 밸류에이션
   evEbitda: { up: "기업 가치가 영업이익 대비 높아져, 시장에서 프리미엄을 받고 있는 상태입니다.", down: "기업 가치가 영업이익 대비 낮아져, 시장에서 저평가되고 있는 상태입니다.", comment: "보통 10~20 사이면 적정 수준으로 보지만, 동종 업계 경쟁사들과 비교해 적절한가 여부를 판단하는 것이 정확합니다." },
   pe: { up: "이익 대비 주가가 높게 거래되고 있어, 시장의 기대가 반영된 고평가 상태입니다.", down: "이익 대비 주가가 낮게 거래되고 있어, 시장의 관심이 줄어든 저평가 상태입니다.", comment: "심화 PER 추세는 핵심 밸류에이션의 PER과 동일한 지표입니다. 추세가 급격히 변했다면 이익 변동보다 주가 변동이 원인일 수 있으니 주가 차트와 함께 확인하세요." },
-  peg: { up: "성장률 대비 주가가 비싸게 거래되고 있어, 기대가 과도하게 반영된 상태일 수 있습니다.", down: "성장률에 비해 주가가 저렴하게 거래되고 있어, 저평가된 성장주일 가능성이 있습니다.", comment: "성장주의 경우 높은 PER을 정당화시켜주는 지표입니다. 성장 기업이라면 투자 전 꼭 확인해야 할 지표입니다." },
-  opMargin: { up: "매출 대비 영업이익의 비중이 늘어나, 본업의 운영 효율성이 개선되고 있습니다.", down: "경쟁 심화나 비용 증가로 인해 매출 대비 영업이익 비중이 줄어들고 있습니다.", comment: "비율이 높을수록 업계에서 독점적인 지위를 가졌거나 비용 관리를 잘 하고 있다는 뜻입니다. 동종 경쟁사와 한번 비교해보세요." },
-  netMargin: { up: "매출 대비 최종 이익의 비중이 늘어나, 전반적인 재무 건전성이 좋아지고 있습니다.", down: "금융비용이나 세금 부담 증가로 매출 대비 최종 이익 비중이 줄어들고 있습니다.", comment: "영업 이익률과 차이가 너무 크다면(5% 이상) 영업 외 이익이나 비용이 과도하지 않은지 점검해야 합니다." },
+  peg: { up: "성장률 대비 주가가 비싸게 거래되고 있는 상태입니다. 기대가 과도하게 반영되어 있을 수 있습니다.", down: "성장률에 비해 주가가 저렴하게 거래되고 있는 상태입니다. 저평가된 성장주일 가능성이 있습니다.", comment: "성장주의 경우 높은 PER을 정당화시켜주는 지표입니다. 성장 기업이라면 투자 전 꼭 확인해야 할 지표입니다." },
+  opMargin: { up: "매출 대비 영업이익의 비중이 늘어나고 있는 상태입니다. 본업의 운영 효율성이 개선되고 있습니다.", down: "매출 대비 영업이익 비중이 줄어들고 있는 상태입니다. 경쟁 심화나 비용 증가가 원인일 수 있습니다.", comment: "비율이 높을수록 업계에서 독점적인 지위를 가졌거나 비용 관리를 잘 하고 있다는 뜻입니다. 동종 경쟁사와 한번 비교해보세요." },
+  netMargin: { up: "매출 대비 최종 이익의 비중이 늘어나고 있는 상태입니다. 전반적인 재무 건전성이 좋아지고 있습니다.", down: "매출 대비 최종 이익 비중이 줄어들고 있는 상태입니다. 금융비용이나 세금 부담 증가가 원인일 수 있습니다.", comment: "영업 이익률과 차이가 너무 크다면(5% 이상) 영업 외 이익이나 비용이 과도하지 않은지 점검해야 합니다." },
   // 주주환원
-  sharesQ: { up: "유상증자나 스톡옵션 행사로 시장에 유통되는 주식 수가 늘어나, 기존 주주의 지분율이 희석되고 있습니다.", down: "자사주 매입 및 소각을 통해 주식 수가 줄어들고 있어, 주주 친화적인 정책을 시행하고 있습니다.", comment: "주식 수가 꾸준히 줄어드는 것(우하향)이 주주 친화적인 기업입니다." },
-  sharesY: { up: "유상증자나 스톡옵션 행사로 연간 기준 발행 주식 수가 늘어나고 있는 상태입니다.", down: "자사주 매입 및 소각으로 연간 기준 주식 수가 줄어들어 주주 가치가 높아지고 있습니다.", comment: "주식 수가 꾸준히 줄어드는 것(우하향)이 주주 친화적인 기업입니다." },
+  sharesQ: { up: "시장에 유통되는 주식 수가 늘어나고 있는 상태입니다. 유상증자나 스톡옵션 행사가 원인이며, 기존 주주의 지분율이 희석됩니다.", down: "자사주 매입 및 소각을 통해 주식 수가 줄어들고 있는 상태입니다. 주주 친화적인 정책을 시행하고 있습니다.", comment: "주식 수가 꾸준히 줄어드는 것(우하향)이 주주 친화적인 기업입니다." },
+  sharesY: { up: "연간 기준 발행 주식 수가 늘어나고 있는 상태입니다. 유상증자나 스톡옵션 행사가 원인일 수 있습니다.", down: "연간 기준 주식 수가 줄어들고 있는 상태입니다. 자사주 매입 및 소각으로 주주 가치가 높아지고 있습니다.", comment: "주식 수가 꾸준히 줄어드는 것(우하향)이 주주 친화적인 기업입니다." },
 };
 
 function PriceChart({ ticker, dailyChange, onPeriodChange }) {
@@ -1526,20 +1600,155 @@ function UsageNotice({ message, onClose }) {
   );
 }
 
-// ─── Briefing Page (Coming Soon) ─────────────────────────────────
+// ─── Briefing Page (Newsletter Archive + Subscribe) ──────────────
 function BriefingPage() {
-  return (
-    <div className="content-area">
-      <div className="coming-soon fade-up">
-        <div className="coming-soon-icon">🗞️</div>
-        <h3>호두 브리핑</h3>
-        <p>매일 아침, 시장 핵심 이슈를 한눈에 정리해드립니다.<br />곧 업데이트될 예정이니 조금만 기다려주세요!</p>
-        <div style={{ marginTop: 24, display: "flex", gap: 8, justifyContent: "center", flexWrap: "wrap" }}>
-          {["오늘의 시장 요약", "섹터별 이슈", "실적 캘린더"].map(tag => (
-            <span key={tag} style={{ padding: "6px 14px", borderRadius: 20, border: "1px solid var(--border)", background: "white", fontSize: 12, fontWeight: 600, color: "var(--text-secondary)" }}>{tag}</span>
+  const [email, setEmail] = useState("");
+  const [subStatus, setSubStatus] = useState(null); // null | "loading" | "success" | "error"
+  const [subMsg, setSubMsg] = useState("");
+  const [newsletters, setNewsletters] = useState([]);
+  const [loadingNL, setLoadingNL] = useState(true);
+  const [selectedNL, setSelectedNL] = useState(null);
+
+  // Fetch newsletters from API
+  useEffect(() => {
+    setLoadingNL(true);
+    fetch("/api/briefing")
+      .then(r => r.json())
+      .then(d => { if (Array.isArray(d)) setNewsletters(d); })
+      .catch(() => {})
+      .finally(() => setLoadingNL(false));
+  }, []);
+
+  const handleSubscribe = async () => {
+    if (!email || !email.includes("@")) {
+      setSubStatus("error");
+      setSubMsg("올바른 이메일을 입력해주세요.");
+      return;
+    }
+    setSubStatus("loading");
+    try {
+      const res = await fetch("/api/subscribe", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email }),
+      });
+      const data = await res.json();
+      if (res.ok) {
+        setSubStatus("success");
+        setSubMsg("구독 신청이 완료되었습니다! 매일 아침 뉴스 브리핑을 보내드릴게요.");
+        setEmail("");
+      } else {
+        setSubStatus("error");
+        setSubMsg(data.error || "구독 신청에 실패했습니다.");
+      }
+    } catch {
+      setSubStatus("error");
+      setSubMsg("네트워크 오류가 발생했습니다.");
+    }
+  };
+
+  // Detail view
+  if (selectedNL) {
+    return (
+      <div className="content-area">
+        <div className="newsletter-detail fade-up">
+          <button className="newsletter-detail-back" onClick={() => setSelectedNL(null)}>← 목록으로</button>
+          <div className="newsletter-detail-date">{selectedNL.date}</div>
+          <div className="newsletter-detail-title">{selectedNL.title || "호두 브리핑"}</div>
+          {selectedNL.imageUrl && (
+            <div style={{ marginBottom: 20, textAlign: "center" }}>
+              <img src={selectedNL.imageUrl} alt="오늘의 만화" style={{ maxWidth: "100%", borderRadius: 12, border: "1px solid var(--border)" }} />
+            </div>
+          )}
+          {selectedNL.overallInsight && (
+            <div className="newsletter-detail-insight">
+              <strong>🍟 오늘의 인사이트</strong><br />{selectedNL.overallInsight}
+            </div>
+          )}
+          {(selectedNL.articles || []).map((a, i) => (
+            <div className="newsletter-article" key={i}>
+              <h4><span style={{ color: "#A67B5B" }}>{i + 1}.</span> {a.title}</h4>
+              <p>{a.summary}</p>
+              {a.interpretation && <div className="interp"><strong>💡 해석</strong><br />{a.interpretation}</div>}
+              {a.link && a.link !== "#" && (
+                <a href={a.link} target="_blank" rel="noopener noreferrer"
+                  style={{ display: "inline-block", marginTop: 8, fontSize: 12, color: "var(--accent-blue)", fontWeight: 600 }}>
+                  원본 뉴스 보기 →
+                </a>
+              )}
+            </div>
           ))}
         </div>
       </div>
+    );
+  }
+
+  return (
+    <div className="content-area">
+      {/* Hero */}
+      <div className="briefing-hero fade-up">
+        <h2>🥜 호두 브리핑</h2>
+        <p>매일 아침, 시장 핵심 이슈를 한눈에 정리해드립니다.<br />복잡한 경제 뉴스를 10분 안에 읽을 수 있도록.</p>
+      </div>
+
+      {/* Subscribe Box */}
+      <div className="subscribe-box fade-up fade-up-d1">
+        <h3>📬 호두레터 구독하기</h3>
+        <p>이메일을 입력하시면 매일 아침 뉴스 브리핑을 보내드립니다.</p>
+        <div className="subscribe-form">
+          <input
+            className="subscribe-input"
+            type="email"
+            placeholder="이메일 주소 입력"
+            value={email}
+            onChange={e => { setEmail(e.target.value); setSubStatus(null); }}
+            onKeyDown={e => { if (e.key === "Enter") handleSubscribe(); }}
+          />
+          <button className="subscribe-btn" onClick={handleSubscribe} disabled={subStatus === "loading"}>
+            {subStatus === "loading" ? "처리중..." : "구독하기"}
+          </button>
+        </div>
+        {subMsg && <div className={`subscribe-msg ${subStatus}`}>{subMsg}</div>}
+      </div>
+
+      {/* Newsletter Archive */}
+      <div className="section-header fade-up fade-up-d2" style={{ marginBottom: 20 }}>
+        <div>
+          <div className="section-title">지난 브리핑</div>
+          <div className="section-subtitle">매일 발행되는 호두레터를 다시 읽어보세요</div>
+        </div>
+      </div>
+
+      {loadingNL ? (
+        <div className="empty-state fade-up">
+          <div style={{ fontSize: 40, animation: "pulse 1.5s infinite" }}>⏳</div>
+          <p style={{ marginTop: 12, color: "var(--text-tertiary)" }}>브리핑을 불러오는 중...</p>
+          <style>{`@keyframes pulse { 0%,100% { opacity:1; } 50% { opacity:0.4; } }`}</style>
+        </div>
+      ) : newsletters.length === 0 ? (
+        <div className="empty-state fade-up">
+          <div style={{ fontSize: 48, marginBottom: 12 }}>📭</div>
+          <h3>아직 발행된 브리핑이 없습니다</h3>
+          <p style={{ color: "var(--text-tertiary)" }}>구독하시면 첫 번째 브리핑부터 받아보실 수 있어요!</p>
+        </div>
+      ) : (
+        <div className="newsletter-grid fade-up fade-up-d2">
+          {newsletters.map((nl, i) => (
+            <div className="newsletter-card" key={i} onClick={() => setSelectedNL(nl)}>
+              {nl.imageUrl ? (
+                <img className="newsletter-thumb" src={nl.imageUrl} alt={nl.title || nl.date} />
+              ) : (
+                <div className="newsletter-thumb-placeholder">🥜</div>
+              )}
+              <div className="newsletter-body">
+                <div className="newsletter-date">{nl.date}</div>
+                <div className="newsletter-title">{nl.title || "호두 브리핑"}</div>
+                <div className="newsletter-preview">{nl.overallInsight || ""}</div>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
