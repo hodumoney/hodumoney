@@ -63,17 +63,34 @@ export async function GET() {
       }
     } catch (e) {}
 
-    // 수동 게시글 추가/덮어쓰기
+    // 수동 게시글 추가/덮어쓰기 (확장 JSON 파싱)
     for (let i = 1; i < manualRows.length; i++) {
-      const [date, title, insight, content, imageUrl] = manualRows[i];
+      const [date, title, insight, contentOrJson, imageUrl] = manualRows[i];
       if (!date) continue;
+
+      let extended = {};
+      try {
+        const parsed = JSON.parse(contentOrJson);
+        if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
+          extended = parsed;
+        }
+      } catch (e) {
+        // contentOrJson is plain text content (legacy format)
+        extended = { content: contentOrJson || "" };
+      }
+
       byDate[date] = {
         ...(byDate[date] || { articles: [] }),
         date,
         title: title || `${date} 호두 브리핑`,
         overallInsight: insight || byDate[date]?.overallInsight || "",
-        content: content || "",
+        content: extended.content || "",
         imageUrl: imageUrl || byDate[date]?.imageUrl || null,
+        comicUrl: extended.comicUrl || null,
+        indices: extended.indices || {},
+        heatmaps: extended.heatmaps || {},
+        news: extended.news || [],
+        watchpoints: extended.watchpoints || [],
         isManual: true,
       };
     }
@@ -89,6 +106,11 @@ export async function GET() {
           overallInsight: g.overallInsight || "",
           content: g.content || "",
           imageUrl: g.imageUrl || null,
+          comicUrl: g.comicUrl || null,
+          indices: g.indices || {},
+          heatmaps: g.heatmaps || {},
+          news: g.news || [],
+          watchpoints: g.watchpoints || [],
           articles: g.articles || [],
           isManual: g.isManual || false,
         };
@@ -101,10 +123,11 @@ export async function GET() {
   }
 }
 
-// POST: 새 게시글 작성
+// POST: 새 게시글 작성 (확장된 7섹션 양식)
 export async function POST(request) {
   try {
-    const { date, title, overallInsight, content, imageUrl } = await request.json();
+    const body = await request.json();
+    const { date, title } = body;
     if (!date || !title) return Response.json({ error: "날짜와 제목은 필수입니다." }, { status: 400 });
 
     const sheetId = process.env.GOOGLE_SHEETS_ID;
@@ -125,10 +148,20 @@ export async function POST(request) {
       });
     }
 
+    // 확장된 데이터를 JSON으로 본문 필드에 저장
+    const extendedData = JSON.stringify({
+      indices: body.indices || {},
+      heatmaps: body.heatmaps || {},
+      comicUrl: body.comicUrl || "",
+      news: body.news || [],
+      watchpoints: body.watchpoints || [],
+      content: body.content || "",
+    });
+
     await sheets.spreadsheets.values.append({
       spreadsheetId: sheetId, range: "briefing_posts!A:E",
       valueInputOption: "USER_ENTERED",
-      requestBody: { values: [[date, title, overallInsight || "", content || "", imageUrl || ""]] },
+      requestBody: { values: [[date, title, body.overallInsight || "", extendedData, body.imageUrl || ""]] },
     });
 
     return Response.json({ success: true });
@@ -138,14 +171,24 @@ export async function POST(request) {
   }
 }
 
-// PUT: 게시글 수정
+// PUT: 게시글 수정 (확장된 7섹션 양식)
 export async function PUT(request) {
   try {
-    const { date, title, overallInsight, content, imageUrl } = await request.json();
+    const body = await request.json();
+    const { date, title } = body;
     if (!date) return Response.json({ error: "날짜가 필요합니다." }, { status: 400 });
 
     const sheetId = process.env.GOOGLE_SHEETS_ID;
     const sheets = getSheets(false);
+
+    const extendedData = JSON.stringify({
+      indices: body.indices || {},
+      heatmaps: body.heatmaps || {},
+      comicUrl: body.comicUrl || "",
+      news: body.news || [],
+      watchpoints: body.watchpoints || [],
+      content: body.content || "",
+    });
 
     const res = await sheets.spreadsheets.values.get({ spreadsheetId: sheetId, range: "briefing_posts!A:E" });
     const rows = res.data.values || [];
@@ -156,7 +199,7 @@ export async function PUT(request) {
         await sheets.spreadsheets.values.update({
           spreadsheetId: sheetId, range: `briefing_posts!A${i + 1}:E${i + 1}`,
           valueInputOption: "USER_ENTERED",
-          requestBody: { values: [[date, title || "", overallInsight || "", content || "", imageUrl || ""]] },
+          requestBody: { values: [[date, title || "", body.overallInsight || "", extendedData, body.imageUrl || ""]] },
         });
         found = true;
         break;
@@ -167,7 +210,7 @@ export async function PUT(request) {
       await sheets.spreadsheets.values.append({
         spreadsheetId: sheetId, range: "briefing_posts!A:E",
         valueInputOption: "USER_ENTERED",
-        requestBody: { values: [[date, title || "", overallInsight || "", content || "", imageUrl || ""]] },
+        requestBody: { values: [[date, title || "", body.overallInsight || "", extendedData, body.imageUrl || ""]] },
       });
     }
 
