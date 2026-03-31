@@ -85,23 +85,31 @@ export async function GET(request) {
       return "Nano Cap";
     };
 
-    // Dynamic global market cap rank via Yahoo screener
+    // Dynamic global market cap rank — 시총 상위 후보 종목을 직접 비교
     let capRank = null;
     if (overview.marketCap && overview.marketCap >= 100e9) {
       try {
         const UA = { "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36" };
-        const scrUrl = `https://query1.finance.yahoo.com/v1/finance/screener/predefined/saved?formatted=false&count=50&scrIds=most_actives_market_cap`;
-        const scrRes = await fetch(scrUrl, { headers: UA, cache: "no-store" }).catch(() => null);
-        if (scrRes?.ok) {
-          const scrData = await scrRes.json();
-          const quotes = scrData?.finance?.result?.[0]?.quotes || [];
-          if (quotes.length > 0) {
-            const sorted = quotes
-              .filter(q => q.marketCap)
-              .sort((a, b) => (b.marketCap || 0) - (a.marketCap || 0));
-            const idx = sorted.findIndex(q => q.symbol?.toUpperCase() === symbol);
-            if (idx >= 0) capRank = `글로벌 ${idx + 1}위`;
-          }
+        // 시총 상위 15 후보군 (순위가 자주 바뀌지 않으므로 후보만 유지)
+        const topSymbols = [
+          "AAPL", "MSFT", "NVDA", "GOOG", "AMZN", "META", "TSLA", "BRK-B",
+          "TSM", "AVGO", "LLY", "JPM", "WMT", "V", "UNH"
+        ];
+        // 검색한 종목이 후보군에 없으면 추가
+        const candidates = topSymbols.includes(symbol)
+          ? topSymbols
+          : [...topSymbols, symbol];
+
+        const quoteUrl = `https://query1.finance.yahoo.com/v7/finance/quote?symbols=${candidates.join(",")}&fields=marketCap,symbol`;
+        const quoteRes = await fetch(quoteUrl, { headers: UA, cache: "no-store" }).catch(() => null);
+        if (quoteRes?.ok) {
+          const quoteData = await quoteRes.json();
+          const quotes = quoteData?.quoteResponse?.result || [];
+          const sorted = quotes
+            .filter(q => q.marketCap && q.symbol)
+            .sort((a, b) => (b.marketCap || 0) - (a.marketCap || 0));
+          const idx = sorted.findIndex(q => q.symbol?.toUpperCase() === symbol);
+          if (idx >= 0 && idx < 15) capRank = `글로벌 ${idx + 1}위`;
         }
       } catch {}
     }
