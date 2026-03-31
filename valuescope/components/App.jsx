@@ -2164,31 +2164,32 @@ function PostEditor({ existing, onSave, onCancel, user }) {
   const fetchIndices = async () => {
     setLoadingIndices(true);
     try {
-      const res = await fetch("/api/market");
+      // 호두레터용: 어제(직전 거래일) 종가 + 전전일 대비 등락
+      const res = await fetch("/api/market/yesterday");
       if (!res.ok) throw new Error();
       const d = await res.json();
-      if (d.indicesUS) {
-        const usMap = { "S&P 500": null, "나스닥": null, "다우존스": null };
-        d.indicesUS.forEach(idx => { if (usMap.hasOwnProperty(idx.name)) usMap[idx.name] = idx; });
-        const dxy = d.econUS?.find(e => e.name?.includes("달러 인덱스"));
-        setIndicesUS([
-          usMap["S&P 500"] ? { name: "S&P 500", value: usMap["S&P 500"].value, change: usMap["S&P 500"].change, pct: usMap["S&P 500"].pct, up: usMap["S&P 500"].up } : defaultUS[0],
-          usMap["나스닥"] ? { name: "나스닥 100", value: usMap["나스닥"].value, change: usMap["나스닥"].change, pct: usMap["나스닥"].pct, up: usMap["나스닥"].up } : defaultUS[1],
-          usMap["다우존스"] ? { name: "다우존스", value: usMap["다우존스"].value, change: usMap["다우존스"].change, pct: usMap["다우존스"].pct, up: usMap["다우존스"].up } : defaultUS[2],
-          dxy ? { name: "달러인덱스", value: dxy.value, change: dxy.change || "", pct: dxy.pct || "", up: dxy.up || false } : defaultUS[3],
-        ]);
+
+      if (d.us) {
+        setIndicesUS(
+          defaultUS.map(def => {
+            const found = d.us.find(r => r.name === def.name);
+            return found || def;
+          })
+        );
       }
-      if (d.indicesKR) {
-        const krMap = { "코스피": null, "코스닥": null };
-        d.indicesKR.forEach(idx => { if (krMap.hasOwnProperty(idx.name)) krMap[idx.name] = idx; });
-        const usdkrw = d.econKR?.find(e => e.name?.includes("원/달러"));
-        setIndicesKR([
-          krMap["코스피"] ? { name: "코스피", value: krMap["코스피"].value, change: krMap["코스피"].change, pct: krMap["코스피"].pct, up: krMap["코스피"].up } : defaultKR[0],
-          krMap["코스닥"] ? { name: "코스닥", value: krMap["코스닥"].value, change: krMap["코스닥"].change, pct: krMap["코스닥"].pct, up: krMap["코스닥"].up } : defaultKR[1],
-          usdkrw ? { name: "원/달러 환율", value: usdkrw.value, change: usdkrw.change || "", pct: usdkrw.pct || "", up: usdkrw.up || false } : defaultKR[2],
-        ]);
+      if (d.kr) {
+        setIndicesKR(
+          defaultKR.map(def => {
+            const found = d.kr.find(r => r.name === def.name);
+            return found || def;
+          })
+        );
       }
-    } catch { alert("지수 데이터를 불러올 수 없습니다."); }
+      // 거래일 날짜를 자동 세팅 (새 게시글일 때만)
+      if (d.tradingDate && !existing) {
+        setDate(d.tradingDate);
+      }
+    } catch { alert("어제 시장 데이터를 불러올 수 없습니다."); }
     finally { setLoadingIndices(false); }
   };
 
@@ -2259,23 +2260,25 @@ function PostEditor({ existing, onSave, onCancel, user }) {
           <span className="es-num">②</span> 주요 지수 현황
           <button className="post-btn secondary" onClick={fetchIndices} disabled={loadingIndices}
             style={{ marginLeft: "auto", padding: "5px 12px", fontSize: 12 }}>
-            {loadingIndices ? "불러오는 중..." : "🔄 실시간 데이터 불러오기"}
+            {loadingIndices ? "불러오는 중..." : "🔄 어제 시장 데이터 불러오기"}
           </button>
         </div>
         <div style={{ fontSize: 12, fontWeight: 700, color: "var(--text-secondary)", marginBottom: 8 }}>🇺🇸 미국 증시</div>
         {indicesUS.map((row, i) => (
-          <div key={i} className="editor-index-grid" style={{ marginBottom: 8 }}>
+          <div key={i} className="editor-index-grid" style={{ marginBottom: 8, gridTemplateColumns: "1fr 1fr 1fr 1fr" }}>
             <div className="editor-index-item"><label>지수명</label><input value={row.name} onChange={e => updateIndex(indicesUS, setIndicesUS, i, "name", e.target.value)} /></div>
             <div className="editor-index-item"><label>종가</label><input value={row.value} onChange={e => updateIndex(indicesUS, setIndicesUS, i, "value", e.target.value)} placeholder="5,300.00" /></div>
             <div className="editor-index-item"><label>등락</label><input value={row.change} onChange={e => updateIndex(indicesUS, setIndicesUS, i, "change", e.target.value)} placeholder="+14.4" /></div>
+            <div className="editor-index-item"><label>등락률</label><input value={row.pct} onChange={e => updateIndex(indicesUS, setIndicesUS, i, "pct", e.target.value)} placeholder="+0.3%" /></div>
           </div>
         ))}
         <div style={{ fontSize: 12, fontWeight: 700, color: "var(--text-secondary)", marginBottom: 8, marginTop: 14 }}>🇰🇷 한국 증시</div>
         {indicesKR.map((row, i) => (
-          <div key={i} className="editor-index-grid" style={{ marginBottom: 8 }}>
+          <div key={i} className="editor-index-grid" style={{ marginBottom: 8, gridTemplateColumns: "1fr 1fr 1fr 1fr" }}>
             <div className="editor-index-item"><label>지수명</label><input value={row.name} onChange={e => updateIndex(indicesKR, setIndicesKR, i, "name", e.target.value)} /></div>
             <div className="editor-index-item"><label>종가</label><input value={row.value} onChange={e => updateIndex(indicesKR, setIndicesKR, i, "value", e.target.value)} placeholder="2,726.68" /></div>
             <div className="editor-index-item"><label>등락</label><input value={row.change} onChange={e => updateIndex(indicesKR, setIndicesKR, i, "change", e.target.value)} placeholder="+3.22" /></div>
+            <div className="editor-index-item"><label>등락률</label><input value={row.pct} onChange={e => updateIndex(indicesKR, setIndicesKR, i, "pct", e.target.value)} placeholder="+0.1%" /></div>
           </div>
         ))}
       </div>
