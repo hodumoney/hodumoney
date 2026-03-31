@@ -511,7 +511,7 @@ const styles = `
   .newsletter-title { font-size: 15px; font-weight: 700; color: var(--text-primary); line-height: 1.4; margin-bottom: 8px; letter-spacing: -0.3px; }
   .newsletter-preview { font-size: 13px; color: var(--text-secondary); line-height: 1.5; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
 
-  .newsletter-detail { background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 28px; }
+  .newsletter-detail { background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 0; overflow: hidden; }
   .newsletter-detail-back {
     display: inline-flex; align-items: center; gap: 6px; font-size: 13px; font-weight: 600;
     color: var(--text-secondary); cursor: pointer; margin-bottom: 20px; padding: 6px 12px;
@@ -519,6 +519,78 @@ const styles = `
     transition: background 0.15s;
   }
   .newsletter-detail-back:hover { background: var(--border); }
+
+  /* ── 호두레터 이메일 양식 디테일 ── */
+  .nl-header { background: #5D4037; color: white; padding: 28px 32px; text-align: center; }
+  .nl-header-logo { font-size: 28px; margin-bottom: 6px; }
+  .nl-header-title { font-size: 20px; font-weight: 800; letter-spacing: -0.4px; margin-bottom: 4px; }
+  .nl-header-date { font-size: 13px; opacity: 0.8; font-weight: 500; }
+  .nl-body { padding: 28px 32px; }
+  @media (max-width: 768px) { .nl-body { padding: 20px 16px; } .nl-header { padding: 24px 16px; } }
+
+  .nl-section { margin-bottom: 28px; }
+  .nl-section-title { font-size: 16px; font-weight: 800; color: #5D4037; margin-bottom: 14px; display: flex; align-items: center; gap: 8px; letter-spacing: -0.3px; }
+  .nl-section-title::after { content: ''; flex: 1; height: 1px; background: #E8DDD4; }
+
+  /* 지수 현황 테이블 */
+  .nl-index-table { width: 100%; border-collapse: collapse; font-size: 13px; margin-bottom: 8px; }
+  .nl-index-table th { background: #f1f3f5; padding: 10px 12px; font-weight: 700; font-size: 12px; text-align: center; border: 1px solid #E5E8EB; color: var(--text-secondary); }
+  .nl-index-table td { padding: 10px 12px; text-align: center; border: 1px solid #E5E8EB; font-weight: 600; font-variant-numeric: tabular-nums; }
+  .nl-index-table td:first-child { text-align: left; font-weight: 700; color: var(--text-primary); background: #FAFBFC; }
+  .nl-index-label { font-size: 12px; font-weight: 700; color: var(--text-secondary); margin-bottom: 8px; display: flex; align-items: center; gap: 6px; }
+
+  /* 히트맵 */
+  .nl-heatmap-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  @media (max-width: 768px) { .nl-heatmap-grid { grid-template-columns: 1fr; } }
+  .nl-heatmap-item { border-radius: 10px; overflow: hidden; border: 1px solid var(--border); }
+  .nl-heatmap-item img { width: 100%; display: block; }
+  .nl-heatmap-label { font-size: 12px; font-weight: 700; color: var(--text-secondary); padding: 8px 12px; background: #f8f9fa; text-align: center; }
+
+  /* 인사이트 */
+  .nl-insight-box { padding: 18px 22px; background: #FFF8F0; border-left: 4px solid #A67B5B; border-radius: 0 8px 8px 0; font-size: 15px; line-height: 1.8; color: #5D4037; font-weight: 500; }
+
+  /* 만화 */
+  .nl-comic { text-align: center; }
+  .nl-comic img { max-width: 100%; border-radius: 12px; border: 1px solid var(--border); }
+
+  /* 뉴스 아이템 */
+  .nl-news-item { margin-bottom: 20px; padding-bottom: 20px; border-bottom: 1px solid #F2F3F5; }
+  .nl-news-item:last-child { border-bottom: none; padding-bottom: 0; }
+  .nl-news-num { display: inline-flex; align-items: center; justify-content: center; width: 26px; height: 26px; border-radius: 50%; background: #A67B5B; color: white; font-size: 13px; font-weight: 800; margin-right: 10px; flex-shrink: 0; vertical-align: middle; }
+  .nl-news-title { font-size: 16px; font-weight: 700; color: var(--text-primary); line-height: 1.5; margin-bottom: 10px; display: inline; }
+  .nl-news-summary { font-size: 14px; line-height: 1.75; color: var(--text-secondary); margin-bottom: 10px; }
+  .nl-news-interp { padding: 14px 18px; background: #FFF8F0; border-left: 3px solid #A67B5B; border-radius: 0 6px 6px 0; font-size: 13px; line-height: 1.7; color: #6b4c2a; margin-bottom: 10px; }
+  .nl-news-link { display: inline-flex; align-items: center; gap: 4px; font-size: 12px; color: #A67B5B; font-weight: 700; text-decoration: none; padding: 6px 14px; border: 1px solid #D7C4B0; border-radius: 6px; transition: all 0.15s; }
+  .nl-news-link:hover { background: #FFF8F0; border-color: #A67B5B; }
+
+  /* 관전 포인트 */
+  .nl-watchpoint { display: flex; align-items: flex-start; gap: 10px; margin-bottom: 10px; font-size: 14px; line-height: 1.7; color: var(--text-primary); }
+  .nl-watchpoint:last-child { margin-bottom: 0; }
+  .nl-watchpoint-icon { flex-shrink: 0; font-size: 16px; margin-top: 2px; }
+
+  /* ── Enhanced Editor ── */
+  .editor-section { background: #FAFBFC; border: 1px solid var(--border); border-radius: 12px; padding: 20px; margin-bottom: 16px; }
+  .editor-section-title { font-size: 14px; font-weight: 700; color: #5D4037; margin-bottom: 14px; display: flex; align-items: center; gap: 8px; }
+  .editor-section-title .es-num { display: inline-flex; align-items: center; justify-content: center; width: 22px; height: 22px; border-radius: 50%; background: #A67B5B; color: white; font-size: 11px; font-weight: 800; }
+  .editor-news-item { background: white; border: 1px solid var(--border); border-radius: 10px; padding: 16px; margin-bottom: 10px; }
+  .editor-news-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
+  .editor-news-num { font-size: 13px; font-weight: 700; color: #A67B5B; }
+  .editor-remove-btn { background: none; border: none; color: var(--accent-red); font-size: 18px; cursor: pointer; padding: 2px 6px; border-radius: 4px; }
+  .editor-remove-btn:hover { background: var(--accent-red-light); }
+  .editor-add-btn { display: flex; align-items: center; justify-content: center; gap: 6px; width: 100%; padding: 10px; border: 2px dashed var(--border); border-radius: 10px; background: none; font-size: 13px; font-weight: 600; color: var(--text-tertiary); cursor: pointer; font-family: inherit; transition: all 0.15s; }
+  .editor-add-btn:hover { border-color: #A67B5B; color: #A67B5B; background: #FFF8F0; }
+  .editor-watchpoint-row { display: flex; gap: 8px; margin-bottom: 8px; align-items: center; }
+  .editor-watchpoint-row input { flex: 1; }
+  .editor-image-slot { display: flex; flex-direction: column; align-items: center; gap: 8px; padding: 20px; border: 2px dashed var(--border); border-radius: 10px; cursor: pointer; transition: all 0.15s; text-align: center; }
+  .editor-image-slot:hover { border-color: #A67B5B; background: #FFF8F0; }
+  .editor-image-slot img { max-width: 100%; max-height: 200px; object-fit: contain; border-radius: 8px; }
+  .editor-index-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; }
+  @media (max-width: 768px) { .editor-index-grid { grid-template-columns: 1fr 1fr; } }
+  .editor-index-item { display: flex; flex-direction: column; gap: 4px; }
+  .editor-index-item label { font-size: 11px; font-weight: 600; color: var(--text-tertiary); }
+  .editor-index-item input { padding: 7px 10px; border: 1px solid var(--border); border-radius: 6px; font-size: 13px; font-family: inherit; outline: none; }
+  .editor-index-item input:focus { border-color: var(--accent-blue); }
+
   .newsletter-detail-date { font-size: 13px; color: var(--text-tertiary); margin-bottom: 8px; }
   .newsletter-detail-title { font-size: 22px; font-weight: 800; letter-spacing: -0.5px; margin-bottom: 20px; }
   .newsletter-detail-insight { padding: 16px 20px; background: #FFF8F0; border-left: 3px solid #A67B5B; border-radius: 6px; margin-bottom: 24px; font-size: 14px; line-height: 1.7; color: #5D4037; }
@@ -1762,45 +1834,159 @@ function BriefingPage({ user }) {
     } catch {}
   };
 
-  // Detail view
+  // Detail view — 이메일과 동일한 7섹션 양식
   if (selectedNL) {
+    const indices = selectedNL.indices || {};
+    const heatmaps = selectedNL.heatmaps || {};
+    const news = selectedNL.news || selectedNL.articles || [];
+    const watchpoints = selectedNL.watchpoints || [];
+    const hasIndices = Object.keys(indices).length > 0;
+    const hasHeatmaps = heatmaps.sp500 || heatmaps.kospi;
+    const hasNews = news.length > 0;
+    const hasWatchpoints = watchpoints.length > 0;
+    const comicUrl = selectedNL.comicUrl || null;
+
     return (
       <div className="content-area">
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
+          <button className="newsletter-detail-back" onClick={() => setSelectedNL(null)}>← 목록으로</button>
+          {isAdmin && (
+            <div style={{ display: "flex", gap: 6 }}>
+              <button className="post-btn secondary" onClick={() => handleEdit(selectedNL)} style={{ padding: "6px 14px", fontSize: 12 }}>✏️ 수정</button>
+              <button className="post-btn danger" onClick={() => handleDelete(selectedNL)} style={{ padding: "6px 14px", fontSize: 12 }}>🗑 삭제</button>
+            </div>
+          )}
+        </div>
+
         <div className="newsletter-detail fade-up">
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-            <button className="newsletter-detail-back" onClick={() => setSelectedNL(null)}>← 목록으로</button>
-            {isAdmin && (
-              <div style={{ display: "flex", gap: 6 }}>
-                <button className="post-btn secondary" onClick={() => handleEdit(selectedNL)} style={{ padding: "6px 14px", fontSize: 12 }}>✏️ 수정</button>
-                <button className="post-btn danger" onClick={() => handleDelete(selectedNL)} style={{ padding: "6px 14px", fontSize: 12 }}>🗑 삭제</button>
+          {/* 1. 헤더 */}
+          <div className="nl-header">
+            <div className="nl-header-logo">🥜</div>
+            <div className="nl-header-title">{selectedNL.title || "HODU MONEY 모닝 뉴스"}</div>
+            <div className="nl-header-date">{selectedNL.date}</div>
+          </div>
+
+          <div className="nl-body">
+            {/* 2. 주요 지수 현황 */}
+            {hasIndices && (
+              <div className="nl-section">
+                <div className="nl-section-title">📈 주요 지수 현황</div>
+                <div className="nl-index-label">🇺🇸 미국 증시</div>
+                <table className="nl-index-table" style={{ marginBottom: 14 }}>
+                  <thead><tr><th>지수</th><th>종가</th><th>등락</th><th>등락률</th></tr></thead>
+                  <tbody>
+                    {(indices.us || []).map((row, i) => (
+                      <tr key={i}>
+                        <td>{row.name}</td>
+                        <td>{row.value}</td>
+                        <td style={{ color: row.up ? "var(--accent-red)" : "var(--accent-blue)", fontWeight: 700 }}>{row.change}</td>
+                        <td style={{ color: row.up ? "var(--accent-red)" : "var(--accent-blue)", fontWeight: 700 }}>{row.pct}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+                <div className="nl-index-label">🇰🇷 한국 증시</div>
+                <table className="nl-index-table">
+                  <thead><tr><th>지수</th><th>종가</th><th>등락</th><th>등락률</th></tr></thead>
+                  <tbody>
+                    {(indices.kr || []).map((row, i) => (
+                      <tr key={i}>
+                        <td>{row.name}</td>
+                        <td>{row.value}</td>
+                        <td style={{ color: row.up ? "var(--accent-red)" : "var(--accent-blue)", fontWeight: 700 }}>{row.change}</td>
+                        <td style={{ color: row.up ? "var(--accent-red)" : "var(--accent-blue)", fontWeight: 700 }}>{row.pct}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+
+            {/* 3. 히트맵 */}
+            {hasHeatmaps && (
+              <div className="nl-section">
+                <div className="nl-section-title">🗺️ 히트맵</div>
+                <div className="nl-heatmap-grid">
+                  {heatmaps.sp500 && (
+                    <div className="nl-heatmap-item">
+                      <div className="nl-heatmap-label">S&P 500 히트맵</div>
+                      <img src={heatmaps.sp500} alt="S&P500 히트맵" />
+                    </div>
+                  )}
+                  {heatmaps.kospi && (
+                    <div className="nl-heatmap-item">
+                      <div className="nl-heatmap-label">코스피 히트맵</div>
+                      <img src={heatmaps.kospi} alt="코스피 히트맵" />
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* 4. 오늘의 전체 인사이트 */}
+            {selectedNL.overallInsight && (
+              <div className="nl-section">
+                <div className="nl-section-title">💡 오늘의 인사이트</div>
+                <div className="nl-insight-box">{selectedNL.overallInsight}</div>
+              </div>
+            )}
+
+            {/* 5. 만화 이미지 */}
+            {comicUrl && (
+              <div className="nl-section">
+                <div className="nl-section-title">🎨 오늘의 한컷</div>
+                <div className="nl-comic">
+                  <img src={comicUrl} alt="오늘의 만화" />
+                </div>
+              </div>
+            )}
+
+            {/* 본문 (수동 입력 content) */}
+            {selectedNL.content && (
+              <div className="nl-section">
+                <div style={{ fontSize: 15, lineHeight: 1.8, color: "var(--text-primary)", whiteSpace: "pre-wrap" }}>{selectedNL.content}</div>
+              </div>
+            )}
+
+            {/* 6. 경제 뉴스 TOP 5 */}
+            {hasNews && (
+              <div className="nl-section">
+                <div className="nl-section-title">📰 오늘의 경제 뉴스 TOP {news.length}</div>
+                {news.map((a, i) => (
+                  <div className="nl-news-item" key={i}>
+                    <div style={{ marginBottom: 10 }}>
+                      <span className="nl-news-num">{i + 1}</span>
+                      <span className="nl-news-title">{a.title}</span>
+                    </div>
+                    {a.summary && <div className="nl-news-summary">{a.summary}</div>}
+                    {a.interpretation && (
+                      <div className="nl-news-interp">
+                        <strong>💡 해석</strong><br />{a.interpretation}
+                      </div>
+                    )}
+                    {a.link && a.link !== "#" && (
+                      <a href={a.link} target="_blank" rel="noopener noreferrer" className="nl-news-link">
+                        📎 원본 뉴스 보기
+                      </a>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* 7. 관전 포인트 */}
+            {hasWatchpoints && (
+              <div className="nl-section">
+                <div className="nl-section-title">📌 오늘의 관전 포인트</div>
+                {watchpoints.map((wp, i) => (
+                  <div className="nl-watchpoint" key={i}>
+                    <span className="nl-watchpoint-icon">📌</span>
+                    <span>{wp}</span>
+                  </div>
+                ))}
               </div>
             )}
           </div>
-          <div className="newsletter-detail-date">{selectedNL.date}</div>
-          <div className="newsletter-detail-title">{selectedNL.title || "호두 브리핑"}</div>
-          {selectedNL.imageUrl && (
-            <div style={{ marginBottom: 20, textAlign: "center" }}>
-              <img src={selectedNL.imageUrl} alt="브리핑 이미지" style={{ maxWidth: "100%", borderRadius: 12, border: "1px solid var(--border)" }} />
-            </div>
-          )}
-          {selectedNL.overallInsight && (
-            <div className="newsletter-detail-insight">
-              <strong>🍟 오늘의 인사이트</strong><br />{selectedNL.overallInsight}
-            </div>
-          )}
-          {selectedNL.content && (
-            <div style={{ fontSize: 15, lineHeight: 1.8, color: "var(--text-primary)", marginBottom: 24, whiteSpace: "pre-wrap" }}>{selectedNL.content}</div>
-          )}
-          {(selectedNL.articles || []).map((a, i) => (
-            <div className="newsletter-article" key={i}>
-              <h4><span style={{ color: "#A67B5B" }}>{i + 1}.</span> {a.title}</h4>
-              <p>{a.summary}</p>
-              {a.interpretation && <div className="interp"><strong>💡 해석</strong><br />{a.interpretation}</div>}
-              {a.link && a.link !== "#" && (
-                <a href={a.link} target="_blank" rel="noopener noreferrer" style={{ display: "inline-block", marginTop: 8, fontSize: 12, color: "var(--accent-blue)", fontWeight: 600 }}>원본 뉴스 보기 →</a>
-              )}
-            </div>
-          ))}
         </div>
       </div>
     );
@@ -1902,36 +2088,121 @@ function BriefingPage({ user }) {
   );
 }
 
-// ─── Post Editor (Admin Only) ─────────────────────────────────────
+// ─── Post Editor (Admin Only) — 이메일 양식 7섹션 에디터 ─────────
 function PostEditor({ existing, onSave, onCancel, user }) {
   const [title, setTitle] = useState(existing?.title || "");
   const [date, setDate] = useState(existing?.date || new Date().toISOString().split("T")[0]);
   const [overallInsight, setOverallInsight] = useState(existing?.overallInsight || "");
   const [content, setContent] = useState(existing?.content || "");
-  const [imageUrl, setImageUrl] = useState(existing?.imageUrl || "");
-  const [uploading, setUploading] = useState(false);
+  const [comicUrl, setComicUrl] = useState(existing?.comicUrl || "");
   const [saving, setSaving] = useState(false);
-  const fileInputRef = useRef(null);
 
-  const handleImageUpload = async (e) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    if (file.size > 5 * 1024 * 1024) { alert("파일 크기는 5MB 이하여야 합니다."); return; }
+  // 지수 데이터
+  const emptyIndex = { name: "", value: "", change: "", pct: "", up: false };
+  const defaultUS = [
+    { name: "S&P 500", value: "", change: "", pct: "", up: false },
+    { name: "나스닥 100", value: "", change: "", pct: "", up: false },
+    { name: "다우존스", value: "", change: "", pct: "", up: false },
+    { name: "달러인덱스", value: "", change: "", pct: "", up: false },
+  ];
+  const defaultKR = [
+    { name: "코스피", value: "", change: "", pct: "", up: false },
+    { name: "코스닥", value: "", change: "", pct: "", up: false },
+    { name: "원/달러 환율", value: "", change: "", pct: "", up: false },
+  ];
+  const [indicesUS, setIndicesUS] = useState(existing?.indices?.us || defaultUS);
+  const [indicesKR, setIndicesKR] = useState(existing?.indices?.kr || defaultKR);
 
-    setUploading(true);
+  // 히트맵
+  const [heatmapSP, setHeatmapSP] = useState(existing?.heatmaps?.sp500 || "");
+  const [heatmapKospi, setHeatmapKospi] = useState(existing?.heatmaps?.kospi || "");
+
+  // 뉴스 (최대 5개)
+  const emptyNews = { title: "", summary: "", interpretation: "", link: "" };
+  const [news, setNews] = useState(
+    existing?.news?.length > 0 ? existing.news :
+    existing?.articles?.length > 0 ? existing.articles :
+    [{ ...emptyNews }]
+  );
+
+  // 관전포인트
+  const [watchpoints, setWatchpoints] = useState(
+    existing?.watchpoints?.length > 0 ? existing.watchpoints : [""]
+  );
+
+  const [uploading, setUploading] = useState({});
+  const fileRefs = useRef({});
+
+  const uploadImage = async (file, folder, key) => {
+    if (!file) return "";
+    if (file.size > 5 * 1024 * 1024) { alert("파일 크기는 5MB 이하여야 합니다."); return ""; }
+    setUploading(prev => ({ ...prev, [key]: true }));
     try {
       const { ref, uploadBytes, getDownloadURL } = await import("firebase/storage");
       const storage = await getFirebaseStorage();
-      const fileName = `briefing/${date}_${Date.now()}_${file.name}`;
+      const fileName = `${folder}/${date}_${Date.now()}_${file.name}`;
       const storageRef = ref(storage, fileName);
       await uploadBytes(storageRef, file);
-      const url = await getDownloadURL(storageRef);
-      setImageUrl(url);
+      return await getDownloadURL(storageRef);
     } catch (err) {
-      alert("이미지 업로드에 실패했습니다: " + err.message);
+      alert("이미지 업로드 실패: " + err.message);
+      return "";
     } finally {
-      setUploading(false);
+      setUploading(prev => ({ ...prev, [key]: false }));
     }
+  };
+
+  const handleImageSelect = async (e, setter, key) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const url = await uploadImage(file, "briefing", key);
+    if (url) setter(url);
+  };
+
+  // 지수 자동 불러오기
+  const [loadingIndices, setLoadingIndices] = useState(false);
+  const fetchIndices = async () => {
+    setLoadingIndices(true);
+    try {
+      const res = await fetch("/api/market");
+      if (!res.ok) throw new Error();
+      const d = await res.json();
+      if (d.indicesUS) {
+        const usMap = { "S&P 500": null, "나스닥": null, "다우존스": null };
+        d.indicesUS.forEach(idx => { if (usMap.hasOwnProperty(idx.name)) usMap[idx.name] = idx; });
+        const dxy = d.econUS?.find(e => e.name?.includes("달러 인덱스"));
+        setIndicesUS([
+          usMap["S&P 500"] ? { name: "S&P 500", value: usMap["S&P 500"].value, change: usMap["S&P 500"].change, pct: usMap["S&P 500"].pct, up: usMap["S&P 500"].up } : defaultUS[0],
+          usMap["나스닥"] ? { name: "나스닥 100", value: usMap["나스닥"].value, change: usMap["나스닥"].change, pct: usMap["나스닥"].pct, up: usMap["나스닥"].up } : defaultUS[1],
+          usMap["다우존스"] ? { name: "다우존스", value: usMap["다우존스"].value, change: usMap["다우존스"].change, pct: usMap["다우존스"].pct, up: usMap["다우존스"].up } : defaultUS[2],
+          dxy ? { name: "달러인덱스", value: dxy.value, change: dxy.change || "", pct: dxy.pct || "", up: dxy.up || false } : defaultUS[3],
+        ]);
+      }
+      if (d.indicesKR) {
+        const krMap = { "코스피": null, "코스닥": null };
+        d.indicesKR.forEach(idx => { if (krMap.hasOwnProperty(idx.name)) krMap[idx.name] = idx; });
+        const usdkrw = d.econKR?.find(e => e.name?.includes("원/달러"));
+        setIndicesKR([
+          krMap["코스피"] ? { name: "코스피", value: krMap["코스피"].value, change: krMap["코스피"].change, pct: krMap["코스피"].pct, up: krMap["코스피"].up } : defaultKR[0],
+          krMap["코스닥"] ? { name: "코스닥", value: krMap["코스닥"].value, change: krMap["코스닥"].change, pct: krMap["코스닥"].pct, up: krMap["코스닥"].up } : defaultKR[1],
+          usdkrw ? { name: "원/달러 환율", value: usdkrw.value, change: usdkrw.change || "", pct: usdkrw.pct || "", up: usdkrw.up || false } : defaultKR[2],
+        ]);
+      }
+    } catch { alert("지수 데이터를 불러올 수 없습니다."); }
+    finally { setLoadingIndices(false); }
+  };
+
+  const updateIndex = (arr, setter, idx, field, val) => {
+    const copy = [...arr];
+    copy[idx] = { ...copy[idx], [field]: val };
+    if (field === "change") copy[idx].up = !val.startsWith("-");
+    setter(copy);
+  };
+
+  const updateNews = (idx, field, val) => {
+    const copy = [...news];
+    copy[idx] = { ...copy[idx], [field]: val };
+    setNews(copy);
   };
 
   const handleSave = async () => {
@@ -1939,8 +2210,17 @@ function PostEditor({ existing, onSave, onCancel, user }) {
     setSaving(true);
     try {
       const body = {
-        date, title: title.trim(), overallInsight: overallInsight.trim(),
-        content: content.trim(), imageUrl, isManual: true,
+        date,
+        title: title.trim(),
+        overallInsight: overallInsight.trim(),
+        content: content.trim(),
+        imageUrl: comicUrl || heatmapSP || heatmapKospi || "",
+        comicUrl,
+        indices: { us: indicesUS.filter(r => r.value), kr: indicesKR.filter(r => r.value) },
+        heatmaps: { sp500: heatmapSP, kospi: heatmapKospi },
+        news: news.filter(n => n.title.trim()),
+        watchpoints: watchpoints.filter(w => w.trim()),
+        isManual: true,
       };
       const res = await fetch("/api/briefing", {
         method: existing ? "PUT" : "POST",
@@ -1955,42 +2235,141 @@ function PostEditor({ existing, onSave, onCancel, user }) {
 
   return (
     <div className="post-editor fade-up">
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
         <h3 style={{ margin: 0 }}>{existing ? "게시글 수정" : "새 게시글 작성"}</h3>
         <span className="admin-badge">👑 관리자</span>
       </div>
 
-      <div className="post-field">
-        <label>날짜</label>
-        <input type="date" value={date} onChange={e => setDate(e.target.value)} />
-      </div>
-      <div className="post-field">
-        <label>제목</label>
-        <input type="text" placeholder="게시글 제목" value={title} onChange={e => setTitle(e.target.value)} />
-      </div>
-      <div className="post-field">
-        <label>오늘의 인사이트 (요약)</label>
-        <textarea placeholder="전체 흐름을 2~3문장으로 요약" value={overallInsight} onChange={e => setOverallInsight(e.target.value)} rows={3} />
-      </div>
-      <div className="post-field">
-        <label>본문 내용</label>
-        <textarea placeholder="게시글 본문을 작성하세요" value={content} onChange={e => setContent(e.target.value)} rows={10} />
-      </div>
-      <div className="post-field">
-        <label>대표 이미지</label>
-        <div className="post-image-upload" onClick={() => fileInputRef.current?.click()}>
-          <span style={{ fontSize: 24 }}>📷</span>
-          <span style={{ fontSize: 14, color: "var(--text-secondary)" }}>
-            {uploading ? "업로드 중..." : "클릭하여 이미지 업로드 (최대 5MB)"}
-          </span>
+      {/* 기본 정보 */}
+      <div className="editor-section">
+        <div className="editor-section-title"><span className="es-num">①</span> 기본 정보</div>
+        <div className="post-field">
+          <label>날짜</label>
+          <input type="date" value={date} onChange={e => setDate(e.target.value)} />
         </div>
-        <input ref={fileInputRef} type="file" accept="image/*" style={{ display: "none" }} onChange={handleImageUpload} />
-        {imageUrl && <img className="post-image-preview" src={imageUrl} alt="미리보기" />}
-        {imageUrl && (
-          <button onClick={() => setImageUrl("")} style={{ marginTop: 6, fontSize: 12, color: "var(--accent-red)", background: "none", border: "none", cursor: "pointer", fontFamily: "inherit" }}>
-            이미지 제거
+        <div className="post-field">
+          <label>제목</label>
+          <input type="text" placeholder="예: 🥜 HODU MONEY 모닝 뉴스" value={title} onChange={e => setTitle(e.target.value)} />
+        </div>
+      </div>
+
+      {/* 2. 지수 현황 */}
+      <div className="editor-section">
+        <div className="editor-section-title">
+          <span className="es-num">②</span> 주요 지수 현황
+          <button className="post-btn secondary" onClick={fetchIndices} disabled={loadingIndices}
+            style={{ marginLeft: "auto", padding: "5px 12px", fontSize: 12 }}>
+            {loadingIndices ? "불러오는 중..." : "🔄 실시간 데이터 불러오기"}
+          </button>
+        </div>
+        <div style={{ fontSize: 12, fontWeight: 700, color: "var(--text-secondary)", marginBottom: 8 }}>🇺🇸 미국 증시</div>
+        {indicesUS.map((row, i) => (
+          <div key={i} className="editor-index-grid" style={{ marginBottom: 8 }}>
+            <div className="editor-index-item"><label>지수명</label><input value={row.name} onChange={e => updateIndex(indicesUS, setIndicesUS, i, "name", e.target.value)} /></div>
+            <div className="editor-index-item"><label>종가</label><input value={row.value} onChange={e => updateIndex(indicesUS, setIndicesUS, i, "value", e.target.value)} placeholder="5,300.00" /></div>
+            <div className="editor-index-item"><label>등락</label><input value={row.change} onChange={e => updateIndex(indicesUS, setIndicesUS, i, "change", e.target.value)} placeholder="+14.4" /></div>
+          </div>
+        ))}
+        <div style={{ fontSize: 12, fontWeight: 700, color: "var(--text-secondary)", marginBottom: 8, marginTop: 14 }}>🇰🇷 한국 증시</div>
+        {indicesKR.map((row, i) => (
+          <div key={i} className="editor-index-grid" style={{ marginBottom: 8 }}>
+            <div className="editor-index-item"><label>지수명</label><input value={row.name} onChange={e => updateIndex(indicesKR, setIndicesKR, i, "name", e.target.value)} /></div>
+            <div className="editor-index-item"><label>종가</label><input value={row.value} onChange={e => updateIndex(indicesKR, setIndicesKR, i, "value", e.target.value)} placeholder="2,726.68" /></div>
+            <div className="editor-index-item"><label>등락</label><input value={row.change} onChange={e => updateIndex(indicesKR, setIndicesKR, i, "change", e.target.value)} placeholder="+3.22" /></div>
+          </div>
+        ))}
+      </div>
+
+      {/* 3. 히트맵 */}
+      <div className="editor-section">
+        <div className="editor-section-title"><span className="es-num">③</span> 히트맵 이미지</div>
+        <div className="nl-heatmap-grid">
+          <div>
+            <div style={{ fontSize: 12, fontWeight: 700, color: "var(--text-secondary)", marginBottom: 6 }}>S&P 500 히트맵</div>
+            <div className="editor-image-slot" onClick={() => fileRefs.current.heatSP?.click()}>
+              {uploading.heatSP ? <span>업로드 중...</span> : heatmapSP ? <img src={heatmapSP} alt="SP500" /> : <><span style={{ fontSize: 24 }}>🗺️</span><span style={{ fontSize: 12, color: "var(--text-tertiary)" }}>클릭하여 업로드</span></>}
+            </div>
+            <input ref={el => fileRefs.current.heatSP = el} type="file" accept="image/*" style={{ display: "none" }} onChange={e => handleImageSelect(e, setHeatmapSP, "heatSP")} />
+            {heatmapSP && <button onClick={() => setHeatmapSP("")} style={{ marginTop: 4, fontSize: 11, color: "var(--accent-red)", background: "none", border: "none", cursor: "pointer", fontFamily: "inherit" }}>제거</button>}
+          </div>
+          <div>
+            <div style={{ fontSize: 12, fontWeight: 700, color: "var(--text-secondary)", marginBottom: 6 }}>코스피 히트맵</div>
+            <div className="editor-image-slot" onClick={() => fileRefs.current.heatKR?.click()}>
+              {uploading.heatKR ? <span>업로드 중...</span> : heatmapKospi ? <img src={heatmapKospi} alt="KOSPI" /> : <><span style={{ fontSize: 24 }}>🗺️</span><span style={{ fontSize: 12, color: "var(--text-tertiary)" }}>클릭하여 업로드</span></>}
+            </div>
+            <input ref={el => fileRefs.current.heatKR = el} type="file" accept="image/*" style={{ display: "none" }} onChange={e => handleImageSelect(e, setHeatmapKospi, "heatKR")} />
+            {heatmapKospi && <button onClick={() => setHeatmapKospi("")} style={{ marginTop: 4, fontSize: 11, color: "var(--accent-red)", background: "none", border: "none", cursor: "pointer", fontFamily: "inherit" }}>제거</button>}
+          </div>
+        </div>
+      </div>
+
+      {/* 4. 인사이트 */}
+      <div className="editor-section">
+        <div className="editor-section-title"><span className="es-num">④</span> 오늘의 인사이트</div>
+        <div className="post-field" style={{ marginBottom: 0 }}>
+          <textarea placeholder="오늘 시장의 전체 흐름을 2~3문장으로 요약해주세요." value={overallInsight} onChange={e => setOverallInsight(e.target.value)} rows={3} />
+        </div>
+      </div>
+
+      {/* 5. 만화 이미지 */}
+      <div className="editor-section">
+        <div className="editor-section-title"><span className="es-num">⑤</span> 오늘의 한컷 (만화)</div>
+        <div className="editor-image-slot" onClick={() => fileRefs.current.comic?.click()}>
+          {uploading.comic ? <span>업로드 중...</span> : comicUrl ? <img src={comicUrl} alt="만화" /> : <><span style={{ fontSize: 24 }}>🎨</span><span style={{ fontSize: 12, color: "var(--text-tertiary)" }}>클릭하여 만화 이미지 업로드 (최대 5MB)</span></>}
+        </div>
+        <input ref={el => fileRefs.current.comic = el} type="file" accept="image/*" style={{ display: "none" }} onChange={e => handleImageSelect(e, setComicUrl, "comic")} />
+        {comicUrl && <button onClick={() => setComicUrl("")} style={{ marginTop: 4, fontSize: 11, color: "var(--accent-red)", background: "none", border: "none", cursor: "pointer", fontFamily: "inherit" }}>제거</button>}
+      </div>
+
+      {/* 6. 경제 뉴스 */}
+      <div className="editor-section">
+        <div className="editor-section-title"><span className="es-num">⑥</span> 오늘의 경제 뉴스 TOP 5</div>
+        {news.map((n, i) => (
+          <div className="editor-news-item" key={i}>
+            <div className="editor-news-header">
+              <span className="editor-news-num">뉴스 #{i + 1}</span>
+              {news.length > 1 && <button className="editor-remove-btn" onClick={() => setNews(news.filter((_, j) => j !== i))}>✕</button>}
+            </div>
+            <div className="post-field"><label>제목</label><input placeholder="뉴스 제목" value={n.title} onChange={e => updateNews(i, "title", e.target.value)} /></div>
+            <div className="post-field"><label>요약 (평어체)</label><textarea placeholder="~했다, ~이다 형태로 요약" value={n.summary} onChange={e => updateNews(i, "summary", e.target.value)} rows={2} /></div>
+            <div className="post-field"><label>해석 (경어체)</label><textarea placeholder="~합니다, ~될 것으로 보입니다 형태의 해석" value={n.interpretation} onChange={e => updateNews(i, "interpretation", e.target.value)} rows={2} /></div>
+            <div className="post-field" style={{ marginBottom: 0 }}><label>원본 링크</label><input placeholder="https://..." value={n.link} onChange={e => updateNews(i, "link", e.target.value)} /></div>
+          </div>
+        ))}
+        {news.length < 7 && (
+          <button className="editor-add-btn" onClick={() => setNews([...news, { ...emptyNews }])}>
+            + 뉴스 추가
           </button>
         )}
+      </div>
+
+      {/* 7. 관전포인트 */}
+      <div className="editor-section">
+        <div className="editor-section-title"><span className="es-num">⑦</span> 오늘의 관전 포인트</div>
+        {watchpoints.map((wp, i) => (
+          <div className="editor-watchpoint-row" key={i}>
+            <span style={{ fontSize: 14 }}>📌</span>
+            <input className="post-field"
+              style={{ flex: 1, padding: "8px 12px", border: "1.5px solid var(--border)", borderRadius: 8, fontSize: 13, fontFamily: "inherit", outline: "none", marginBottom: 0 }}
+              placeholder={`관전 포인트 ${i + 1}`} value={wp}
+              onChange={e => { const c = [...watchpoints]; c[i] = e.target.value; setWatchpoints(c); }}
+            />
+            {watchpoints.length > 1 && <button className="editor-remove-btn" onClick={() => setWatchpoints(watchpoints.filter((_, j) => j !== i))}>✕</button>}
+          </div>
+        ))}
+        {watchpoints.length < 6 && (
+          <button className="editor-add-btn" onClick={() => setWatchpoints([...watchpoints, ""])}>
+            + 포인트 추가
+          </button>
+        )}
+      </div>
+
+      {/* 추가 본문 (선택) */}
+      <div className="editor-section">
+        <div className="editor-section-title">📝 추가 본문 (선택)</div>
+        <div className="post-field" style={{ marginBottom: 0 }}>
+          <textarea placeholder="추가로 본문에 넣고 싶은 내용이 있다면 작성하세요" value={content} onChange={e => setContent(e.target.value)} rows={5} />
+        </div>
       </div>
 
       <div className="post-actions">
