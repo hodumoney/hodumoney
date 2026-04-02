@@ -2842,11 +2842,11 @@ export default function App() {
           <div className="logo-text">HODU MONEY</div>
           <div className="logo-sub">투자를 쉽게 정리합니다</div>
         </div>
-        {/* 로그인/회원가입 */}
+        {/* 로그인 */}
         {user ? (
           <div style={{ padding: "12px 12px 4px" }}>
             <div className="auth-user">
-              <span>👤</span>
+              <span>🙂</span>
               <span className="auth-user-email">{user.name || user.email}</span>
               <button className="auth-logout" onClick={async () => {
                 try {
@@ -2864,7 +2864,7 @@ export default function App() {
         ) : (
           <div style={{ padding: "12px 12px 4px" }}>
             <div className="sidebar-item" onClick={() => setShowAuth("login")} style={{ background: "#5D4037", color: "white", borderRadius: "var(--radius-sm)", justifyContent: "center", fontWeight: 700 }}>
-              <span className="item-icon">👤</span><span>로그인 / 회원가입</span>
+              <span className="item-icon">🔐</span><span>Google로 로그인</span>
             </div>
             <div style={{ fontSize: 11, color: "var(--text-tertiary)", textAlign: "center", marginTop: 6, lineHeight: 1.4 }}>
               로그인하면 관심종목을 등록할 수 있어요
@@ -2908,7 +2908,7 @@ export default function App() {
           )}
           {user && (
             <div style={{ fontSize: 13, fontWeight: 600, color: "var(--text-secondary)", display: "flex", alignItems: "center", gap: 6 }}>
-              <span>👤</span> {user.name || user.email.split("@")[0]}
+              <span>🙂</span> {user.name || user.email.split("@")[0]}
             </div>
           )}
         </div>
