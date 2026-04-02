@@ -151,6 +151,21 @@ async function buildMacroIndicators() {
     : (usFallback ? `${usFallback.value.toFixed(2)}%` : FALLBACK_RATES.us.value);
   const usRateDate = usHigh?.date || usLow?.date || usFallback?.date || "";
 
+  // 그래프용 히스토리: FRED 상한 금리 시리즈에서 최근 12개 포인트 추출
+  const usRateHistory = [];
+  const histSource = usRateHighSeries.length > 0 ? usRateHighSeries : (usRateFallback.length > 0 ? usRateFallback : usRateLowSeries);
+  if (histSource.length > 0) {
+    const step = Math.max(1, Math.floor(histSource.length / 12));
+    for (let i = 0; i < histSource.length; i += step) {
+      usRateHistory.push({ label: toYm(histSource[i].date), value: histSource[i].value });
+    }
+    const last = histSource[histSource.length - 1];
+    const lastLabel = toYm(last.date);
+    if (!usRateHistory.length || usRateHistory[usRateHistory.length - 1].label !== lastLabel) {
+      usRateHistory.push({ label: lastLabel, value: last.value });
+    }
+  }
+
   return {
     us: [
       {
@@ -159,6 +174,7 @@ async function buildMacroIndicators() {
         status: usRateDate ? `${toYm(usRateDate)} 발표` : FALLBACK_RATES.us.status,
         statusColor: "var(--text-tertiary)",
         isStatic: true,
+        history: usRateHistory,
       },
     ],
     kr: [
@@ -168,6 +184,7 @@ async function buildMacroIndicators() {
         status: krRateLive?.status || FALLBACK_RATES.kr.status,
         statusColor: "var(--text-tertiary)",
         isStatic: true,
+        history: [],
       },
     ],
   };
