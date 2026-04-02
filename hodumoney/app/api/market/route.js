@@ -55,67 +55,6 @@ function toYm(dateStr) {
   return `${d.getFullYear()}.${String(d.getMonth() + 1).padStart(2, "0")}`;
 }
 
-async function fetchFredSeries(seriesId) {
-  try {
-    const url = `https://fred.stlouisfed.org/graph/fredgraph.csv?id=${encodeURIComponent(seriesId)}`;
-    const res = await fetch(url, { cache: "no-store" });
-    if (!res.ok) return [];
-
-    const text = await res.text();
-    const lines = text.trim().split("\n");
-    if (lines.length < 2) return [];
-
-    return lines
-      .slice(1)
-      .map((line) => {
-        const [date, value] = line.split(",");
-        const n = Number(value);
-        if (!date || !Number.isFinite(n)) return null;
-        return { date, value: n };
-      })
-      .filter(Boolean);
-  } catch {
-    return [];
-  }
-}
-
-function latestPoint(series) {
-  return series.length ? series[series.length - 1] : null;
-}
-
-
-async function fetchKrBaseRateFromBok() {
-  try {
-    const res = await fetch("https://www.bok.or.kr/eng/main/main.do", {
-      headers: UA,
-      cache: "no-store",
-    });
-    if (!res.ok) return null;
-
-    const html = await res.text();
-    const rateMatch = html.match(/BOK\s*Base\s*Rate\s*([0-9]+(?:\.[0-9]+)?)\s*%/i)
-      || html.match(/Base\s*Rate[^0-9]{0,40}([0-9]+(?:\.[0-9]+)?)\s*%/i);
-
-    // Example: Monetary Policy Decision(February 26, 2026)
-    const dateMatch = html.match(/Monetary\s*Policy\s*Decision\(([^)]+)\)/i);
-
-    if (!rateMatch) return null;
-    const value = `${Number(rateMatch[1]).toFixed(2)}%`;
-
-    let status = "BOK 실시간";
-    if (dateMatch?.[1]) {
-      const d = new Date(dateMatch[1]);
-      if (Number.isFinite(d.getTime())) {
-        status = `${d.getFullYear()}.${String(d.getMonth() + 1).padStart(2, "0")} 발표`;
-      }
-    }
-
-    return { value, status };
-  } catch {
-    return null;
-  }
-}
-
 // 기준금리는 거의 안 바뀌므로 하드코딩 (FOMC/금통위 결정 후 수동 업데이트)
 // 미국: 3.50% - 3.75% (2026.03 동결), 한국: 2.50% (2026.02 동결)
 const FALLBACK_RATES = {
