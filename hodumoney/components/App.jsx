@@ -1816,14 +1816,14 @@ function WatchlistPage({ user, onLogin, onSearch, watchlist, addToWatchlist, rem
   }, [watchlist.length]);
 
   const ReturnBadge = ({ val, label }) => {
-    if (val === null || val === undefined) return <div style={{ textAlign: "center" }}><div style={{ fontSize: 10, color: "var(--text-tertiary)", marginBottom: 2 }}>{label}</div><div style={{ fontSize: 12, color: "var(--text-tertiary)" }}>-</div></div>;
+    if (val === null || val === undefined) return <div style={{ textAlign: "center", width: 52 }}><div style={{ fontSize: 10, color: "var(--text-tertiary)", marginBottom: 2 }}>{label}</div><div style={{ fontSize: 12, color: "var(--text-tertiary)" }}>-</div></div>;
     const up = val > 0, down = val < 0;
     const color = up ? "#c0392b" : down ? "#2980b9" : "var(--text-tertiary)";
     const bg = up ? "#FFF0F1" : down ? "#EBF3FE" : "#F5F6F8";
     return (
-      <div style={{ textAlign: "center" }}>
+      <div style={{ textAlign: "center", width: 52 }}>
         <div style={{ fontSize: 10, color: "var(--text-tertiary)", marginBottom: 2 }}>{label}</div>
-        <div style={{ fontSize: 12, fontWeight: 700, color, background: bg, borderRadius: 4, padding: "2px 6px", whiteSpace: "nowrap" }}>
+        <div style={{ fontSize: 11, fontWeight: 700, color, background: bg, borderRadius: 4, padding: "2px 4px", textAlign: "center", fontVariantNumeric: "tabular-nums" }}>
           {up ? "+" : ""}{val.toFixed(1)}%
         </div>
       </div>
@@ -1888,7 +1888,7 @@ function WatchlistPage({ user, onLogin, onSearch, watchlist, addToWatchlist, rem
                   <div style={{ fontSize: 12, color: "var(--text-tertiary)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{w.name}</div>
                 </div>
                 {/* 현재가 */}
-                <div style={{ width: 90, textAlign: "right" }}>
+                <div style={{ width: 110, textAlign: "right", flexShrink: 0 }}>
                   {sd?.price ? (
                     <div style={{ fontSize: 15, fontWeight: 700, fontVariantNumeric: "tabular-nums" }}>
                       ${sd.price.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
@@ -1898,10 +1898,10 @@ function WatchlistPage({ user, onLogin, onSearch, watchlist, addToWatchlist, rem
                   )}
                 </div>
                 {/* 수익률 뱃지 */}
-                <ReturnBadge val={sd?.d1} label="1D" />
-                <ReturnBadge val={sd?.w1} label="1W" />
-                <ReturnBadge val={sd?.m1} label="1M" />
-                <ReturnBadge val={sd?.y1} label="1Y" />
+                <div style={{ width: 56, flexShrink: 0 }}><ReturnBadge val={sd?.d1} label="1D" /></div>
+                <div style={{ width: 56, flexShrink: 0 }}><ReturnBadge val={sd?.w1} label="1W" /></div>
+                <div style={{ width: 56, flexShrink: 0 }}><ReturnBadge val={sd?.m1} label="1M" /></div>
+                <div style={{ width: 56, flexShrink: 0 }}><ReturnBadge val={sd?.y1} label="1Y" /></div>
                 {/* 삭제 */}
                 <button onClick={(e) => { e.stopPropagation(); removeFromWatchlist(w.ticker); }}
                   style={{ background: "none", border: "none", color: "var(--text-tertiary)", fontSize: 16, cursor: "pointer", padding: "4px 8px", borderRadius: 6, transition: "all 0.15s", width: 32, textAlign: "center" }}
