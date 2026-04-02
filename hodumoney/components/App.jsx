@@ -139,13 +139,13 @@ const styles = `
     overflow-y: auto; z-index: 100; transition: transform 0.3s ease;
   }
   .sidebar-logo {
-    padding: 20px 24px 18px; display: flex; align-items: center; gap: 12px;
-    margin: 0 0 8px; border-bottom: 1px solid var(--border);
+    padding: 24px 24px 20px; display: flex; align-items: center; gap: 14px;
+    margin: 0 0 4px; border-bottom: 1px solid var(--border); cursor: pointer;
   }
   .sidebar-logo::before { display: none; }
   .sidebar-logo::after { display: none; }
-  .logo-text { font-size: 22px; font-weight: 800; color: var(--text-primary); letter-spacing: -0.8px; line-height: 1.2; }
-  .logo-sub { font-size: 10px; color: var(--text-tertiary); font-weight: 500; margin-top: 2px; letter-spacing: 0.2px; }
+  .logo-text { font-size: 20px; font-weight: 800; color: #5D4037; letter-spacing: -0.5px; line-height: 1.1; }
+  .logo-sub { font-size: 11px; color: var(--text-tertiary); font-weight: 500; margin-top: 3px; letter-spacing: 0.3px; }
   .sidebar-section { padding: 0 12px; margin-bottom: 8px; }
   .sidebar-section-label { font-size: 11px; font-weight: 600; color: var(--text-tertiary); text-transform: uppercase; letter-spacing: 0.5px; padding: 0 12px; margin-bottom: 6px; }
   .sidebar-item { display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-radius: var(--radius-sm); cursor: pointer; transition: all 0.15s ease; font-size: 14px; font-weight: 500; color: var(--text-secondary); position: relative; }
@@ -2572,27 +2572,16 @@ export default function App() {
       {showAuth && <AuthModal onClose={() => setShowAuth(null)} onLogin={(u) => setUser(u)} />}
 
       <aside className={`sidebar ${sidebarOpen ? "open" : ""}`}>
-        <div className="sidebar-logo">
-          <div style={{ width: 42, height: 42, borderRadius: 10, background: "linear-gradient(135deg, #5D4037, #795548)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 22, flexShrink: 0 }}>🥜</div>
+        <div className="sidebar-logo" onClick={() => handlePageChange("market")}>
+          <div style={{ width: 40, height: 40, borderRadius: 10, background: "linear-gradient(135deg, #5D4037, #795548)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 20, flexShrink: 0 }}>🥜</div>
           <div>
-            <div className="logo-text">호두머니</div>
-            <div className="logo-sub">©hodusolution</div>
+            <div className="logo-text">HODU MONEY</div>
+            <div className="logo-sub">투자를 쉽게 정리합니다</div>
           </div>
         </div>
-        <div className="sidebar-section">
-          <div className="sidebar-section-label">분석 도구</div>
-          {MENU_ITEMS.map(item => (
-            <div key={item.id} className={`sidebar-item ${activePage === item.id ? "active" : ""}`} onClick={() => handlePageChange(item.id)}>
-              <span className="item-icon">{item.icon}</span>
-              <span>{item.label}</span>
-              {item.id === "company" && <span className="badge-soon" style={{ background: "#FFF0F1", color: "#F04452" }}>유료</span>}
-              {item.id !== "company" && !item.ready && <span className="badge-soon">준비중</span>}
-            </div>
-          ))}
-        </div>
-        <div className="sidebar-divider" />
+        {/* 로그인/회원가입 — 로고 바로 아래 */}
         {user ? (
-          <div className="auth-user">
+          <div className="auth-user" style={{ margin: "8px 12px" }}>
             <span>👤</span>
             <span className="auth-user-email">{user.name || user.email}</span>
             <button className="auth-logout" onClick={async () => {
@@ -2605,12 +2594,24 @@ export default function App() {
             }}>로그아웃</button>
           </div>
         ) : (
-          <div style={{ padding: "0 12px 4px" }}>
-            <button className="auth-trigger" onClick={() => setShowAuth("login")}>
+          <div style={{ padding: "8px 12px 4px" }}>
+            <button className="auth-trigger" onClick={() => setShowAuth("login")} style={{ background: "#5D4037", color: "white", borderRadius: 8, padding: "10px 12px", width: "100%", fontWeight: 700, fontSize: 13 }}>
               <span>👤</span><span>로그인 / 회원가입</span>
             </button>
           </div>
         )}
+        <div className="sidebar-divider" />
+        <div className="sidebar-section">
+          <div className="sidebar-section-label">분석 도구</div>
+          {MENU_ITEMS.map(item => (
+            <div key={item.id} className={`sidebar-item ${activePage === item.id ? "active" : ""}`} onClick={() => handlePageChange(item.id)}>
+              <span className="item-icon">{item.icon}</span>
+              <span>{item.label}</span>
+              {item.id === "company" && <span className="badge-soon" style={{ background: "#FFF0F1", color: "#F04452" }}>유료</span>}
+              {item.id !== "company" && !item.ready && <span className="badge-soon">준비중</span>}
+            </div>
+          ))}
+        </div>
         <div className="sidebar-divider" />
         <div className="sidebar-section">
           <div className="sidebar-section-label">정보</div>
