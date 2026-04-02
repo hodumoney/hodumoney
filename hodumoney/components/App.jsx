@@ -1877,17 +1877,6 @@ function WatchlistPage({ user, onLogin, onSearch, watchlist, addToWatchlist, rem
         <div className="fade-up fade-up-d1">
           {loading && <div style={{ textAlign: "center", padding: 20, color: "var(--text-tertiary)", fontSize: 13 }}>시세 및 수익률 불러오는 중...</div>}
 
-          {/* 테이블 헤더 */}
-          <div style={{ display: "flex", alignItems: "center", padding: "0 20px 8px", gap: 12 }}>
-            <div style={{ flex: 1, fontSize: 11, fontWeight: 600, color: "var(--text-tertiary)" }}>종목</div>
-            <div style={{ width: 90, textAlign: "right", fontSize: 11, fontWeight: 600, color: "var(--text-tertiary)" }}>현재가</div>
-            <div style={{ width: 56, textAlign: "center", fontSize: 11, fontWeight: 600, color: "var(--text-tertiary)" }}>일간</div>
-            <div style={{ width: 56, textAlign: "center", fontSize: 11, fontWeight: 600, color: "var(--text-tertiary)" }}>주간</div>
-            <div style={{ width: 56, textAlign: "center", fontSize: 11, fontWeight: 600, color: "var(--text-tertiary)" }}>월간</div>
-            <div style={{ width: 56, textAlign: "center", fontSize: 11, fontWeight: 600, color: "var(--text-tertiary)" }}>1년</div>
-            <div style={{ width: 32 }} />
-          </div>
-
           {watchlist.map((w) => {
             const sd = stockData[w.ticker];
             return (
