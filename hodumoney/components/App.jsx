@@ -55,7 +55,7 @@ const MENU_ITEMS = [
   { id: "etf-compare", label: "ETF 비교 분석", icon: "⚖️", ready: false },
   { id: "correlation", label: "상관관계 분석", icon: "🔗", ready: false },
   { id: "backtest", label: "백테스트", icon: "⏪", ready: false },
-  { id: "watchlist", label: "관심 종목", icon: "⭐", ready: false },
+  { id: "watchlist", label: "관심 종목", icon: "⭐", ready: true },
 ];
 
 const INDICES_US = [
@@ -139,13 +139,14 @@ const styles = `
     overflow-y: auto; z-index: 100; transition: transform 0.3s ease;
   }
   .sidebar-logo {
-    padding: 28px 24px 22px; display: flex; flex-direction: column; gap: 2px;
-    margin: 0; border-bottom: 1px solid var(--border); cursor: pointer;
+    padding: 32px 24px 24px; display: flex; flex-direction: column; align-items: center; gap: 0;
+    margin: 0; border-bottom: 1px solid var(--border); cursor: pointer; text-align: center;
   }
   .sidebar-logo::before { display: none; }
   .sidebar-logo::after { display: none; }
-  .logo-text { font-size: 26px; font-weight: 900; color: #5D4037; letter-spacing: -1px; line-height: 1; }
-  .logo-sub { font-size: 11px; color: var(--text-tertiary); font-weight: 500; margin-top: 6px; letter-spacing: 0px; }
+  .logo-icon { font-size: 36px; margin-bottom: 8px; }
+  .logo-text { font-size: 28px; font-weight: 900; color: #5D4037; letter-spacing: -0.5px; line-height: 1; }
+  .logo-sub { font-size: 12px; color: var(--text-tertiary); font-weight: 500; margin-top: 8px; letter-spacing: 0.3px; }
   .sidebar-section { padding: 0 12px; margin-bottom: 8px; }
   .sidebar-section-label { font-size: 11px; font-weight: 600; color: var(--text-tertiary); text-transform: uppercase; letter-spacing: 0.5px; padding: 0 12px; margin-bottom: 6px; }
   .sidebar-item { display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-radius: var(--radius-sm); cursor: pointer; transition: all 0.15s ease; font-size: 14px; font-weight: 500; color: var(--text-secondary); position: relative; }
@@ -1715,6 +1716,168 @@ function ComingSoonPage({ icon, title }) {
   );
 }
 
+// ─── Watchlist Page (관심 종목) ──────────────────────────────────
+function WatchlistPage({ user, onLogin, onSearch }) {
+  const [watchlist, setWatchlist] = useState([]);
+  const [addTicker, setAddTicker] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [adding, setAdding] = useState(false);
+  const [prices, setPrices] = useState({});
+
+  // localStorage 키 (유저별)
+  const storageKey = user ? `watchlist_${user.uid}` : null;
+
+  // 관심종목 로드
+  useEffect(() => {
+    if (!storageKey) { setWatchlist([]); return; }
+    try {
+      const saved = localStorage.getItem(storageKey);
+      if (saved) setWatchlist(JSON.parse(saved));
+    } catch {}
+  }, [storageKey]);
+
+  // 관심종목 저장
+  const saveWatchlist = (list) => {
+    setWatchlist(list);
+    if (storageKey) {
+      try { localStorage.setItem(storageKey, JSON.stringify(list)); } catch {}
+    }
+  };
+
+  // 종목 추가
+  const handleAdd = async () => {
+    const ticker = addTicker.trim().toUpperCase();
+    if (!ticker || watchlist.some(w => w.ticker === ticker)) { setAddTicker(""); return; }
+    setAdding(true);
+    try {
+      const res = await fetch(`/api/stock?symbol=${encodeURIComponent(ticker)}`);
+      if (!res.ok) { alert("종목을 찾을 수 없습니다: " + ticker); setAdding(false); return; }
+      const data = await res.json();
+      const item = { ticker, name: data.name || ticker, addedAt: new Date().toISOString() };
+      saveWatchlist([...watchlist, item]);
+      setAddTicker("");
+      // 가격도 바로 저장
+      setPrices(prev => ({ ...prev, [ticker]: { price: data.price, change: data.dailyChange } }));
+    } catch { alert("종목 추가에 실패했습니다."); }
+    finally { setAdding(false); }
+  };
+
+  // 종목 삭제
+  const handleRemove = (ticker) => {
+    saveWatchlist(watchlist.filter(w => w.ticker !== ticker));
+  };
+
+  // 가격 일괄 조회
+  useEffect(() => {
+    if (watchlist.length === 0) return;
+    setLoading(true);
+    Promise.all(
+      watchlist.map(w =>
+        fetch(`/api/stock?symbol=${encodeURIComponent(w.ticker)}`)
+          .then(r => r.ok ? r.json() : null)
+          .catch(() => null)
+      )
+    ).then(results => {
+      const p = {};
+      results.forEach((data, i) => {
+        if (data) p[watchlist[i].ticker] = { price: data.price, change: data.dailyChange, marketCap: data.marketCap };
+      });
+      setPrices(p);
+    }).finally(() => setLoading(false));
+  }, [watchlist.length]);
+
+  // 비로그인
+  if (!user) {
+    return (
+      <div className="content-area">
+        <div className="coming-soon fade-up">
+          <div className="coming-soon-icon">⭐</div>
+          <h3>관심 종목</h3>
+          <p>로그인하면 관심 종목을 등록하고<br />한눈에 시세를 확인할 수 있어요.</p>
+          <button onClick={onLogin} style={{ marginTop: 20, padding: "12px 32px", background: "#5D4037", color: "white", border: "none", borderRadius: 10, fontSize: 15, fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }}>
+            로그인하기
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="content-area">
+      <div className="section-header section-header-distinct fade-up" style={{ marginBottom: 20 }}>
+        <div>
+          <div className="section-title">관심 종목</div>
+          <div className="section-subtitle">내가 등록한 종목의 시세를 한눈에 확인</div>
+        </div>
+      </div>
+
+      {/* 종목 추가 */}
+      <div className="card fade-up" style={{ padding: 16, marginBottom: 16 }}>
+        <div style={{ display: "flex", gap: 8 }}>
+          <input
+            type="text" placeholder="종목 티커 입력 (예: AAPL, MSFT)"
+            value={addTicker} onChange={e => setAddTicker(e.target.value)}
+            onKeyDown={e => { if (e.key === "Enter") handleAdd(); }}
+            style={{ flex: 1, padding: "10px 14px", border: "1.5px solid var(--border)", borderRadius: 10, fontSize: 14, fontFamily: "inherit", outline: "none" }}
+          />
+          <button onClick={handleAdd} disabled={adding}
+            style={{ padding: "10px 20px", background: "#5D4037", color: "white", border: "none", borderRadius: 10, fontSize: 14, fontWeight: 700, cursor: adding ? "not-allowed" : "pointer", fontFamily: "inherit", whiteSpace: "nowrap", opacity: adding ? 0.6 : 1 }}>
+            {adding ? "추가중..." : "+ 추가"}
+          </button>
+        </div>
+      </div>
+
+      {/* 종목 리스트 */}
+      {watchlist.length === 0 ? (
+        <div className="empty-state fade-up" style={{ paddingTop: 40 }}>
+          <div style={{ fontSize: 48, marginBottom: 12 }}>⭐</div>
+          <h3>아직 등록한 종목이 없습니다</h3>
+          <p style={{ color: "var(--text-tertiary)" }}>위 입력창에 티커를 입력해서 관심 종목을 추가해보세요.<br />예: AAPL, NVDA, TSLA, MSFT</p>
+        </div>
+      ) : (
+        <div className="fade-up fade-up-d1">
+          {loading && <div style={{ textAlign: "center", padding: 16, color: "var(--text-tertiary)", fontSize: 13 }}>시세 불러오는 중...</div>}
+          {watchlist.map((w, i) => {
+            const p = prices[w.ticker];
+            const changeVal = p?.change;
+            const up = changeVal > 0;
+            const down = changeVal < 0;
+            return (
+              <div className="card" key={w.ticker} style={{ padding: "16px 20px", marginBottom: 8, display: "flex", alignItems: "center", gap: 16, cursor: "pointer" }}
+                onClick={() => onSearch(w.ticker)}>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                    <span style={{ fontSize: 15, fontWeight: 700, color: "var(--text-primary)" }}>{w.ticker}</span>
+                    <span style={{ fontSize: 13, color: "var(--text-tertiary)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{w.name}</span>
+                  </div>
+                </div>
+                <div style={{ textAlign: "right", minWidth: 100 }}>
+                  {p ? (
+                    <>
+                      <div style={{ fontSize: 16, fontWeight: 700 }}>${typeof p.price === "number" ? p.price.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : p.price}</div>
+                      <div style={{ fontSize: 12, fontWeight: 600, color: up ? "var(--accent-red)" : down ? "var(--accent-blue)" : "var(--text-tertiary)" }}>
+                        {up ? "▲" : down ? "▼" : ""} {changeVal !== undefined ? `${Math.abs(changeVal).toFixed(2)}%` : "-"}
+                      </div>
+                    </>
+                  ) : (
+                    <div style={{ fontSize: 13, color: "var(--text-tertiary)" }}>-</div>
+                  )}
+                </div>
+                <button onClick={(e) => { e.stopPropagation(); handleRemove(w.ticker); }}
+                  style={{ background: "none", border: "none", color: "var(--text-tertiary)", fontSize: 16, cursor: "pointer", padding: "4px 8px", borderRadius: 6, transition: "all 0.15s" }}
+                  onMouseOver={e => { e.target.style.color = "var(--accent-red)"; e.target.style.background = "var(--accent-red-light)"; }}
+                  onMouseOut={e => { e.target.style.color = "var(--text-tertiary)"; e.target.style.background = "none"; }}>
+                  ✕
+                </button>
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ─── Paywall Modal ───────────────────────────────────────────────
 function PaywallModal({ usageCount, maxFree, onCodeSubmit, onClose }) {
   const [code, setCode] = useState("");
@@ -2573,28 +2736,37 @@ export default function App() {
 
       <aside className={`sidebar ${sidebarOpen ? "open" : ""}`}>
         <div className="sidebar-logo" onClick={() => handlePageChange("market")}>
-          <div className="logo-text">🥜 HODU MONEY</div>
+          <div className="logo-icon">🥜</div>
+          <div className="logo-text">HODU MONEY</div>
           <div className="logo-sub">투자를 쉽게 정리합니다</div>
         </div>
         {/* 로그인/회원가입 */}
         {user ? (
-          <div className="auth-user" style={{ margin: "10px 16px" }}>
-            <span>👤</span>
-            <span className="auth-user-email">{user.name || user.email}</span>
-            <button className="auth-logout" onClick={async () => {
-              try {
-                const { signOut } = await import("firebase/auth");
-                const auth = await getFirebaseAuth();
-                await signOut(auth);
-              } catch (e) {}
-              setUser(null);
-            }}>로그아웃</button>
+          <div style={{ padding: "12px 12px 4px" }}>
+            <div className="auth-user">
+              <span>👤</span>
+              <span className="auth-user-email">{user.name || user.email}</span>
+              <button className="auth-logout" onClick={async () => {
+                try {
+                  const { signOut } = await import("firebase/auth");
+                  const auth = await getFirebaseAuth();
+                  await signOut(auth);
+                } catch (e) {}
+                setUser(null);
+              }}>로그아웃</button>
+            </div>
+            <div style={{ fontSize: 11, color: "var(--text-tertiary)", textAlign: "center", marginTop: 6, lineHeight: 1.4 }}>
+              ⭐ 관심종목을 등록하고 한눈에 확인하세요
+            </div>
           </div>
         ) : (
-          <div style={{ padding: "10px 16px 4px" }}>
-            <button className="auth-trigger" onClick={() => setShowAuth("login")} style={{ background: "#5D4037", color: "white", borderRadius: 8, padding: "9px 0", width: "100%", fontWeight: 700, fontSize: 13, display: "flex", alignItems: "center", justifyContent: "center", gap: 6, border: "none", cursor: "pointer", fontFamily: "inherit" }}>
-              <span>👤</span><span>로그인 / 회원가입</span>
-            </button>
+          <div style={{ padding: "12px 12px 4px" }}>
+            <div className="sidebar-item" onClick={() => setShowAuth("login")} style={{ background: "#5D4037", color: "white", borderRadius: "var(--radius-sm)", justifyContent: "center", fontWeight: 700 }}>
+              <span className="item-icon">👤</span><span>로그인 / 회원가입</span>
+            </div>
+            <div style={{ fontSize: 11, color: "var(--text-tertiary)", textAlign: "center", marginTop: 6, lineHeight: 1.4 }}>
+              로그인하면 관심종목을 등록할 수 있어요
+            </div>
           </div>
         )}
         <div className="sidebar-divider" />
@@ -2650,7 +2822,7 @@ export default function App() {
         {activePage === "etf-compare" && <ComingSoonPage icon="⚖️" title="ETF 비교 분석" />}
         {activePage === "correlation" && <ComingSoonPage icon="🔗" title="상관관계 분석" />}
         {activePage === "backtest" && <ComingSoonPage icon="⏪" title="백테스트" />}
-        {activePage === "watchlist" && <ComingSoonPage icon="⭐" title="관심 종목" />}
+        {activePage === "watchlist" && <WatchlistPage user={user} onLogin={() => setShowAuth("login")} onSearch={(ticker) => { setSearchedTicker(ticker); setActivePage("company"); }} />}
       </main>
     </div>
   );
