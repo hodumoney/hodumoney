@@ -125,8 +125,11 @@ const FALLBACK_RATES = {
 
 async function fetchFredSeries(seriesId) {
   try {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 4000);
     const url = `https://fred.stlouisfed.org/graph/fredgraph.csv?id=${encodeURIComponent(seriesId)}`;
-    const res = await fetch(url, { cache: "no-store" });
+    const res = await fetch(url, { cache: "no-store", signal: controller.signal });
+    clearTimeout(timeout);
     if (!res.ok) return [];
 
     const text = await res.text();
@@ -153,10 +156,14 @@ function latestPoint(series) {
 
 async function fetchKrBaseRateFromBok() {
   try {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 4000);
     const res = await fetch("https://www.bok.or.kr/eng/main/main.do", {
       headers: UA,
       cache: "no-store",
+      signal: controller.signal,
     });
+    clearTimeout(timeout);
     if (!res.ok) return null;
 
     const html = await res.text();
