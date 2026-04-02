@@ -53,13 +53,19 @@ export async function GET() {
       }
     } catch (e) {}
 
-    // 이미지 시트
+    // 이미지 시트 (확장: 날짜, 만화URL, 히트맵SP500, 히트맵코스피)
     try {
-      const imgRes = await sheets.spreadsheets.values.get({ spreadsheetId: sheetId, range: "briefing_images!A:B" });
+      const imgRes = await sheets.spreadsheets.values.get({ spreadsheetId: sheetId, range: "briefing_images!A:D" });
       const imgRows = imgRes.data.values || [];
       for (let i = 1; i < imgRows.length; i++) {
-        const [d, url] = imgRows[i];
-        if (d && url && byDate[d]) byDate[d].imageUrl = url;
+        const [d, comicUrl, heatSP, heatKR] = imgRows[i] || [];
+        if (!d || !byDate[d]) continue;
+        // 기존 호환: 2열짜리 시트면 comicUrl이 대표 이미지
+        if (comicUrl) byDate[d].imageUrl = comicUrl;
+        if (comicUrl) byDate[d].comicUrl = comicUrl;
+        if (heatSP || heatKR) {
+          byDate[d].heatmaps = { sp500: heatSP || "", kospi: heatKR || "" };
+        }
       }
     } catch (e) {}
 
