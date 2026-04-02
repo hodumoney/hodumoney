@@ -1547,7 +1547,7 @@ function PriceChart({ ticker, dailyChange, onPeriodChange }) {
 }
 
 // ─── Company Analysis Page ───────────────────────────────────────
-function CompanyPage({ searchTicker, onQuickSearch, onUsageConsume }) {
+function CompanyPage({ searchTicker, onQuickSearch, onUsageConsume, user, isInWatchlist, addToWatchlist, removeFromWatchlist }) {
   const [viewMode, setViewMode] = useState("quarterly");
   const [activeSection, setActiveSection] = useState("overview");
   const [data, setData] = useState(null);
@@ -1648,7 +1648,23 @@ function CompanyPage({ searchTicker, onQuickSearch, onUsageConsume }) {
     <div className="content-area">
       <div className="company-hero fade-up">
         <div className="company-info">
-          <h2>{data.name}</h2>
+          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+            <h2 style={{ margin: 0 }}>{data.name}</h2>
+            {user && (
+              <button
+                onClick={() => isInWatchlist(data.ticker) ? removeFromWatchlist(data.ticker) : addToWatchlist(data.ticker, data.name)}
+                title={isInWatchlist(data.ticker) ? "관심종목에서 제거" : "관심종목에 추가"}
+                style={{
+                  background: isInWatchlist(data.ticker) ? "#FFF8E1" : "var(--bg-primary)",
+                  border: isInWatchlist(data.ticker) ? "1.5px solid #FFB300" : "1.5px solid var(--border)",
+                  borderRadius: 8, padding: "6px 10px", cursor: "pointer", fontSize: 18,
+                  transition: "all 0.2s ease", display: "flex", alignItems: "center", justifyContent: "center",
+                }}
+              >
+                {isInWatchlist(data.ticker) ? "⭐" : "☆"}
+              </button>
+            )}
+          </div>
           <div className="company-ticker">{data.ticker} · {data.exchange || ""} {data.sector ? `· ${data.sector}` : ""}</div>
           {krDesc && <div className="company-desc">{krDesc}</div>}
         </div>
@@ -1717,59 +1733,32 @@ function ComingSoonPage({ icon, title }) {
 }
 
 // ─── Watchlist Page (관심 종목) ──────────────────────────────────
-function WatchlistPage({ user, onLogin, onSearch }) {
-  const [watchlist, setWatchlist] = useState([]);
+function WatchlistPage({ user, onLogin, onSearch, watchlist, addToWatchlist, removeFromWatchlist }) {
   const [addTicker, setAddTicker] = useState("");
-  const [loading, setLoading] = useState(false);
   const [adding, setAdding] = useState(false);
   const [prices, setPrices] = useState({});
+  const [loading, setLoading] = useState(false);
 
-  // localStorage 키 (유저별)
-  const storageKey = user ? `watchlist_${user.uid}` : null;
-
-  // 관심종목 로드
-  useEffect(() => {
-    if (!storageKey) { setWatchlist([]); return; }
-    try {
-      const saved = localStorage.getItem(storageKey);
-      if (saved) setWatchlist(JSON.parse(saved));
-    } catch {}
-  }, [storageKey]);
-
-  // 관심종목 저장
-  const saveWatchlist = (list) => {
-    setWatchlist(list);
-    if (storageKey) {
-      try { localStorage.setItem(storageKey, JSON.stringify(list)); } catch {}
-    }
-  };
-
-  // 종목 추가
+  // 종목 추가 (검증 후)
   const handleAdd = async () => {
     const ticker = addTicker.trim().toUpperCase();
-    if (!ticker || watchlist.some(w => w.ticker === ticker)) { setAddTicker(""); return; }
+    if (!ticker) return;
+    if (watchlist.some(w => w.ticker === ticker)) { setAddTicker(""); return; }
     setAdding(true);
     try {
       const res = await fetch(`/api/stock?symbol=${encodeURIComponent(ticker)}`);
       if (!res.ok) { alert("종목을 찾을 수 없습니다: " + ticker); setAdding(false); return; }
       const data = await res.json();
-      const item = { ticker, name: data.name || ticker, addedAt: new Date().toISOString() };
-      saveWatchlist([...watchlist, item]);
+      addToWatchlist(ticker, data.name || ticker);
       setAddTicker("");
-      // 가격도 바로 저장
       setPrices(prev => ({ ...prev, [ticker]: { price: data.price, change: data.dailyChange } }));
     } catch { alert("종목 추가에 실패했습니다."); }
     finally { setAdding(false); }
   };
 
-  // 종목 삭제
-  const handleRemove = (ticker) => {
-    saveWatchlist(watchlist.filter(w => w.ticker !== ticker));
-  };
-
   // 가격 일괄 조회
   useEffect(() => {
-    if (watchlist.length === 0) return;
+    if (watchlist.length === 0) { setPrices({}); return; }
     setLoading(true);
     Promise.all(
       watchlist.map(w =>
@@ -1780,13 +1769,12 @@ function WatchlistPage({ user, onLogin, onSearch }) {
     ).then(results => {
       const p = {};
       results.forEach((data, i) => {
-        if (data) p[watchlist[i].ticker] = { price: data.price, change: data.dailyChange, marketCap: data.marketCap };
+        if (data) p[watchlist[i].ticker] = { price: data.price, change: data.dailyChange };
       });
       setPrices(p);
     }).finally(() => setLoading(false));
   }, [watchlist.length]);
 
-  // 비로그인
   if (!user) {
     return (
       <div className="content-area">
@@ -1811,15 +1799,12 @@ function WatchlistPage({ user, onLogin, onSearch }) {
         </div>
       </div>
 
-      {/* 종목 추가 */}
       <div className="card fade-up" style={{ padding: 16, marginBottom: 16 }}>
         <div style={{ display: "flex", gap: 8 }}>
-          <input
-            type="text" placeholder="종목 티커 입력 (예: AAPL, MSFT)"
+          <input type="text" placeholder="종목 티커 입력 (예: AAPL, MSFT)"
             value={addTicker} onChange={e => setAddTicker(e.target.value)}
             onKeyDown={e => { if (e.key === "Enter") handleAdd(); }}
-            style={{ flex: 1, padding: "10px 14px", border: "1.5px solid var(--border)", borderRadius: 10, fontSize: 14, fontFamily: "inherit", outline: "none" }}
-          />
+            style={{ flex: 1, padding: "10px 14px", border: "1.5px solid var(--border)", borderRadius: 10, fontSize: 14, fontFamily: "inherit", outline: "none" }} />
           <button onClick={handleAdd} disabled={adding}
             style={{ padding: "10px 20px", background: "#5D4037", color: "white", border: "none", borderRadius: 10, fontSize: 14, fontWeight: 700, cursor: adding ? "not-allowed" : "pointer", fontFamily: "inherit", whiteSpace: "nowrap", opacity: adding ? 0.6 : 1 }}>
             {adding ? "추가중..." : "+ 추가"}
@@ -1827,17 +1812,16 @@ function WatchlistPage({ user, onLogin, onSearch }) {
         </div>
       </div>
 
-      {/* 종목 리스트 */}
       {watchlist.length === 0 ? (
         <div className="empty-state fade-up" style={{ paddingTop: 40 }}>
           <div style={{ fontSize: 48, marginBottom: 12 }}>⭐</div>
           <h3>아직 등록한 종목이 없습니다</h3>
-          <p style={{ color: "var(--text-tertiary)" }}>위 입력창에 티커를 입력해서 관심 종목을 추가해보세요.<br />예: AAPL, NVDA, TSLA, MSFT</p>
+          <p style={{ color: "var(--text-tertiary)" }}>위 입력창에 티커를 입력하거나, 기업 분석 페이지에서<br />⭐ 버튼을 눌러 관심 종목을 추가해보세요.</p>
         </div>
       ) : (
         <div className="fade-up fade-up-d1">
           {loading && <div style={{ textAlign: "center", padding: 16, color: "var(--text-tertiary)", fontSize: 13 }}>시세 불러오는 중...</div>}
-          {watchlist.map((w, i) => {
+          {watchlist.map((w) => {
             const p = prices[w.ticker];
             const changeVal = p?.change;
             const up = changeVal > 0;
@@ -1863,7 +1847,7 @@ function WatchlistPage({ user, onLogin, onSearch }) {
                     <div style={{ fontSize: 13, color: "var(--text-tertiary)" }}>-</div>
                   )}
                 </div>
-                <button onClick={(e) => { e.stopPropagation(); handleRemove(w.ticker); }}
+                <button onClick={(e) => { e.stopPropagation(); removeFromWatchlist(w.ticker); }}
                   style={{ background: "none", border: "none", color: "var(--text-tertiary)", fontSize: 16, cursor: "pointer", padding: "4px 8px", borderRadius: 6, transition: "all 0.15s" }}
                   onMouseOver={e => { e.target.style.color = "var(--accent-red)"; e.target.style.background = "var(--accent-red-light)"; }}
                   onMouseOut={e => { e.target.style.color = "var(--text-tertiary)"; e.target.style.background = "none"; }}>
@@ -2613,6 +2597,60 @@ export default function App() {
   const [noticeMsg, setNoticeMsg] = useState(null);
   const [user, setUser] = useState(null); // { email, name, uid, photoURL }
   const [showAuth, setShowAuth] = useState(null); // null | "login" | "signup"
+  const [watchlist, setWatchlist] = useState([]); // [{ ticker, name, addedAt }]
+  const [watchlistLoading, setWatchlistLoading] = useState(false);
+
+  // 관심종목 Firestore에서 로드 (유저 변경 시)
+  useEffect(() => {
+    if (!user?.uid) { setWatchlist([]); return; }
+    let cancelled = false;
+    setWatchlistLoading(true);
+    (async () => {
+      try {
+        const { doc, getDoc } = await import("firebase/firestore");
+        const db = await getFirestore();
+        const snap = await getDoc(doc(db, "watchlists", user.uid));
+        if (!cancelled && snap.exists()) {
+          setWatchlist(snap.data().items || []);
+        }
+      } catch (e) {
+        console.error("Watchlist load error:", e);
+      } finally {
+        if (!cancelled) setWatchlistLoading(false);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [user?.uid]);
+
+  // Firestore에 관심종목 저장
+  const saveWatchlistToFirestore = useCallback(async (list) => {
+    setWatchlist(list);
+    if (!user?.uid) return;
+    try {
+      const { doc, setDoc } = await import("firebase/firestore");
+      const db = await getFirestore();
+      await setDoc(doc(db, "watchlists", user.uid), { items: list, updatedAt: new Date().toISOString() });
+    } catch (e) {
+      console.error("Watchlist save error:", e);
+    }
+  }, [user?.uid]);
+
+  const addToWatchlist = useCallback((ticker, name) => {
+    if (!user) return false;
+    if (watchlist.some(w => w.ticker === ticker)) return false;
+    const newList = [...watchlist, { ticker, name: name || ticker, addedAt: new Date().toISOString() }];
+    saveWatchlistToFirestore(newList);
+    return true;
+  }, [user, watchlist, saveWatchlistToFirestore]);
+
+  const removeFromWatchlist = useCallback((ticker) => {
+    const newList = watchlist.filter(w => w.ticker !== ticker);
+    saveWatchlistToFirestore(newList);
+  }, [watchlist, saveWatchlistToFirestore]);
+
+  const isInWatchlist = useCallback((ticker) => {
+    return watchlist.some(w => w.ticker === ticker);
+  }, [watchlist]);
 
   // Firebase 로그인 상태 유지 (페이지 새로고침 시 자동 복원)
   useEffect(() => {
@@ -2814,15 +2852,15 @@ export default function App() {
         {activePage === "market" && <MarketPage />}
         {activePage === "company" && (
           searchedTicker
-            ? <CompanyPage searchTicker={searchedTicker} onUsageConsume={handleUsageConsume} />
-            : <CompanyPage searchTicker={null} onQuickSearch={handleQuickSearch} />
+            ? <CompanyPage searchTicker={searchedTicker} onUsageConsume={handleUsageConsume} user={user} isInWatchlist={isInWatchlist} addToWatchlist={addToWatchlist} removeFromWatchlist={removeFromWatchlist} />
+            : <CompanyPage searchTicker={null} onQuickSearch={handleQuickSearch} user={user} isInWatchlist={isInWatchlist} addToWatchlist={addToWatchlist} removeFromWatchlist={removeFromWatchlist} />
         )}
         {activePage === "briefing" && <BriefingPage user={user} />}
         {activePage === "etf" && <ComingSoonPage icon="📦" title="ETF 단일 분석" />}
         {activePage === "etf-compare" && <ComingSoonPage icon="⚖️" title="ETF 비교 분석" />}
         {activePage === "correlation" && <ComingSoonPage icon="🔗" title="상관관계 분석" />}
         {activePage === "backtest" && <ComingSoonPage icon="⏪" title="백테스트" />}
-        {activePage === "watchlist" && <WatchlistPage user={user} onLogin={() => setShowAuth("login")} onSearch={(ticker) => { setSearchedTicker(ticker); setActivePage("company"); }} />}
+        {activePage === "watchlist" && <WatchlistPage user={user} onLogin={() => setShowAuth("login")} onSearch={(ticker) => { setSearchedTicker(ticker); setActivePage("company"); }} watchlist={watchlist} addToWatchlist={addToWatchlist} removeFromWatchlist={removeFromWatchlist} />}
       </main>
     </div>
   );
