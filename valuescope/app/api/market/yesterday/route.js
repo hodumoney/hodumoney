@@ -36,16 +36,16 @@ async function fetchYesterdayClose(symbol) {
     // 마지막 = 오늘(장중) 또는 가장 최근 완료된 거래일
     // 그 전 = 전전일
     // Yahoo의 range=5d는 오늘 장이 열려있으면 오늘 데이터도 포함함
-    // 그래서 마지막이 "오늘"인지 "어제"인지 판단 필요
-
-    const now = new Date();
-    const lastTs = new Date(valid[valid.length - 1].ts * 1000);
+    // 한국 시간(KST) 기준으로 "오늘"인지 판단
+    const KST = 9 * 60 * 60 * 1000;
+    const nowKST = new Date(Date.now() + KST);
+    const lastTsKST = new Date(valid[valid.length - 1].ts * 1000 + KST);
     const isSameDay = (a, b) => a.getUTCFullYear() === b.getUTCFullYear() && a.getUTCMonth() === b.getUTCMonth() && a.getUTCDate() === b.getUTCDate();
 
     let yesterdayIdx, dayBeforeIdx;
 
-    if (isSameDay(lastTs, now)) {
-      // 마지막 데이터가 오늘 → 어제 = [끝-2], 전전일 = [끝-3]
+    if (isSameDay(lastTsKST, nowKST)) {
+      // 마지막 데이터가 오늘(KST 기준) → 어제 = [끝-2], 전전일 = [끝-3]
       if (valid.length < 3) return null;
       yesterdayIdx = valid.length - 2;
       dayBeforeIdx = valid.length - 3;
@@ -60,8 +60,9 @@ async function fetchYesterdayClose(symbol) {
     const change = yesterdayClose - dayBeforeClose;
     const changePct = dayBeforeClose ? (change / dayBeforeClose) * 100 : 0;
 
-    const yd = new Date(valid[yesterdayIdx].ts * 1000);
-    const dateStr = `${yd.getUTCFullYear()}-${String(yd.getUTCMonth() + 1).padStart(2, "0")}-${String(yd.getUTCDate()).padStart(2, "0")}`;
+    // 날짜도 KST 기준으로 표시
+    const ydKST = new Date(valid[yesterdayIdx].ts * 1000 + KST);
+    const dateStr = `${ydKST.getUTCFullYear()}-${String(ydKST.getUTCMonth() + 1).padStart(2, "0")}-${String(ydKST.getUTCDate()).padStart(2, "0")}`;
 
     return {
       close: yesterdayClose,
