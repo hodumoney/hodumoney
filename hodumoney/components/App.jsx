@@ -1748,7 +1748,7 @@ function ComingSoonPage({ icon, title }) {
 function WatchlistPage({ user, onLogin, onSearch, watchlist, addToWatchlist, removeFromWatchlist }) {
   const [addTicker, setAddTicker] = useState("");
   const [adding, setAdding] = useState(false);
-  const [prices, setPrices] = useState({});
+  const [stockData, setStockData] = useState({}); // { AAPL: { price, d1, w1, m1, y1 } }
   const [loading, setLoading] = useState(false);
 
   // 종목 추가 (검증 후)
@@ -1763,29 +1763,72 @@ function WatchlistPage({ user, onLogin, onSearch, watchlist, addToWatchlist, rem
       const data = await res.json();
       addToWatchlist(ticker, data.name || ticker);
       setAddTicker("");
-      setPrices(prev => ({ ...prev, [ticker]: { price: data.price, change: data.dailyChange } }));
     } catch { alert("종목 추가에 실패했습니다."); }
     finally { setAdding(false); }
   };
 
-  // 가격 일괄 조회
+  // 수익률 계산: chart API에서 기간별 첫/끝 값으로 계산
+  const calcReturn = (points) => {
+    if (!points || points.length < 2) return null;
+    const first = points[0].value, last = points[points.length - 1].value;
+    return first ? ((last - first) / first) * 100 : null;
+  };
+
+  // 전체 종목 가격+수익률 일괄 조회
   useEffect(() => {
-    if (watchlist.length === 0) { setPrices({}); return; }
+    if (watchlist.length === 0) { setStockData({}); return; }
     setLoading(true);
+
+    const ranges = ["1d", "5d", "1mo", "1y"];
     Promise.all(
-      watchlist.map(w =>
-        fetch(`/api/stock?symbol=${encodeURIComponent(w.ticker)}`)
-          .then(r => r.ok ? r.json() : null)
-          .catch(() => null)
-      )
+      watchlist.map(async (w) => {
+        try {
+          // 현재가는 stock API에서
+          const stockRes = await fetch(`/api/stock?symbol=${encodeURIComponent(w.ticker)}`);
+          const stock = stockRes.ok ? await stockRes.json() : null;
+
+          // 기간별 수익률은 chart API에서
+          const chartResults = await Promise.all(
+            ranges.map(r =>
+              fetch(`/api/market/chart?symbol=${encodeURIComponent(w.ticker)}&range=${r}`)
+                .then(res => res.ok ? res.json() : null)
+                .catch(() => null)
+            )
+          );
+
+          return {
+            ticker: w.ticker,
+            price: stock?.price || null,
+            d1: calcReturn(chartResults[0]?.points),
+            w1: calcReturn(chartResults[1]?.points),
+            m1: calcReturn(chartResults[2]?.points),
+            y1: calcReturn(chartResults[3]?.points),
+          };
+        } catch {
+          return { ticker: w.ticker, price: null, d1: null, w1: null, m1: null, y1: null };
+        }
+      })
     ).then(results => {
-      const p = {};
-      results.forEach((data, i) => {
-        if (data) p[watchlist[i].ticker] = { price: data.price, change: data.dailyChange };
-      });
-      setPrices(p);
+      const sd = {};
+      results.forEach(r => { sd[r.ticker] = r; });
+      setStockData(sd);
     }).finally(() => setLoading(false));
   }, [watchlist.length]);
+
+  const ReturnBadge = ({ val, label }) => {
+    if (val === null || val === undefined) return <div style={{ textAlign: "center" }}><div style={{ fontSize: 10, color: "var(--text-tertiary)", marginBottom: 2 }}>{label}</div><div style={{ fontSize: 12, color: "var(--text-tertiary)" }}>-</div></div>;
+    const up = val > 0, down = val < 0;
+    const color = up ? "#c0392b" : down ? "#2980b9" : "var(--text-tertiary)";
+    const bg = up ? "#FFF0F1" : down ? "#EBF3FE" : "#F5F6F8";
+    return (
+      <div style={{ textAlign: "center" }}>
+        <div style={{ fontSize: 10, color: "var(--text-tertiary)", marginBottom: 2 }}>{label}</div>
+        <div style={{ fontSize: 12, fontWeight: 700, color, background: bg, borderRadius: 4, padding: "2px 6px", whiteSpace: "nowrap" }}>
+          {up ? "+" : ""}{val.toFixed(1)}%
+        </div>
+      </div>
+    );
+  };
 
   if (!user) {
     return (
@@ -1807,7 +1850,7 @@ function WatchlistPage({ user, onLogin, onSearch, watchlist, addToWatchlist, rem
       <div className="section-header section-header-distinct fade-up" style={{ marginBottom: 20 }}>
         <div>
           <div className="section-title">관심 종목</div>
-          <div className="section-subtitle">내가 등록한 종목의 시세를 한눈에 확인</div>
+          <div className="section-subtitle">내가 등록한 종목의 시세와 수익률을 한눈에 확인</div>
         </div>
       </div>
 
@@ -1828,41 +1871,53 @@ function WatchlistPage({ user, onLogin, onSearch, watchlist, addToWatchlist, rem
         <div className="empty-state fade-up" style={{ paddingTop: 40 }}>
           <div style={{ fontSize: 48, marginBottom: 12 }}>⭐</div>
           <h3>아직 등록한 종목이 없습니다</h3>
-          <p style={{ color: "var(--text-tertiary)" }}>위 입력창에 티커를 입력하거나, 기업 분석 페이지에서<br />⭐ 버튼을 눌러 관심 종목을 추가해보세요.</p>
+          <p style={{ color: "var(--text-tertiary)" }}>위 입력창에 티커를 입력하거나, 기업 분석 페이지에서<br />☆ 버튼을 눌러 관심 종목을 추가해보세요.</p>
         </div>
       ) : (
         <div className="fade-up fade-up-d1">
-          {loading && <div style={{ textAlign: "center", padding: 16, color: "var(--text-tertiary)", fontSize: 13 }}>시세 불러오는 중...</div>}
+          {loading && <div style={{ textAlign: "center", padding: 20, color: "var(--text-tertiary)", fontSize: 13 }}>시세 및 수익률 불러오는 중...</div>}
+
+          {/* 테이블 헤더 */}
+          <div style={{ display: "flex", alignItems: "center", padding: "0 20px 8px", gap: 12 }}>
+            <div style={{ flex: 1, fontSize: 11, fontWeight: 600, color: "var(--text-tertiary)" }}>종목</div>
+            <div style={{ width: 90, textAlign: "right", fontSize: 11, fontWeight: 600, color: "var(--text-tertiary)" }}>현재가</div>
+            <div style={{ width: 56, textAlign: "center", fontSize: 11, fontWeight: 600, color: "var(--text-tertiary)" }}>일간</div>
+            <div style={{ width: 56, textAlign: "center", fontSize: 11, fontWeight: 600, color: "var(--text-tertiary)" }}>주간</div>
+            <div style={{ width: 56, textAlign: "center", fontSize: 11, fontWeight: 600, color: "var(--text-tertiary)" }}>월간</div>
+            <div style={{ width: 56, textAlign: "center", fontSize: 11, fontWeight: 600, color: "var(--text-tertiary)" }}>1년</div>
+            <div style={{ width: 32 }} />
+          </div>
+
           {watchlist.map((w) => {
-            const p = prices[w.ticker];
-            const changeVal = p?.change;
-            const up = changeVal > 0;
-            const down = changeVal < 0;
+            const sd = stockData[w.ticker];
             return (
-              <div className="card" key={w.ticker} style={{ padding: "16px 20px", marginBottom: 8, display: "flex", alignItems: "center", gap: 16, cursor: "pointer" }}
+              <div className="card" key={w.ticker} style={{ padding: "14px 20px", marginBottom: 6, display: "flex", alignItems: "center", gap: 12, cursor: "pointer", transition: "all 0.15s" }}
                 onClick={() => onSearch(w.ticker)}>
+                {/* 종목명 */}
                 <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                    <span style={{ fontSize: 15, fontWeight: 700, color: "var(--text-primary)" }}>{w.ticker}</span>
-                    <span style={{ fontSize: 13, color: "var(--text-tertiary)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{w.name}</span>
-                  </div>
+                  <div style={{ fontSize: 15, fontWeight: 700, color: "var(--text-primary)" }}>{w.ticker}</div>
+                  <div style={{ fontSize: 12, color: "var(--text-tertiary)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{w.name}</div>
                 </div>
-                <div style={{ textAlign: "right", minWidth: 100 }}>
-                  {p ? (
-                    <>
-                      <div style={{ fontSize: 16, fontWeight: 700 }}>${typeof p.price === "number" ? p.price.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : p.price}</div>
-                      <div style={{ fontSize: 12, fontWeight: 600, color: up ? "var(--accent-red)" : down ? "var(--accent-blue)" : "var(--text-tertiary)" }}>
-                        {up ? "▲" : down ? "▼" : ""} {changeVal !== undefined ? `${Math.abs(changeVal).toFixed(2)}%` : "-"}
-                      </div>
-                    </>
+                {/* 현재가 */}
+                <div style={{ width: 90, textAlign: "right" }}>
+                  {sd?.price ? (
+                    <div style={{ fontSize: 15, fontWeight: 700, fontVariantNumeric: "tabular-nums" }}>
+                      ${sd.price.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                    </div>
                   ) : (
                     <div style={{ fontSize: 13, color: "var(--text-tertiary)" }}>-</div>
                   )}
                 </div>
+                {/* 수익률 뱃지 */}
+                <ReturnBadge val={sd?.d1} label="1D" />
+                <ReturnBadge val={sd?.w1} label="1W" />
+                <ReturnBadge val={sd?.m1} label="1M" />
+                <ReturnBadge val={sd?.y1} label="1Y" />
+                {/* 삭제 */}
                 <button onClick={(e) => { e.stopPropagation(); removeFromWatchlist(w.ticker); }}
-                  style={{ background: "none", border: "none", color: "var(--text-tertiary)", fontSize: 16, cursor: "pointer", padding: "4px 8px", borderRadius: 6, transition: "all 0.15s" }}
-                  onMouseOver={e => { e.target.style.color = "var(--accent-red)"; e.target.style.background = "var(--accent-red-light)"; }}
-                  onMouseOut={e => { e.target.style.color = "var(--text-tertiary)"; e.target.style.background = "none"; }}>
+                  style={{ background: "none", border: "none", color: "var(--text-tertiary)", fontSize: 16, cursor: "pointer", padding: "4px 8px", borderRadius: 6, transition: "all 0.15s", width: 32, textAlign: "center" }}
+                  onMouseOver={e => { e.currentTarget.style.color = "var(--accent-red)"; e.currentTarget.style.background = "var(--accent-red-light)"; }}
+                  onMouseOut={e => { e.currentTarget.style.color = "var(--text-tertiary)"; e.currentTarget.style.background = "none"; }}>
                   ✕
                 </button>
               </div>
