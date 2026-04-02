@@ -139,13 +139,13 @@ const styles = `
     overflow-y: auto; z-index: 100; transition: transform 0.3s ease;
   }
   .sidebar-logo {
-    padding: 24px 24px 20px; display: flex; align-items: center; gap: 14px;
-    margin: 0 0 4px; border-bottom: 1px solid var(--border); cursor: pointer;
+    padding: 28px 24px 22px; display: flex; flex-direction: column; gap: 2px;
+    margin: 0; border-bottom: 1px solid var(--border); cursor: pointer;
   }
   .sidebar-logo::before { display: none; }
   .sidebar-logo::after { display: none; }
-  .logo-text { font-size: 20px; font-weight: 800; color: #5D4037; letter-spacing: -0.5px; line-height: 1.1; }
-  .logo-sub { font-size: 11px; color: var(--text-tertiary); font-weight: 500; margin-top: 3px; letter-spacing: 0.3px; }
+  .logo-text { font-size: 26px; font-weight: 900; color: #5D4037; letter-spacing: -1px; line-height: 1; }
+  .logo-sub { font-size: 11px; color: var(--text-tertiary); font-weight: 500; margin-top: 6px; letter-spacing: 0px; }
   .sidebar-section { padding: 0 12px; margin-bottom: 8px; }
   .sidebar-section-label { font-size: 11px; font-weight: 600; color: var(--text-tertiary); text-transform: uppercase; letter-spacing: 0.5px; padding: 0 12px; margin-bottom: 6px; }
   .sidebar-item { display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-radius: var(--radius-sm); cursor: pointer; transition: all 0.15s ease; font-size: 14px; font-weight: 500; color: var(--text-secondary); position: relative; }
@@ -2573,15 +2573,12 @@ export default function App() {
 
       <aside className={`sidebar ${sidebarOpen ? "open" : ""}`}>
         <div className="sidebar-logo" onClick={() => handlePageChange("market")}>
-          <div style={{ width: 40, height: 40, borderRadius: 10, background: "linear-gradient(135deg, #5D4037, #795548)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 20, flexShrink: 0 }}>🥜</div>
-          <div>
-            <div className="logo-text">HODU MONEY</div>
-            <div className="logo-sub">투자를 쉽게 정리합니다</div>
-          </div>
+          <div className="logo-text">🥜 HODU MONEY</div>
+          <div className="logo-sub">투자를 쉽게 정리합니다</div>
         </div>
-        {/* 로그인/회원가입 — 로고 바로 아래 */}
+        {/* 로그인/회원가입 */}
         {user ? (
-          <div className="auth-user" style={{ margin: "8px 12px" }}>
+          <div className="auth-user" style={{ margin: "10px 16px" }}>
             <span>👤</span>
             <span className="auth-user-email">{user.name || user.email}</span>
             <button className="auth-logout" onClick={async () => {
@@ -2594,8 +2591,8 @@ export default function App() {
             }}>로그아웃</button>
           </div>
         ) : (
-          <div style={{ padding: "8px 12px 4px" }}>
-            <button className="auth-trigger" onClick={() => setShowAuth("login")} style={{ background: "#5D4037", color: "white", borderRadius: 8, padding: "10px 12px", width: "100%", fontWeight: 700, fontSize: 13 }}>
+          <div style={{ padding: "10px 16px 4px" }}>
+            <button className="auth-trigger" onClick={() => setShowAuth("login")} style={{ background: "#5D4037", color: "white", borderRadius: 8, padding: "9px 0", width: "100%", fontWeight: 700, fontSize: 13, display: "flex", alignItems: "center", justifyContent: "center", gap: 6, border: "none", cursor: "pointer", fontFamily: "inherit" }}>
               <span>👤</span><span>로그인 / 회원가입</span>
             </button>
           </div>
