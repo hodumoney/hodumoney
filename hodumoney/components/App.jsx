@@ -34,6 +34,16 @@ async function getFirebaseStorage() {
   return _firebaseStorage;
 }
 
+let _firebaseFirestore = null;
+async function getFirebaseFirestore() {
+  if (_firebaseFirestore) return _firebaseFirestore;
+  const { initializeApp, getApps } = await import("firebase/app");
+  const { getFirestore } = await import("firebase/firestore");
+  const app = getApps().length === 0 ? initializeApp(FIREBASE_CONFIG) : getApps()[0];
+  _firebaseFirestore = getFirestore(app);
+  return _firebaseFirestore;
+}
+
 // ─── Helper: generate fake historical data ───────────────────────
 function genHistory(current, months = 12, volatility = 0.02, trend = 0) {
   const pts = [];
@@ -542,7 +552,8 @@ const styles = `
 
   /* 히트맵 */
   .nl-heatmap-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
-  @media (max-width: 768px) { .nl-heatmap-grid { grid-template-columns: 1fr; } }
+  .nl-index-side { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  @media (max-width: 768px) { .nl-heatmap-grid { grid-template-columns: 1fr; } .nl-index-side { grid-template-columns: 1fr; } }
   .nl-heatmap-item { border-radius: 10px; overflow: hidden; border: 1px solid var(--border); }
   .nl-heatmap-item img { width: 100%; display: block; }
   .nl-heatmap-label { font-size: 12px; font-weight: 700; color: var(--text-secondary); padding: 8px 12px; background: #f8f9fa; text-align: center; }
@@ -1648,20 +1659,21 @@ function CompanyPage({ searchTicker, onQuickSearch, onUsageConsume, user, isInWa
     <div className="content-area">
       <div className="company-hero fade-up">
         <div className="company-info">
-          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
             <h2 style={{ margin: 0 }}>{data.name}</h2>
             {user && (
               <button
                 onClick={() => isInWatchlist(data.ticker) ? removeFromWatchlist(data.ticker) : addToWatchlist(data.ticker, data.name)}
-                title={isInWatchlist(data.ticker) ? "관심종목에서 제거" : "관심종목에 추가"}
                 style={{
-                  background: isInWatchlist(data.ticker) ? "#FFF8E1" : "var(--bg-primary)",
-                  border: isInWatchlist(data.ticker) ? "1.5px solid #FFB300" : "1.5px solid var(--border)",
-                  borderRadius: 8, padding: "6px 10px", cursor: "pointer", fontSize: 18,
-                  transition: "all 0.2s ease", display: "flex", alignItems: "center", justifyContent: "center",
+                  background: isInWatchlist(data.ticker) ? "#5D4037" : "white",
+                  color: isInWatchlist(data.ticker) ? "white" : "#5D4037",
+                  border: "1.5px solid #5D4037",
+                  borderRadius: 20, padding: "5px 14px", cursor: "pointer", fontSize: 12, fontWeight: 700,
+                  transition: "all 0.2s ease", display: "flex", alignItems: "center", gap: 5,
+                  fontFamily: "inherit", whiteSpace: "nowrap",
                 }}
               >
-                {isInWatchlist(data.ticker) ? "⭐" : "☆"}
+                {isInWatchlist(data.ticker) ? "★ 관심종목 등록됨" : "☆ 관심종목 추가"}
               </button>
             )}
           </div>
@@ -2014,38 +2026,46 @@ function BriefingPage({ user }) {
           </div>
 
           <div className="nl-body">
-            {/* 2. 주요 지수 현황 */}
+            {/* 2. 주요 지수 현황 — 이메일과 동일한 양옆 카드 레이아웃 */}
             {hasIndices && (
               <div className="nl-section">
-                <div className="nl-section-title">📈 주요 지수 현황</div>
-                <div className="nl-index-label">🇺🇸 미국 증시</div>
-                <table className="nl-index-table" style={{ marginBottom: 14 }}>
-                  <thead><tr><th>지수</th><th>종가</th><th>등락</th><th>등락률</th></tr></thead>
-                  <tbody>
-                    {(indices.us || []).map((row, i) => (
-                      <tr key={i}>
-                        <td>{row.name}</td>
-                        <td>{row.value}</td>
-                        <td style={{ color: row.up ? "var(--accent-red)" : "var(--accent-blue)", fontWeight: 700 }}>{row.change}</td>
-                        <td style={{ color: row.up ? "var(--accent-red)" : "var(--accent-blue)", fontWeight: 700 }}>{row.pct}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-                <div className="nl-index-label">🇰🇷 한국 증시</div>
-                <table className="nl-index-table">
-                  <thead><tr><th>지수</th><th>종가</th><th>등락</th><th>등락률</th></tr></thead>
-                  <tbody>
-                    {(indices.kr || []).map((row, i) => (
-                      <tr key={i}>
-                        <td>{row.name}</td>
-                        <td>{row.value}</td>
-                        <td style={{ color: row.up ? "var(--accent-red)" : "var(--accent-blue)", fontWeight: 700 }}>{row.change}</td>
-                        <td style={{ color: row.up ? "var(--accent-red)" : "var(--accent-blue)", fontWeight: 700 }}>{row.pct}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
+                <div className="nl-section-title">📊 주요 지수 현황</div>
+                <div className="nl-index-side">
+                  {/* 미국 증시 */}
+                  <div style={{ background: "white", padding: 18, borderRadius: 10, border: "1px solid #e0e0e0" }}>
+                    <div style={{ margin: "0 0 14px 0", paddingBottom: 8, borderBottom: "2px solid #A67B5B", fontSize: 15, fontWeight: 700, color: "#333" }}>미국 증시</div>
+                    <table style={{ width: "100%", fontSize: 13, borderCollapse: "collapse" }}>
+                      <tbody>
+                        {(indices.us || []).map((row, i) => (
+                          <tr key={i}>
+                            <td style={{ padding: "6px 0", fontWeight: 700, color: "#444" }}>{row.name}</td>
+                            <td style={{ padding: "6px 0", textAlign: "right", color: "#2c3e50", fontVariantNumeric: "tabular-nums" }}>{row.value}</td>
+                            <td style={{ padding: "6px 0 6px 8px", textAlign: "right", fontWeight: 700, color: row.up ? "#c0392b" : "#2980b9", whiteSpace: "nowrap", fontVariantNumeric: "tabular-nums" }}>
+                              {row.up ? "▲" : "▼"} {row.change?.replace(/[▲▼]/g, "").trim()} ({row.pct || ""})
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                  {/* 한국 증시 */}
+                  <div style={{ background: "white", padding: 18, borderRadius: 10, border: "1px solid #e0e0e0" }}>
+                    <div style={{ margin: "0 0 14px 0", paddingBottom: 8, borderBottom: "2px solid #A67B5B", fontSize: 15, fontWeight: 700, color: "#333" }}>한국 증시</div>
+                    <table style={{ width: "100%", fontSize: 13, borderCollapse: "collapse" }}>
+                      <tbody>
+                        {(indices.kr || []).map((row, i) => (
+                          <tr key={i}>
+                            <td style={{ padding: "6px 0", fontWeight: 700, color: "#444" }}>{row.name}</td>
+                            <td style={{ padding: "6px 0", textAlign: "right", color: "#2c3e50", fontVariantNumeric: "tabular-nums" }}>{row.value}</td>
+                            <td style={{ padding: "6px 0 6px 8px", textAlign: "right", fontWeight: 700, color: row.up ? "#c0392b" : "#2980b9", whiteSpace: "nowrap", fontVariantNumeric: "tabular-nums" }}>
+                              {row.up ? "▲" : "▼"} {row.change?.replace(/[▲▼]/g, "").trim()} ({row.pct || ""})
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
               </div>
             )}
 
@@ -2608,7 +2628,7 @@ export default function App() {
     (async () => {
       try {
         const { doc, getDoc } = await import("firebase/firestore");
-        const db = await getFirestore();
+        const db = await getFirebaseFirestore();
         const snap = await getDoc(doc(db, "watchlists", user.uid));
         if (!cancelled && snap.exists()) {
           setWatchlist(snap.data().items || []);
@@ -2628,7 +2648,7 @@ export default function App() {
     if (!user?.uid) return;
     try {
       const { doc, setDoc } = await import("firebase/firestore");
-      const db = await getFirestore();
+      const db = await getFirebaseFirestore();
       await setDoc(doc(db, "watchlists", user.uid), { items: list, updatedAt: new Date().toISOString() });
     } catch (e) {
       console.error("Watchlist save error:", e);
