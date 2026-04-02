@@ -10,11 +10,12 @@ const UA = { "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKi
  */
 async function fetchYesterdayClose(symbol) {
   try {
-    const res = await fetch(
-      `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(symbol)}?range=5d&interval=1d`,
-      { headers: UA, cache: "no-store" }
-    );
-    if (!res.ok) return null;
+    const url = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(symbol)}?range=5d&interval=1d`;
+    let res = await fetch(url, { headers: UA, cache: "no-store" }).catch(() => null);
+    if (!res?.ok) {
+      res = await fetch(url.replace("query1.", "query2."), { headers: UA, cache: "no-store" }).catch(() => null);
+    }
+    if (!res?.ok) return null;
 
     const r = (await res.json())?.chart?.result?.[0];
     if (!r) return null;
