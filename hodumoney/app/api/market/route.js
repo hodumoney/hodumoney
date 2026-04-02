@@ -5,85 +5,40 @@ const UA = { "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKi
 
 async function fetchYahoo(symbol) {
   try {
-    // query1이 차단될 수 있으므로 query2도 시도
-    async function tryFetch(url) {
-      const res1 = await fetch(url.replace("query1.", "query1."), { headers: UA, cache: "no-store" }).catch(() => null);
-      if (res1?.ok) return res1;
-      const res2 = await fetch(url.replace("query1.", "query2."), { headers: UA, cache: "no-store" }).catch(() => null);
-      if (res2?.ok) return res2;
-      return null;
-    }
+    // 메인 페이지용: 1일봉만 가져옴 (현재가 + 등락)
+    // 1년 히스토리는 차트 클릭 시 /api/market/chart에서 별도 로드
+    const url = `https://query2.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(symbol)}?range=1d&interval=5m`;
+    const res = await fetch(url, { headers: UA, cache: "no-store" }).catch(() => null);
 
-    const [res1d, res1y] = await Promise.all([
-      tryFetch(`https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(symbol)}?range=1d&interval=5m`),
-      tryFetch(`https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(symbol)}?range=1y&interval=1d`),
-    ]);
+    if (!res?.ok) return null;
 
-    let price = 0, prevClose = 0, change = 0, changePct = 0;
+    const r = (await res.json())?.chart?.result?.[0];
+    if (!r) return null;
 
-    if (res1d) {
-      const r = (await res1d.json())?.chart?.result?.[0];
-      if (r) {
-        const m = r.meta || {};
-        const closes = (r.indicators?.quote?.[0]?.close || []).filter((v) => typeof v === "number" && isFinite(v));
-        const first = closes.length ? closes[0] : 0;
-        const last = closes.length ? closes[closes.length - 1] : 0;
+    const m = r.meta || {};
+    const closes = (r.indicators?.quote?.[0]?.close || []).filter((v) => typeof v === "number" && isFinite(v));
+    const last = closes.length ? closes[closes.length - 1] : 0;
 
-        price = m.regularMarketPrice || last || 0;
-        prevClose = first || m.chartPreviousClose || m.previousClose || 0;
+    const price = m.regularMarketPrice || last || 0;
+    const prevClose = m.chartPreviousClose || m.previousClose || 0;
+    const change = price - prevClose;
+    const changePct = prevClose ? (change / prevClose) * 100 : 0;
 
-        if (first && last) {
-          change = last - first;
-          changePct = first ? (change / first) * 100 : 0;
-        } else {
-          const base = m.chartPreviousClose || m.previousClose || 0;
-          change = price - base;
-          changePct = base ? (change / base) * 100 : 0;
-        }
+    // 인라인 미니 차트용: 1일봉 데이터에서 간단한 포인트 추출
+    const ts = r.timestamp || [];
+    const history = [];
+    const step = Math.max(1, Math.floor(closes.length / 12));
+    for (let i = 0; i < closes.length; i += step) {
+      if (closes[i] && ts[i]) {
+        const d = new Date(ts[i] * 1000 + 9 * 60 * 60 * 1000);
+        history.push({
+          label: `${String(d.getUTCHours()).padStart(2, "0")}:${String(d.getUTCMinutes()).padStart(2, "0")}`,
+          value: Math.round(closes[i] * 100) / 100,
+        });
       }
     }
 
-    let history = [], yearHigh = 0, yearLow = 0;
-    if (res1y) {
-      const r = (await res1y.json())?.chart?.result?.[0];
-      if (r) {
-        if (!price) {
-          const m = r.meta || {};
-          price = m.regularMarketPrice || 0;
-          prevClose = m.chartPreviousClose || m.previousClose || 0;
-          change = price - prevClose;
-          changePct = prevClose ? (change / prevClose) * 100 : 0;
-        }
-
-        const c = r.indicators?.quote?.[0]?.close || [];
-        const ts = r.timestamp || [];
-        const valid = c.filter((x) => typeof x === "number" && isFinite(x));
-
-        yearHigh = valid.length ? Math.max(...valid) : 0;
-        yearLow = valid.length ? Math.min(...valid) : 0;
-
-        const step = Math.max(1, Math.floor(c.length / 12));
-        for (let i = 0; i < c.length; i += step) {
-          if (c[i] && ts[i]) {
-            const d = new Date(ts[i] * 1000 + 9 * 60 * 60 * 1000);
-            history.push({
-              label: `${String(d.getUTCFullYear()).slice(-2)}.${String(d.getUTCMonth() + 1).padStart(2, "0")}`,
-              value: Math.round(c[i] * 100) / 100,
-            });
-          }
-        }
-
-        if (c[c.length - 1] && ts[ts.length - 1]) {
-          const d = new Date(ts[ts.length - 1] * 1000 + 9 * 60 * 60 * 1000);
-          const l = `${String(d.getUTCFullYear()).slice(-2)}.${String(d.getUTCMonth() + 1).padStart(2, "0")}`;
-          if (!history.length || history[history.length - 1].label !== l) {
-            history.push({ label: l, value: Math.round(c[c.length - 1] * 100) / 100 });
-          }
-        }
-      }
-    }
-
-    return { price, prevClose, change, changePct, history, yearHigh, yearLow };
+    return { price, prevClose, change, changePct, history, yearHigh: 0, yearLow: 0 };
   } catch {
     return null;
   }
@@ -301,7 +256,7 @@ export async function GET() {
       }
     }
 
-    return Response.json({
+    return new Response(JSON.stringify({
       indicesUS: g.idxUS,
       indicesKR: g.idxKR,
       econUS: [...g.econUS, ...macro.us],
@@ -309,6 +264,11 @@ export async function GET() {
       vix: g.vix ? { ...g.vix, status: vixStatus, statusColor: vixColor } : null,
       exchangeRate,
       updatedAt: new Date().toISOString(),
+    }), {
+      headers: {
+        "Content-Type": "application/json",
+        "Cache-Control": "public, s-maxage=60, stale-while-revalidate=120",
+      },
     });
   } catch (err) {
     return Response.json({ error: err.message }, { status: 500 });
