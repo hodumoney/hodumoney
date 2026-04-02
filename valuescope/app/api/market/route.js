@@ -5,14 +5,23 @@ const UA = { "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKi
 
 async function fetchYahoo(symbol) {
   try {
+    // query1이 차단될 수 있으므로 query2도 시도
+    async function tryFetch(url) {
+      const res1 = await fetch(url.replace("query1.", "query1."), { headers: UA, cache: "no-store" }).catch(() => null);
+      if (res1?.ok) return res1;
+      const res2 = await fetch(url.replace("query1.", "query2."), { headers: UA, cache: "no-store" }).catch(() => null);
+      if (res2?.ok) return res2;
+      return null;
+    }
+
     const [res1d, res1y] = await Promise.all([
-      fetch(`https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(symbol)}?range=1d&interval=5m`, { headers: UA, cache: "no-store" }),
-      fetch(`https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(symbol)}?range=1y&interval=1d`, { headers: UA, cache: "no-store" }),
+      tryFetch(`https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(symbol)}?range=1d&interval=5m`),
+      tryFetch(`https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(symbol)}?range=1y&interval=1d`),
     ]);
 
     let price = 0, prevClose = 0, change = 0, changePct = 0;
 
-    if (res1d.ok) {
+    if (res1d) {
       const r = (await res1d.json())?.chart?.result?.[0];
       if (r) {
         const m = r.meta || {};
@@ -35,7 +44,7 @@ async function fetchYahoo(symbol) {
     }
 
     let history = [], yearHigh = 0, yearLow = 0;
-    if (res1y.ok) {
+    if (res1y) {
       const r = (await res1y.json())?.chart?.result?.[0];
       if (r) {
         if (!price) {
