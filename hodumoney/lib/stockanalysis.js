@@ -1,15 +1,29 @@
-// lib/stockanalysis.js — StockAnalysis + Yahoo Finance hybrid
+// lib/stockanalysis.js — StockAnalysis + Yahoo Finance hybrid (US + KR 지원)
 
-const SA = "https://stockanalysis.com/stocks";
+const SA_US = "https://stockanalysis.com/stocks";
+const SA_KRX = "https://stockanalysis.com/quote/krx";
 const UA = {
   "User-Agent":
     "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
 };
 
+// 한국 종목 판별: 6자리 숫자 (005930, 000660 등)
+function isKrxTicker(ticker) {
+  return /^\d{6}$/.test(ticker.trim());
+}
+
+// Yahoo Finance용 한국 티커 변환: 005930 → 005930.KS
+function toYahooKrxTicker(ticker) {
+  return `${ticker}.KS`;
+}
+
 async function fetchPage(ticker, path, quarterly) {
   const q = quarterly ? "?p=quarterly" : "";
   const normalizedPath = path || "";
-  const url = `${SA}/${ticker.toLowerCase()}/${normalizedPath}${q}`;
+
+  // 한국 종목은 /quote/krx/005930/ 경로 사용
+  const base = isKrxTicker(ticker) ? SA_KRX : SA_US;
+  const url = `${base}/${ticker.toLowerCase()}/${normalizedPath}${q}`;
 
   try {
     const res = await fetch(url, {
@@ -101,7 +115,7 @@ function extractLabels(html) {
 function parseNum(text) {
   if (!text) return 0;
 
-  const cleaned = text.replace(/,/g, "").replace("$", "").trim();
+  const cleaned = text.replace(/,/g, "").replace("$", "").replace("₩", "").replace("KRW", "").trim();
   const mult = { T: 1e12, B: 1e9, M: 1e6, K: 1e3 };
   const last = cleaned.slice(-1).toUpperCase();
 
@@ -111,7 +125,6 @@ function parseNum(text) {
 
   return parseFloat(cleaned) || 0;
 }
-
 
 function makeKoreanCompanyDescription({ name, sector, industry, exchange, rawDescription }) {
   const clean = (rawDescription || "").replace(/\s+/g, " ").trim();
@@ -124,7 +137,6 @@ function makeKoreanCompanyDescription({ name, sector, industry, exchange, rawDes
   const industryText = industry ? `${industry} 산업` : "관련 산업";
   const exchangeText = exchange ? `${exchange} 상장` : "상장";
 
-  // 영어 원문 문장을 섞지 않고, 한국어 템플릿 중심으로 노출
   if (!clean || isNoisy || !hasKorean) {
     return `${name}는 ${sectorText}에 속한 ${industryText} 기업으로, ${exchangeText} 종목입니다.`;
   }
@@ -150,13 +162,13 @@ function parseStatsTables(html) {
 
 /**
  * Fetch reliable quote data from Yahoo Finance v8 chart API
- * This gives us: price, yearHigh, yearLow, volume, marketCap etc.
+ * 한국 종목: 005930.KS 형식 사용
  */
 async function getYahooQuote(ticker) {
   try {
-    // Use chart API for 1y range to get 52-week high/low
-    const chartUrl = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(
-      ticker
+    const yahooTicker = isKrxTicker(ticker) ? toYahooKrxTicker(ticker) : ticker;
+    const chartUrl = `https://query2.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(
+      yahooTicker
     )}?range=1y&interval=1d`;
 
     const res = await fetch(chartUrl, { headers: UA, cache: "no-store" });
@@ -172,21 +184,17 @@ async function getYahooQuote(ticker) {
     const lows = result.indicators?.quote?.[0]?.low || [];
     const volumes = result.indicators?.quote?.[0]?.volume || [];
 
-    // Current price from meta
     const price = meta.regularMarketPrice || 0;
 
-    // Calculate 52-week high/low from actual data
     const validHighs = highs.filter((v) => typeof v === "number" && isFinite(v));
     const validLows = lows.filter((v) => typeof v === "number" && isFinite(v));
 
     const yearHigh = validHighs.length > 0 ? Math.max(...validHighs) : 0;
     const yearLow = validLows.length > 0 ? Math.min(...validLows) : 0;
 
-    // Previous close for daily change
     const previousClose = meta.chartPreviousClose || meta.previousClose || 0;
     const dailyChange = price && previousClose ? (price - previousClose) / previousClose : 0;
 
-    // Average volume (last 20 days)
     const recentVolumes = volumes.slice(-20).filter((v) => typeof v === "number" && v > 0);
     const avgVolume =
       recentVolumes.length > 0
@@ -200,7 +208,7 @@ async function getYahooQuote(ticker) {
       dailyChange,
       volume: avgVolume,
       exchange: meta.exchangeName || "",
-      currency: meta.currency || "USD",
+      currency: meta.currency || (isKrxTicker(ticker) ? "KRW" : "USD"),
     };
   } catch (e) {
     console.error("Yahoo quote error:", e.message);
@@ -209,7 +217,6 @@ async function getYahooQuote(ticker) {
 }
 
 export async function getOverview(ticker) {
-  // Fetch StockAnalysis page + Yahoo quote in parallel
   const [statsHtml, overviewHtml, yahooQuote] = await Promise.all([
     fetchPage(ticker, "statistics/", false),
     fetchPage(ticker, "", false),
@@ -221,19 +228,14 @@ export async function getOverview(ticker) {
   const stats = parseStatsTables(statsHtml || "");
   const html = overviewHtml || statsHtml || "";
 
-  // Company name from StockAnalysis
   const nameMatch = html.match(/<h1[^>]*>([^<]+)/);
   const companyName = nameMatch
     ? nameMatch[1].replace(/\s*\([^)]*\)\s*$/, "").trim()
     : ticker;
 
-  // Market cap from StockAnalysis stats (more reliable text)
   const marketCap = parseNum(stats["Market Cap"] || "0");
-
-  // Beta from StockAnalysis
   const beta = parseFloat(stats["Beta (5Y)"]?.replace(/,/g, "") || "0") || 0;
 
-  // Sector / Industry
   const sectorMatch = html.match(
     /Sector\s*<\/[^>]+>\s*<[^>]+>\s*(?:<a[^>]*>)?([^<]+)/
   );
@@ -241,32 +243,29 @@ export async function getOverview(ticker) {
     /Industry\s*<\/[^>]+>\s*<[^>]+>\s*(?:<a[^>]*>)?([^<]+)/
   );
 
-  // Description source candidates
   const summaryMatch = html.match(/(\b[A-Z][^<]{40,320}\.)/);
   const rawDescription = summaryMatch ? stripHtml(summaryMatch[1]) : "";
 
-  // Use Yahoo data for price, yearHigh, yearLow, dailyChange, volume
-  // Fall back to StockAnalysis if Yahoo fails
   let price = yahooQuote?.price || 0;
   let yearHigh = yahooQuote?.yearHigh || 0;
   let yearLow = yahooQuote?.yearLow || 0;
   let dailyChange = yahooQuote?.dailyChange || 0;
   let volume = yahooQuote?.volume || 0;
   let exchange = yahooQuote?.exchange || "";
+  const currency = yahooQuote?.currency || (isKrxTicker(ticker) ? "KRW" : "USD");
 
-  // Fallback: try StockAnalysis for price if Yahoo failed
   if (!price) {
     const pricePatterns = [
-      />([\d]{1,5}\.[\d]{2})<\/[^>]*>\s*<[^>]*>[^<]*[+-][\d]/g,
-      />([\d]{1,5}\.[\d]{2})<\/span>/g,
+      />([\d]{1,7}[,.]?[\d]*\.?[\d]*)<\/[^>]*>\s*<[^>]*>[^<]*[+-][\d]/g,
+      />([\d]{1,7}[,.]?[\d]*\.?[\d]*)<\/span>/g,
     ];
     for (const rawPattern of pricePatterns) {
       if (price > 0) break;
       const pat = toGlobalRegex(rawPattern);
       const matches = [...html.matchAll(pat)];
       for (const m of matches) {
-        const p = parseFloat(m[1]);
-        if (p > 1 && p < 100000) {
+        const p = parseFloat(m[1].replace(/,/g, ""));
+        if (p > 0) {
           price = p;
           break;
         }
@@ -274,7 +273,6 @@ export async function getOverview(ticker) {
     }
   }
 
-  // Fallback: StockAnalysis 52-week range
   if (!yearHigh || !yearLow) {
     const overviewStats = parseStatsTables(html);
     const range52 = overviewStats["52-Week Range"] || stats["52-Week Range"] || "";
@@ -285,18 +283,15 @@ export async function getOverview(ticker) {
     }
   }
 
-  // Fallback: volume from StockAnalysis
   if (!volume) {
     volume = parseNum(stats["Average Volume (20 Days)"] || "0");
   }
 
-  // Fallback: exchange from StockAnalysis
   if (!exchange) {
-    const exMatch = html.match(/(NASDAQ|NYSE|AMEX|TSX|LSE)\s*:\s*[A-Z]+/);
+    const exMatch = html.match(/(NASDAQ|NYSE|AMEX|TSX|LSE|KRX|KOSDAQ)\s*:?\s*[A-Z0-9]+/);
     if (exMatch) exchange = exMatch[1];
   }
 
-  // Fallback: daily change from StockAnalysis
   if (!dailyChange) {
     const prevClose =
       parseFloat(parseStatsTables(html)["Previous Close"]?.replace(/,/g, "") || "0") || 0;
@@ -327,6 +322,7 @@ export async function getOverview(ticker) {
     yearHigh,
     yearLow,
     dailyChange,
+    currency,
   };
 }
 
@@ -404,8 +400,9 @@ export async function getHistory(ticker, period = "1Y") {
   const range = rangeMap[period] || "1y";
 
   try {
-    const yahooUrl = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(
-      ticker
+    const yahooTicker = isKrxTicker(ticker) ? toYahooKrxTicker(ticker) : ticker;
+    const yahooUrl = `https://query2.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(
+      yahooTicker
     )}?range=${range}&interval=1d`;
     const yahooRes = await fetch(yahooUrl, { headers: UA, cache: "no-store" });
 
