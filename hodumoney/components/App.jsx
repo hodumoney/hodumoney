@@ -956,7 +956,8 @@ function SearchBox({ onSelect, large }) {
             >
               <span className="search-dropdown-symbol">{item.s}</span>
               <span className="search-dropdown-name">{item.n}</span>
-              {item.t && <span className="search-dropdown-type">{item.t}</span>}
+              {item.e && (item.e === "KRX" || item.e === "KOSDAQ") && <span className="search-dropdown-type" style={{ background: "#FFF8F0", color: "#A67B5B" }}>{item.e}</span>}
+              {item.t && !(item.e === "KRX" || item.e === "KOSDAQ") && <span className="search-dropdown-type">{item.t}</span>}
             </div>
           ))}
         </div>
@@ -1681,30 +1682,34 @@ function CompanyPage({ searchTicker, onQuickSearch, onUsageConsume, user, isInWa
           {krDesc && <div className="company-desc">{krDesc}</div>}
         </div>
         <div className="price-block">
-          <div className="price-current">${safeNum(data.price).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
+          <div className="price-current">{data.currency === "KRW" ? "₩" : "$"}{safeNum(data.price).toLocaleString(undefined, { minimumFractionDigits: data.currency === "KRW" ? 0 : 2, maximumFractionDigits: data.currency === "KRW" ? 0 : 2 })}</div>
           <div className={`price-change ${displayPct >= 0 ? "positive" : "negative"}`}>
             {displayPct >= 0 ? "+" : ""}{displayPct.toFixed(2)}% {displayLabel}
           </div>
         </div>
       </div>
 
-      <PriceChart ticker={data.ticker} dailyChange={data.dailyChange} onPeriodChange={(info) => setPeriodInfo(info)} />
+      <PriceChart ticker={data.yahooSymbol || data.ticker} dailyChange={data.dailyChange} onPeriodChange={(info) => setPeriodInfo(info)} />
 
       <div className="stats-grid fade-up fade-up-d1" style={{ gridTemplateColumns: "repeat(3, 1fr)" }}>
-        {[
-          { label: "시가총액", value: fmtCap(data.marketCap) },
-          { label: "시가총액 순위", value: capLabel },
-          { label: "거래량", value: safeNum(data.volume).toLocaleString() },
-          { label: "52주 최고", value: `$${safeNum(data.yearHigh).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}` },
-          { label: "고점대비 하락률", value: `${dropFromHigh.toFixed(1)}%`, color: dropFromHigh < 0 ? "var(--accent-blue)" : "var(--accent-green)" },
-          { label: "변동성 (β)", value: safeNum(data.beta).toFixed(2), sub: "시장 대비 변동 배수" },
-        ].map((s, i) => (
-          <div className="stat-item" key={i}>
-            <div className="stat-label">{s.label}</div>
-            <div className="stat-value" style={{ color: s.color || "inherit" }}>{s.value}</div>
-            {s.sub && <div className="stat-sub">{s.sub}</div>}
-          </div>
-        ))}
+        {(() => {
+          const sym = data.currency === "KRW" ? "₩" : "$";
+          const dec = data.currency === "KRW" ? 0 : 2;
+          return [
+            { label: "시가총액", value: fmtCap(data.marketCap) },
+            { label: "시가총액 순위", value: capLabel },
+            { label: "거래량", value: safeNum(data.volume).toLocaleString() },
+            { label: "52주 최고", value: `${sym}${safeNum(data.yearHigh).toLocaleString(undefined, {minimumFractionDigits: dec, maximumFractionDigits: dec})}` },
+            { label: "고점대비 하락률", value: `${dropFromHigh.toFixed(1)}%`, color: dropFromHigh < 0 ? "var(--accent-blue)" : "var(--accent-green)" },
+            { label: "변동성 (β)", value: safeNum(data.beta).toFixed(2), sub: "시장 대비 변동 배수" },
+          ].map((s, i) => (
+            <div className="stat-item" key={i}>
+              <div className="stat-label">{s.label}</div>
+              <div className="stat-value" style={{ color: s.color || "inherit" }}>{s.value}</div>
+              {s.sub && <div className="stat-sub">{s.sub}</div>}
+            </div>
+          ));
+        })()}
       </div>
 
       <div className="tab-group fade-up fade-up-d2">
