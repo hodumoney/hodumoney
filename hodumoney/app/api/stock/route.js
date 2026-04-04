@@ -106,6 +106,11 @@ export async function GET(request) {
       } catch {}
     }
 
+    // 한국 종목 판별
+    const isKrx = /^\d{6}$/.test(symbol);
+    const yahooSymbol = isKrx ? `${symbol}.KS` : symbol;
+    const currency = overview.currency || (isKrx ? "KRW" : "USD");
+
     return Response.json({
       name: overview.name,
       ticker: overview.ticker,
@@ -122,6 +127,8 @@ export async function GET(request) {
       yearLow: overview.yearLow,
       volume: overview.volume,
       beta: overview.beta,
+      currency,
+      yahooSymbol,
       quarterly: buildData(incQ, balQ, cfQ, ratQ),
       annual: buildData(incA, balA, cfA, ratA),
     });
