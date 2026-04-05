@@ -21,7 +21,8 @@ export async function GET(request) {
 
     return Response.json({
       ...overview,
-      holdings,
+      holdingsCount: overview.holdings,
+      holdingsList: holdings,
       dividend,
     });
   } catch (err) {
