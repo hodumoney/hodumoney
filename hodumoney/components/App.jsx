@@ -1,3 +1,4 @@
+"use client";
 import { useState, useEffect, useRef, useCallback } from "react";
 import { LineChart, Line, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
 
@@ -1983,24 +1984,28 @@ function EtfPage() {
               </div>
               {data.holdings && data.holdings.length > 0 ? (
                 <div className="card" style={{ padding: 0, overflow: "hidden" }}>
-                  {data.holdings.map((h, i) => (
+                  {data.holdings.filter(h => h && typeof h === "object" && h.symbol).map((h, i) => {
+                    const sym = String(h.symbol || "");
+                    const nm = String(h.name || sym);
+                    const wt = String(h.weight || "0");
+                    return (
                     <div key={i} style={{ display: "flex", alignItems: "center", padding: "12px 20px", borderBottom: i < data.holdings.length - 1 ? "1px solid var(--border)" : "none", gap: 12 }}>
                       <div style={{ width: 28, height: 28, borderRadius: 6, background: "var(--accent-blue-light)", color: "var(--accent-blue)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 12, fontWeight: 700, flexShrink: 0 }}>
                         {i + 1}
                       </div>
                       <div style={{ flex: 1, minWidth: 0 }}>
-                        <div style={{ fontSize: 14, fontWeight: 700, color: "var(--text-primary)" }}>{h.symbol}</div>
-                        <div style={{ fontSize: 12, color: "var(--text-tertiary)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{h.name}</div>
+                        <div style={{ fontSize: 14, fontWeight: 700, color: "var(--text-primary)" }}>{sym}</div>
+                        <div style={{ fontSize: 12, color: "var(--text-tertiary)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{nm}</div>
                       </div>
                       <div style={{ minWidth: 60, textAlign: "right" }}>
-                        <div style={{ fontSize: 15, fontWeight: 700, color: "var(--accent-blue)" }}>{h.weight}%</div>
+                        <div style={{ fontSize: 15, fontWeight: 700, color: "var(--accent-blue)" }}>{wt}%</div>
                       </div>
-                      {/* 비중 바 */}
                       <div style={{ width: 80, height: 8, background: "#F2F3F5", borderRadius: 4, overflow: "hidden", flexShrink: 0 }}>
-                        <div style={{ width: `${Math.min(100, parseFloat(h.weight) * 10)}%`, height: "100%", background: "var(--accent-blue)", borderRadius: 4 }} />
+                        <div style={{ width: `${Math.min(100, parseFloat(wt) * 10 || 0)}%`, height: "100%", background: "var(--accent-blue)", borderRadius: 4 }} />
                       </div>
                     </div>
-                  ))}
+                    );
+                  })}
                 </div>
               ) : (
                 <div style={{ textAlign: "center", padding: 40, color: "var(--text-tertiary)" }}>구성종목 데이터를 불러올 수 없습니다</div>
