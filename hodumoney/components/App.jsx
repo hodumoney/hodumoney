@@ -60,12 +60,11 @@ function genHistory(current, months = 12, volatility = 0.02, trend = 0) {
 const MENU_ITEMS = [
   { id: "market", label: "시장 동향", icon: "📊", ready: true },
   { id: "company", label: "기업 분석", icon: "🔍", ready: true },
+  { id: "watchlist", label: "관심 종목", icon: "⭐", ready: true },
   { id: "briefing", label: "호두 브리핑", icon: "🗞️", ready: true },
-  { id: "etf", label: "ETF 단일 분석", icon: "📦", ready: false },
-  { id: "etf-compare", label: "ETF 비교 분석", icon: "⚖️", ready: false },
+  { id: "etf", label: "ETF 분석", icon: "📦", ready: false },
   { id: "correlation", label: "상관관계 분석", icon: "🔗", ready: false },
   { id: "backtest", label: "백테스트", icon: "⏪", ready: false },
-  { id: "watchlist", label: "관심 종목", icon: "⭐", ready: true },
 ];
 
 const INDICES_US = [
@@ -1208,9 +1207,33 @@ function FinRowCard({ label, values, labels, expanded, onToggle, fmtFn, allowNeg
         </div>
         {desc && <div className="metric-card-desc">{desc}</div>}
         <div className="metric-card-mini">
-          {values.map((v, i) => (
-            <div key={i} className="m-bar" style={{ height: `${Math.max(15, 15 + ((v - vMin) / vRange) * 85)}%`, background: (allowNeg && v < 0) ? "#F04452" : "var(--accent-blue)" }} />
-          ))}
+          {(() => {
+            const hasNeg = values.some(v => v < 0);
+            const hasPos = values.some(v => v > 0);
+            const absMax = Math.max(...values.map(v => Math.abs(v))) || 1;
+            
+            if (hasNeg) {
+              // Bidirectional bars for negative values
+              return values.map((v, i) => {
+                const pct = Math.abs(v) / absMax * 45;
+                const neg = v < 0;
+                return (
+                  <div key={i} style={{ flex: 1, display: "flex", flexDirection: "column", justifyContent: "center", height: "100%", minWidth: 9 }}>
+                    <div style={{ height: "50%", display: "flex", alignItems: "flex-end" }}>
+                      {!neg && <div style={{ width: "100%", height: `${Math.max(8, pct)}%`, background: "var(--accent-blue)", borderRadius: "3px 3px 0 0", opacity: i === values.length - 1 ? 1 : 0.45 }} />}
+                    </div>
+                    <div style={{ height: "50%", display: "flex", alignItems: "flex-start" }}>
+                      {neg && <div style={{ width: "100%", height: `${Math.max(8, pct)}%`, background: "#F04452", borderRadius: "0 0 3px 3px", opacity: i === values.length - 1 ? 1 : 0.45 }} />}
+                    </div>
+                  </div>
+                );
+              });
+            }
+            // All positive: original
+            return values.map((v, i) => (
+              <div key={i} className="m-bar" style={{ height: `${Math.max(15, 15 + ((v - vMin) / vRange) * 85)}%` }} />
+            ));
+          })()}
         </div>
         <span className="metric-card-arrow">▼</span>
       </div>
@@ -2834,7 +2857,7 @@ export default function App() {
 
   const pageTitle = {
     market: "시장 동향", company: "기업 분석", briefing: "호두 브리핑",
-    etf: "ETF 단일 분석", "etf-compare": "ETF 비교 분석",
+    etf: "ETF 분석",
     correlation: "상관관계 분석", backtest: "백테스트", watchlist: "관심 종목",
   };
 
@@ -2958,8 +2981,7 @@ export default function App() {
             : <CompanyPage searchTicker={null} onQuickSearch={handleQuickSearch} user={user} isInWatchlist={isInWatchlist} addToWatchlist={addToWatchlist} removeFromWatchlist={removeFromWatchlist} />
         )}
         {activePage === "briefing" && <BriefingPage user={user} />}
-        {activePage === "etf" && <ComingSoonPage icon="📦" title="ETF 단일 분석" />}
-        {activePage === "etf-compare" && <ComingSoonPage icon="⚖️" title="ETF 비교 분석" />}
+        {activePage === "etf" && <ComingSoonPage icon="📦" title="ETF 분석" />}
         {activePage === "correlation" && <ComingSoonPage icon="🔗" title="상관관계 분석" />}
         {activePage === "backtest" && <ComingSoonPage icon="⏪" title="백테스트" />}
         {activePage === "watchlist" && <WatchlistPage user={user} onLogin={() => setShowAuth("login")} onSearch={(ticker) => { setSearchedTicker(ticker); setActivePage("company"); }} watchlist={watchlist} addToWatchlist={addToWatchlist} removeFromWatchlist={removeFromWatchlist} />}
