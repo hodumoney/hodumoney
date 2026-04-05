@@ -108,11 +108,12 @@ export async function GET(request) {
 
     // 한국 종목 판별
     const isKrx = /^\d{6}$/.test(symbol);
-    const yahooSymbol = isKrx ? `${symbol}.KS` : symbol;
+    let yahooSymbol = isKrx ? `${symbol}.KS` : symbol;
     const currency = overview.currency || (isKrx ? "KRW" : "USD");
 
-    // 한국 종목: kr_stocks.json에서 한글 이름 조회
+    // 한국 종목: kr_stocks.json에서 한글 이름 + 거래소 조회
     let krName = null;
+    let krExchange = "KRX";
     if (isKrx) {
       try {
         const { readFileSync } = await import("fs");
@@ -121,8 +122,14 @@ export async function GET(request) {
         const raw = readFileSync(filePath, "utf-8");
         const krStocks = JSON.parse(raw);
         const found = krStocks.find(s => s.s === symbol);
-        if (found) krName = found.n;
+        if (found) {
+          krName = found.n;
+          krExchange = found.e || "KRX";
+        }
       } catch {}
+
+      // 코스닥 종목은 .KQ
+      if (krExchange === "KOSDAQ") yahooSymbol = `${symbol}.KQ`;
 
       // 한국 종목 시가총액 순위: KRW 기준 분류
       const mc = overview.marketCap || 0;
