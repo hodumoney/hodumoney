@@ -1092,17 +1092,20 @@ function InlineChart({ item, onClose }) {
 
 
 // ─── Core Valuations ─────────────────────────────────────────────
-function CoreValuations({ data }) {
+function CoreValuations({ data, currency }) {
   const [expandedKey, setExpandedKey] = useState(null);
   const safeVal = (v) => (typeof v === "number" && isFinite(v)) ? v : 0;
+  const isKRW = currency === "KRW";
+  const sym = isKRW ? "₩" : "$";
+  const unit = isKRW ? "백만" : "M";
   const metrics = [
     { key: "per", label: "PER", fmt: v => safeVal(v).toFixed(2), desc: "회사가 1년에 버는 돈에 비해 주가가 얼마나 비싼지" },
     { key: "pbr", label: "PBR", fmt: v => safeVal(v).toFixed(2), desc: "회사의 순자산(자본)에 비해 주가가 얼마나 비싼지" },
-    { key: "eps", label: "EPS ($)", fmt: v => safeVal(v).toFixed(2), desc: "주식 한 주당 회사가 1년간 벌어들이는 이익" },
+    { key: "eps", label: `EPS (${sym})`, fmt: v => `${sym}${safeVal(v).toLocaleString(undefined, { maximumFractionDigits: isKRW ? 0 : 2 })}`, desc: "주식 한 주당 회사가 1년간 벌어들이는 이익" },
     { key: "de", label: "부채비율 (D/E)", fmt: v => `${(safeVal(v) * 100).toFixed(0)}%`, desc: "회사의 자기자본에 비해 빚이 얼마나 있는지" },
     { key: "roe", label: "ROE (%)", fmt: v => `${safeVal(v).toFixed(1)}%`, desc: "주주의 돈(자본)을 운용해 연 몇%의 이익을 냈는지" },
     { key: "div", label: "배당수익률 (%)", fmt: v => `${safeVal(v).toFixed(2)}%`, desc: "배당으로 받는 수익률" },
-    { key: "ebitda", label: "EBITDA ($M)", fmt: v => `$${Math.round(safeVal(v)).toLocaleString()}M`, desc: "세금·이자·감가상각을 빼기 전 실제로 벌어들인 현금 흐름" },
+    { key: "ebitda", label: `EBITDA (${sym}${unit})`, fmt: v => `${sym}${Math.round(safeVal(v)).toLocaleString()}${unit}`, desc: "세금·이자·감가상각을 빼기 전 실제로 벌어들인 현금 흐름" },
   ];
   const toggle = (key) => setExpandedKey(expandedKey === key ? null : key);
   const trendLabels = data.labels && data.labels.length > 0 ? data.labels : ["Q1", "Q2", "Q3", "Q4", "Q5"];
@@ -1132,9 +1135,32 @@ function CoreValuations({ data }) {
               </div>
               <div className="metric-card-desc">{desc}</div>
               <div className="metric-card-mini">
-                {trendData.map((v, i) => (
-                  <div key={i} className="m-bar" style={{ height: `${Math.max(15, 15 + ((safeVal(v) - trendMin) / trendRange) * 85)}%` }} />
-                ))}
+                {(() => {
+                  const hasNeg = trendData.some(v => safeVal(v) < 0);
+                  const absMax = Math.max(...trendData.map(v => Math.abs(safeVal(v)))) || 1;
+                  if (hasNeg) {
+                    // Bidirectional: bars above/below midline
+                    return trendData.map((v, i) => {
+                      const sv = safeVal(v);
+                      const pct = Math.abs(sv) / absMax * 45; // max 45% each direction
+                      const isNeg = sv < 0;
+                      return (
+                        <div key={i} style={{ flex: 1, display: "flex", flexDirection: "column", justifyContent: "center", height: "100%", minWidth: 9 }}>
+                          <div style={{ height: "50%", display: "flex", alignItems: "flex-end" }}>
+                            {!isNeg && <div style={{ width: "100%", height: `${Math.max(8, pct)}%`, background: "var(--accent-blue)", borderRadius: "3px 3px 0 0", opacity: i === trendData.length - 1 ? 1 : 0.45 }} />}
+                          </div>
+                          <div style={{ height: "50%", display: "flex", alignItems: "flex-start" }}>
+                            {isNeg && <div style={{ width: "100%", height: `${Math.max(8, pct)}%`, background: "#F04452", borderRadius: "0 0 3px 3px", opacity: i === trendData.length - 1 ? 1 : 0.45 }} />}
+                          </div>
+                        </div>
+                      );
+                    });
+                  }
+                  // All positive: original logic
+                  return trendData.map((v, i) => (
+                    <div key={i} className="m-bar" style={{ height: `${Math.max(15, 15 + ((safeVal(v) - trendMin) / trendRange) * 85)}%` }} />
+                  ));
+                })()}
               </div>
               <span className="metric-card-arrow">▼</span>
             </div>
@@ -1210,25 +1236,26 @@ function FinRowCard({ label, values, labels, expanded, onToggle, fmtFn, allowNeg
 }
 
 // ─── Financial Statements ────────────────────────────────────────
-function FinancialStatements({ data }) {
+function FinancialStatements({ data, currency }) {
   const [expandedKey, setExpandedKey] = useState(null);
   const toggle = (key) => setExpandedKey(expandedKey === key ? null : key);
   const labels = data.income.labels;
+  const unitLabel = currency === "KRW" ? "단위: 백만 원 (₩M)" : "단위: 백만 달러 ($M)";
   const sections = [
-    { title: "📋 손익 계산서", subtitle: "단위: 백만 달러 ($M)", desc: "회사가 얼마나 벌고, 얼마나 남겼는지 보여주는 성적표입니다",
+    { title: "📋 손익 계산서", subtitle: unitLabel, desc: "회사가 얼마나 벌고, 얼마나 남겼는지 보여주는 성적표입니다",
       rows: [
         { key: "revenue", label: "총 매출", values: data.income.revenue, desc: "회사가 물건이나 서비스를 팔아서 벌어들인 총 수입" },
         { key: "grossProfit", label: "매출 총이익", values: data.income.grossProfit, desc: "매출에서 원가를 뺀 이익" },
         { key: "opIncome", label: "영업이익", values: data.income.operatingIncome, desc: "영업활동으로 벌어들인 순이익" },
         { key: "netIncome", label: "순이익", values: data.income.netIncome, desc: "최종 이익 (모든 비용, 세금, 이자 제외 후)" },
       ] },
-    { title: "🏦 재무 상태표", subtitle: "단위: 백만 달러 ($M)", desc: "회사가 가진 자산과 빚, 순자산을 보여주는 재무 건강 진단서입니다",
+    { title: "🏦 재무 상태표", subtitle: unitLabel, desc: "회사가 가진 자산과 빚, 순자산을 보여주는 재무 건강 진단서입니다",
       rows: [
         { key: "totalAssets", label: "총 자산", values: data.balance.totalAssets, desc: "회사가 소유한 모든 자산" },
         { key: "currentLiab", label: "유동 부채", values: data.balance.currentLiab, desc: "1년 이내로 갚아야 하는 부채" },
         { key: "equity", label: "자본 총계", values: data.balance.equity, desc: "회사의 순가치 (자산-부채)" },
       ] },
-    { title: "💰 현금 흐름표", subtitle: "단위: 백만 달러 ($M)", desc: "실제로 현금이 어디서 들어오고 어디로 나갔는지 추적합니다",
+    { title: "💰 현금 흐름표", subtitle: unitLabel, desc: "실제로 현금이 어디서 들어오고 어디로 나갔는지 추적합니다",
       rows: [
         { key: "fcf", label: "자유현금흐름", values: data.cashflow.fcf, desc: "진짜 자유롭게 쓸 수 있는 돈" },
         { key: "opCash", label: "영업활동 현금흐름", values: data.cashflow.opCash, desc: "본업으로 실제 벌어들인 현금" },
@@ -1256,7 +1283,7 @@ function FinancialStatements({ data }) {
 }
 
 // ─── Advanced Metrics ────────────────────────────────────────────
-function AdvancedMetrics({ data }) {
+function AdvancedMetrics({ data, currency }) {
   const [expandedKey, setExpandedKey] = useState(null);
   const toggle = (key) => setExpandedKey(expandedKey === key ? null : key);
   const labels = data.advanced.labels;
@@ -1731,9 +1758,9 @@ function CompanyPage({ searchTicker, onQuickSearch, onUsageConsume, user, isInWa
         </div>
       </div>
 
-      {activeSection === "overview" && <CoreValuations data={viewMode === "quarterly" ? (data.quarterly || data) : (data.annual || data)} />}
-      {activeSection === "financials" && <FinancialStatements data={viewMode === "quarterly" ? (data.quarterly || data) : (data.annual || data)} />}
-      {activeSection === "advanced" && <AdvancedMetrics data={viewMode === "quarterly" ? (data.quarterly || data) : (data.annual || data)} />}
+      {activeSection === "overview" && <CoreValuations data={viewMode === "quarterly" ? (data.quarterly || data) : (data.annual || data)} currency={data.currency} />}
+      {activeSection === "financials" && <FinancialStatements data={viewMode === "quarterly" ? (data.quarterly || data) : (data.annual || data)} currency={data.currency} />}
+      {activeSection === "advanced" && <AdvancedMetrics data={viewMode === "quarterly" ? (data.quarterly || data) : (data.annual || data)} currency={data.currency} />}
 
       <div style={{ textAlign: "center", padding: "32px 0 0", fontSize: 11, color: "var(--text-tertiary)" }}>
         ©hodusolution · 본 데이터는 참고용이며, 투자 판단의 책임은 투자자 본인에게 있습니다.
@@ -2658,7 +2685,7 @@ function AuthModal({ onClose, onLogin }) {
 
 // ─── Main App ────────────────────────────────────────────────────
 const VALID_CODES = ["MZHODU"];
-const MAX_FREE_ANALYSES = 3;
+const MAX_FREE_ANALYSES = 5;
 
 export default function App() {
   const [activePage, setActivePage] = useState("market");
