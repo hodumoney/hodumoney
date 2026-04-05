@@ -1643,6 +1643,11 @@ function CompanyPage({ searchTicker, onQuickSearch, onUsageConsume, user, isInWa
 
   const fmtCap = (v) => {
     if (!v) return "-";
+    if (data.currency === "KRW") {
+      if (v >= 1e12) return `₩${(v / 1e12).toFixed(1)}조`;
+      if (v >= 1e8) return `₩${(v / 1e8).toFixed(0)}억`;
+      return `₩${v.toLocaleString()}`;
+    }
     if (v >= 1e12) return `$${(v / 1e12).toFixed(2)}T`;
     if (v >= 1e9) return `$${(v / 1e9).toFixed(1)}B`;
     if (v >= 1e6) return `$${(v / 1e6).toFixed(0)}M`;
@@ -1679,6 +1684,7 @@ function CompanyPage({ searchTicker, onQuickSearch, onUsageConsume, user, isInWa
             )}
           </div>
           <div className="company-ticker">{data.ticker} · {data.exchange || ""} {data.sector ? `· ${data.sector}` : ""}</div>
+          {data.nameEn && <div style={{ fontSize: 13, color: "var(--text-tertiary)", marginTop: 2 }}>{data.nameEn}</div>}
           {krDesc && <div className="company-desc">{krDesc}</div>}
         </div>
         <div className="price-block">
