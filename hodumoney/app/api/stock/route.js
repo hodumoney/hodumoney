@@ -111,8 +111,31 @@ export async function GET(request) {
     const yahooSymbol = isKrx ? `${symbol}.KS` : symbol;
     const currency = overview.currency || (isKrx ? "KRW" : "USD");
 
+    // 한국 종목: kr_stocks.json에서 한글 이름 조회
+    let krName = null;
+    if (isKrx) {
+      try {
+        const { readFileSync } = await import("fs");
+        const { join } = await import("path");
+        const filePath = join(process.cwd(), "public", "kr_stocks.json");
+        const raw = readFileSync(filePath, "utf-8");
+        const krStocks = JSON.parse(raw);
+        const found = krStocks.find(s => s.s === symbol);
+        if (found) krName = found.n;
+      } catch {}
+
+      // 한국 종목 시가총액 순위: KRW 기준 분류
+      const mc = overview.marketCap || 0;
+      if (mc >= 50e12) capRank = "국내 대형주 (시총 50조+)";
+      else if (mc >= 10e12) capRank = "국내 대형주 (시총 10조+)";
+      else if (mc >= 1e12) capRank = "국내 중형주 (시총 1조+)";
+      else if (mc >= 500e9) capRank = "국내 중소형주";
+      else capRank = "국내 소형주";
+    }
+
     return Response.json({
-      name: overview.name,
+      name: krName || overview.name,
+      nameEn: isKrx ? overview.name : undefined,
       ticker: overview.ticker,
       exchange: overview.exchange,
       description: overview.description,
@@ -129,6 +152,7 @@ export async function GET(request) {
       beta: overview.beta,
       currency,
       yahooSymbol,
+      isKrx,
       quarterly: buildData(incQ, balQ, cfQ, ratQ),
       annual: buildData(incA, balA, cfA, ratA),
     });
