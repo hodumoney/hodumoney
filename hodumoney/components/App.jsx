@@ -1906,9 +1906,15 @@ function EtfPage() {
                   { label: "보수율 (TER)", value: data.expenseRatio },
                   { label: "순자산 (AUM)", value: data.aum },
                   { label: "구성종목 수", value: data.holdingsCount },
-                  { label: "설정일", value: data.inception },
+                  { label: "PER", value: data.pe },
+                  { label: "베타", value: data.beta },
                   { label: "배당수익률", value: data.divYield },
+                  { label: "배당금 (연)", value: data.divTTM },
+                  { label: "배당 주기", value: data.payoutFreq },
+                  { label: "설정일", value: data.inception },
                   { label: "52주 최고", value: `$${safeNum(data.yearHigh).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` },
+                  { label: "52주 최저", value: `$${safeNum(data.yearLow).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` },
+                  { label: "발행주식수", value: data.sharesOut },
                 ].map((s, i) => (
                   <div className="stat-item" key={i}>
                     <div className="stat-label">{s.label}</div>
@@ -1924,7 +1930,7 @@ function EtfPage() {
             <div className="fade-up fade-up-d2">
               <div style={{ marginBottom: 12 }}>
                 <div className="card-title">기간별 수익률</div>
-                <div className="card-description">과거 기간별 총 수익률 (배당 미포함, 가격 기준)</div>
+                <div className="card-description">가격 기준 수익률 (Yahoo Finance 실시간)</div>
               </div>
               <div className="card" style={{ padding: 20 }}>
                 <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 16 }}>
@@ -1943,6 +1949,16 @@ function EtfPage() {
                   ))}
                 </div>
               </div>
+              {/* 배당 포함 수익률 안내 */}
+              {data.divYield && data.divYield !== "-" && (
+                <div className="card" style={{ padding: 16, marginTop: 12, background: "var(--bg-primary)" }}>
+                  <div style={{ fontSize: 13, color: "var(--text-secondary)", lineHeight: 1.6 }}>
+                    💡 <strong>배당 포함 수익률 참고</strong>: 이 ETF의 연간 배당수익률은 <strong style={{ color: "#c0392b" }}>{data.divYield}</strong>입니다.
+                    {data.totalReturn && <> StockAnalysis 기준 총 수익률(배당 포함)은 <strong style={{ color: "#c0392b" }}>{data.totalReturn}</strong>입니다.</>}
+                    {!data.totalReturn && <> 위 수익률에 배당수익률을 더하면 대략적인 토탈 리턴을 계산할 수 있습니다.</>}
+                  </div>
+                </div>
+              )}
             </div>
           )}
 
