@@ -1,7 +1,6 @@
 // lib/stockanalysis.js — StockAnalysis + Yahoo Finance hybrid (US + KR 지원)
 
 const SA_US = "https://stockanalysis.com/stocks";
-const SA_KRX = "https://stockanalysis.com/quote/krx";
 const UA = {
   "User-Agent":
     "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
@@ -12,17 +11,43 @@ function isKrxTicker(ticker) {
   return /^\d{6}$/.test(ticker.trim());
 }
 
-// Yahoo Finance용 한국 티커 변환: 005930 → 005930.KS
+// kr_stocks.json에서 거래소 조회 (KRX=코스피, KOSDAQ=코스닥)
+let _krStocksCache = null;
+function getKrExchange(ticker) {
+  if (!_krStocksCache) {
+    try {
+      const fs = require("fs");
+      const path = require("path");
+      const filePath = path.join(process.cwd(), "public", "kr_stocks.json");
+      _krStocksCache = JSON.parse(fs.readFileSync(filePath, "utf-8"));
+    } catch {
+      _krStocksCache = [];
+    }
+  }
+  const found = _krStocksCache.find(s => s.s === ticker);
+  return found?.e || "KRX"; // default to KRX if not found
+}
+
+// StockAnalysis URL: 코스피 → /quote/krx/, 코스닥 → /quote/kosdaq/
+function getSaBase(ticker) {
+  if (!isKrxTicker(ticker)) return SA_US;
+  const exchange = getKrExchange(ticker);
+  return exchange === "KOSDAQ"
+    ? "https://stockanalysis.com/quote/kosdaq"
+    : "https://stockanalysis.com/quote/krx";
+}
+
+// Yahoo Finance용 한국 티커 변환: 코스피 → .KS, 코스닥 → .KQ
 function toYahooKrxTicker(ticker) {
-  return `${ticker}.KS`;
+  const exchange = getKrExchange(ticker);
+  return exchange === "KOSDAQ" ? `${ticker}.KQ` : `${ticker}.KS`;
 }
 
 async function fetchPage(ticker, path, quarterly) {
   const q = quarterly ? "?p=quarterly" : "";
   const normalizedPath = path || "";
 
-  // 한국 종목은 /quote/krx/005930/ 경로 사용
-  const base = isKrxTicker(ticker) ? SA_KRX : SA_US;
+  const base = getSaBase(ticker);
   const url = `${base}/${ticker.toLowerCase()}/${normalizedPath}${q}`;
 
   try {
