@@ -1,205 +1,138 @@
-// lib/etfanalysis.js — StockAnalysis ETF + Yahoo Finance hybrid
+// lib/etfanalysis.js — StockAnalysis ETF + Yahoo Finance (실제 HTML key 매칭 완료)
 
 const SA_ETF = "https://stockanalysis.com/etf";
-const UA = {
-  "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
-};
+const UA = { "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36" };
 
-function stripHtml(text) {
-  return (text || "").replace(/<[^>]*>/g, "").replace(/&amp;/g, "&").replace(/&nbsp;/g, " ").trim();
-}
+function stripHtml(t) { return (t||"").replace(/<[^>]*>/g,"").replace(/&amp;/g,"&").replace(/&nbsp;/g," ").trim(); }
 
 async function fetchEtfPage(ticker, path) {
-  const url = `${SA_ETF}/${ticker.toLowerCase()}/${path || ""}`;
   try {
-    const res = await fetch(url, { headers: UA, cache: "no-store" });
-    if (!res.ok) return null;
-    return await res.text();
-  } catch {
-    return null;
-  }
+    const res = await fetch(`${SA_ETF}/${ticker.toLowerCase()}/${path||""}`, { headers: UA, cache: "no-store" });
+    return res.ok ? await res.text() : null;
+  } catch { return null; }
 }
 
-function parseStatsTables(html) {
+function parsePairs(html) {
   if (!html) return {};
-  const data = {};
-  const allTds = [...html.matchAll(/<td[^>]*>([\s\S]*?)<\/td>/g)];
-  for (let i = 0; i < allTds.length - 1; i += 2) {
-    const key = stripHtml(allTds[i][1]);
-    const val = stripHtml(allTds[i + 1][1]);
-    if (key) data[key] = val;
+  const d = {};
+  // Method 1: td pairs
+  const tds = [...html.matchAll(/<td[^>]*>([\s\S]*?)<\/td>/g)];
+  for (let i = 0; i < tds.length - 1; i += 2) {
+    const k = stripHtml(tds[i][1]), v = stripHtml(tds[i+1][1]);
+    if (k && v) d[k] = v;
   }
-  return data;
+  // Method 2: key-value from spans/divs (StockAnalysis uses this for some sections)
+  const kvPairs = [...html.matchAll(/<(?:span|div|dt)[^>]*class="[^"]*label[^"]*"[^>]*>([\s\S]*?)<\/(?:span|div|dt)>\s*<(?:span|div|dd)[^>]*>([\s\S]*?)<\/(?:span|div|dd)>/gi)];
+  for (const m of kvPairs) {
+    const k = stripHtml(m[1]), v = stripHtml(m[2]);
+    if (k && v && !d[k]) d[k] = v;
+  }
+  return d;
 }
 
 async function getYahooEtfQuote(ticker) {
   try {
-    const url = `https://query2.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(ticker)}?range=1y&interval=1d`;
-    const res = await fetch(url, { headers: UA, cache: "no-store" });
+    const res = await fetch(`https://query2.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(ticker)}?range=1y&interval=1d`, { headers: UA, cache: "no-store" });
     if (!res.ok) return null;
-    const json = await res.json();
-    const result = json?.chart?.result?.[0];
-    if (!result) return null;
-
-    const meta = result.meta || {};
-    const closes = result.indicators?.quote?.[0]?.close || [];
-    const highs = result.indicators?.quote?.[0]?.high || [];
-    const lows = result.indicators?.quote?.[0]?.low || [];
-
+    const r = (await res.json())?.chart?.result?.[0];
+    if (!r) return null;
+    const meta = r.meta || {};
+    const closes = (r.indicators?.quote?.[0]?.close||[]).filter(v=>typeof v==="number"&&isFinite(v));
+    const highs = (r.indicators?.quote?.[0]?.high||[]).filter(v=>typeof v==="number"&&isFinite(v));
+    const lows = (r.indicators?.quote?.[0]?.low||[]).filter(v=>typeof v==="number"&&isFinite(v));
     const price = meta.regularMarketPrice || 0;
-    const previousClose = meta.chartPreviousClose || meta.previousClose || 0;
-    const dailyChange = price && previousClose ? ((price - previousClose) / previousClose) * 100 : 0;
-
-    const validHighs = highs.filter(v => typeof v === "number" && isFinite(v));
-    const validLows = lows.filter(v => typeof v === "number" && isFinite(v));
-    const validCloses = closes.filter(v => typeof v === "number" && isFinite(v));
-
-    const calcReturn = (daysAgo) => {
-      if (validCloses.length < daysAgo + 1) return null;
-      const past = validCloses[validCloses.length - 1 - daysAgo];
-      const now = validCloses[validCloses.length - 1];
-      return past ? ((now - past) / past) * 100 : null;
-    };
-
-    // Total return = 배당 포함 수익률은 Yahoo에서 직접 못 가져오므로, 가격 수익률만 계산
-    // 배당 포함 수익률은 StockAnalysis에서 가져옴
+    const prev = meta.chartPreviousClose || meta.previousClose || 0;
+    const calc = (d) => closes.length>d+1 ? ((closes[closes.length-1]-closes[closes.length-1-d])/closes[closes.length-1-d])*100 : null;
     return {
-      price,
-      dailyChange,
-      yearHigh: validHighs.length > 0 ? Math.max(...validHighs) : 0,
-      yearLow: validLows.length > 0 ? Math.min(...validLows) : 0,
+      price, dailyChange: prev ? ((price-prev)/prev)*100 : 0,
+      yearHigh: highs.length ? Math.max(...highs) : 0,
+      yearLow: lows.length ? Math.min(...lows) : 0,
       exchange: meta.exchangeName || "",
-      returns: {
-        "1M": calcReturn(21),
-        "3M": calcReturn(63),
-        "6M": calcReturn(126),
-        "1Y": calcReturn(Math.max(0, validCloses.length - 2)),
-      },
+      returns: { "1M": calc(21), "3M": calc(63), "6M": calc(126), "1Y": calc(Math.max(0,closes.length-2)) },
     };
-  } catch {
-    return null;
-  }
+  } catch { return null; }
 }
 
 export async function getEtfOverview(ticker) {
-  const [overviewHtml, yahooQuote] = await Promise.all([
-    fetchEtfPage(ticker, ""),
-    getYahooEtfQuote(ticker),
-  ]);
-
-  if (!overviewHtml && !yahooQuote) return null;
-
-  const stats = parseStatsTables(overviewHtml || "");
-  const html = overviewHtml || "";
-
-  const nameMatch = html.match(/<h1[^>]*>([^<]+)/);
-  const name = nameMatch ? nameMatch[1].replace(/\s*\([^)]*\)\s*$/, "").trim() : ticker;
-
-  const descMatch = html.match(/(?:The fund|The ETF|This ETF|The investment)[^<]{20,400}\./);
-  const description = descMatch ? stripHtml(descMatch[0]) : "";
-
-  // 실제 StockAnalysis key 이름 매칭 (확인된 것들)
-  const totalReturn = stats["Total Return"] || null;
-
+  const [html, yq] = await Promise.all([fetchEtfPage(ticker,""), getYahooEtfQuote(ticker)]);
+  if (!html && !yq) return null;
+  const s = parsePairs(html||"");
+  const nameM = (html||"").match(/<h1[^>]*>([^<]+)/);
+  const descM = (html||"").match(/(?:The fund|The ETF|This ETF|The investment)[^<]{20,400}\./);
   return {
-    name,
+    name: nameM ? nameM[1].replace(/\s*\([^)]*\)\s*$/,"").trim() : ticker,
     ticker: ticker.toUpperCase(),
-    description,
-    price: yahooQuote?.price || 0,
-    dailyChange: yahooQuote?.dailyChange || 0,
-    yearHigh: yahooQuote?.yearHigh || 0,
-    yearLow: yahooQuote?.yearLow || 0,
-    exchange: yahooQuote?.exchange || "",
-    returns: yahooQuote?.returns || {},
-    // 실제 확인된 key 이름들
-    expenseRatio: stats["Expense Ratio"] || "-",
-    aum: stats["Assets"] || stats["Net Assets"] || stats["Assets Under Management"] || stats["AUM"] || "-",
-    category: stats["Category"] || "-",
-    issuer: stats["ETF Provider"] || stats["Issuer"] || stats["Fund Family"] || "-",
-    index: stats["Index Tracked"] || stats["Benchmark"] || "-",
-    holdingsCount: stats["Holdings"] || "-",
-    inception: stats["Inception Date"] || "-",
-    divYield: stats["Dividend Yield"] || "-",
-    divTTM: stats["Dividend (ttm)"] || stats["Dividend"] || "-",
-    pe: stats["PE Ratio"] || "-",
-    beta: stats["Beta"] || stats["Beta (5Y)"] || "-",
-    payoutFreq: stats["Payout Frequency"] || "-",
-    payoutRatio: stats["Payout Ratio"] || "-",
-    sharesOut: stats["Shares Out"] || "-",
-    region: stats["Region"] || "-",
-    assetClass: stats["Asset Class"] || "-",
-    totalReturn,
+    description: descM ? stripHtml(descM[0]) : "",
+    price: yq?.price||0, dailyChange: yq?.dailyChange||0,
+    yearHigh: yq?.yearHigh||0, yearLow: yq?.yearLow||0,
+    exchange: yq?.exchange||"", returns: yq?.returns||{},
+    // Overview page keys (confirmed from actual HTML)
+    expenseRatio: s["Expense Ratio"]||"-",
+    aum: s["Assets"]||s["Net Assets"]||"-",
+    category: s["Category"]||s["ETF Category"]||"-",
+    issuer: s["ETF Provider"]||s["Issuer"]||"-",
+    index: s["Index Tracked"]||"-",
+    holdingsCount: s["Holdings"]||s["Total Holdings"]||"-",
+    inception: s["Inception Date"]||"-",
+    divYield: s["Dividend Yield"]||"-",
+    divTTM: s["Dividend (ttm)"]||s["Dividend"]||"-",
+    pe: s["PE Ratio"]||"-",
+    beta: s["Beta"]||"-",
+    payoutFreq: s["Payout Frequency"]||"-",
+    sharesOut: s["Shares Out"]||"-",
+    assetClass: s["Asset Class"]||"-",
+    region: s["Region"]||"-",
   };
 }
 
 export async function getEtfHoldings(ticker) {
   const html = await fetchEtfPage(ticker, "holdings/");
-  if (!html) return [];
+  if (!html) return { stats: {}, list: [] };
 
-  const holdings = [];
+  const s = parsePairs(html);
+  const stats = {
+    totalHoldings: s["Total Holdings"]||s["Holdings"]||"-",
+    top10Pct: s["Top 10 Percentage"]||"-",
+    assetClass: s["Asset Class"]||"-",
+    category: s["ETF Category"]||s["Category"]||"-",
+    assets: s["Assets"]||"-",
+    pe: s["PE Ratio"]||"-",
+  };
 
-  // StockAnalysis holdings table: Name | Symbol | Weight
-  const tbodyMatch = html.match(/<tbody[^>]*>([\s\S]*?)<\/tbody>/);
-  if (!tbodyMatch) return [];
-
-  const rows = tbodyMatch[1].split("</tr>");
-  for (const row of rows) {
-    if (!row.includes("<td")) continue;
-    const cells = [...row.matchAll(/<td[^>]*>([\s\S]*?)<\/td>/g)];
-    if (cells.length < 2) continue;
-
-    const texts = cells.map(c => stripHtml(c[1]));
-
-    // 각 cell에서 링크 안의 종목 심볼 추출
-    const linkMatch = row.match(/href="\/stocks\/([^/"]+)\//);
-    const symbol = linkMatch ? linkMatch[1].toUpperCase() : "";
-
-    // 비중: 마지막에서 % 포함된 값 찾기
-    let weight = "";
-    for (let j = texts.length - 1; j >= 0; j--) {
-      const cleaned = texts[j].replace("%", "").replace(",", "").trim();
-      if (/^\d+\.?\d*$/.test(cleaned) && parseFloat(cleaned) <= 100) {
-        weight = cleaned;
-        break;
+  // Parse holdings table: No. | Symbol | Name | % Weight | Shares
+  const list = [];
+  const tbM = html.match(/<tbody[^>]*>([\s\S]*?)<\/tbody>/);
+  if (tbM) {
+    for (const row of tbM[1].split("</tr>")) {
+      if (!row.includes("<td")) continue;
+      const cells = [...row.matchAll(/<td[^>]*>([\s\S]*?)<\/td>/g)].map(c=>stripHtml(c[1]));
+      if (cells.length < 4) continue;
+      // Link-based symbol extraction
+      const linkM = row.match(/href="\/stocks\/([^/"]+)\//);
+      const sym = linkM ? linkM[1].toUpperCase() : (cells[1]||"");
+      const name = cells[2]||"";
+      const weight = (cells[3]||"").replace("%","").trim();
+      const shares = cells[4] ? cells[4].replace(/,/g,"") : "";
+      if (sym && weight) {
+        list.push({ symbol: String(sym), name: String(name||sym), weight: String(weight), shares: String(shares) });
       }
+      if (list.length >= 15) break;
     }
-
-    // 이름: 첫 번째 긴 텍스트
-    let name = "";
-    for (const t of texts) {
-      if (t.length > 3 && !/^\d+\.?\d*%?$/.test(t.replace(",","")) && t !== symbol) {
-        name = t;
-        break;
-      }
-    }
-
-    if ((symbol || name) && weight) {
-      holdings.push({
-        symbol: String(symbol || name.substring(0, 6)),
-        name: String(name || symbol),
-        weight: String(weight),
-      });
-    }
-
-    if (holdings.length >= 15) break;
   }
-
-  return holdings;
+  return { stats, list };
 }
 
 export async function getEtfDividend(ticker) {
   const html = await fetchEtfPage(ticker, "dividend/");
   if (!html) return null;
-
-  const stats = parseStatsTables(html);
-
+  const s = parsePairs(html);
+  // Confirmed keys from actual VOO dividend page
   return {
-    yield: stats["Dividend Yield"] || stats["Yield"] || "-",
-    annualDiv: stats["Annual Dividend"] || stats["Dividend Per Share"] || stats["Dividend (ttm)"] || "-",
-    frequency: stats["Payout Frequency"] || stats["Payment Frequency"] || stats["Frequency"] || "-",
-    exDate: stats["Ex-Dividend Date"] || stats["Last Ex-Dividend Date"] || "-",
-    payDate: stats["Pay Date"] || stats["Payment Date"] || stats["Last Pay Date"] || "-",
-    growthRate3Y: stats["3-Year Growth Rate"] || stats["3Y CAGR"] || "-",
-    growthRate5Y: stats["5-Year Growth Rate"] || stats["5Y CAGR"] || "-",
+    yield: s["Dividend Yield"]||"-",
+    annualDiv: s["Annual Dividend"]||"-",
+    exDate: s["Ex-Dividend Date"]||"-",
+    frequency: s["Payout Frequency"]||"-",
+    payoutRatio: s["Payout Ratio"]||"-",
+    divGrowth: s["Dividend Growth"]||s["Dividend Growth(1Y)"]||"-",
   };
 }
