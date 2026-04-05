@@ -9,15 +9,6 @@ function stripHtml(text) {
   return (text || "").replace(/<[^>]*>/g, "").replace(/&amp;/g, "&").replace(/&nbsp;/g, " ").trim();
 }
 
-function parseNum(text) {
-  if (!text) return 0;
-  const cleaned = text.replace(/,/g, "").replace("$", "").replace("%", "").trim();
-  const mult = { T: 1e12, B: 1e9, M: 1e6, K: 1e3 };
-  const last = cleaned.slice(-1).toUpperCase();
-  if (mult[last]) return (parseFloat(cleaned.slice(0, -1)) || 0) * mult[last];
-  return parseFloat(cleaned) || 0;
-}
-
 async function fetchEtfPage(ticker, path) {
   const url = `${SA_ETF}/${ticker.toLowerCase()}/${path || ""}`;
   try {
@@ -70,6 +61,8 @@ async function getYahooEtfQuote(ticker) {
       return past ? ((now - past) / past) * 100 : null;
     };
 
+    // Total return = 배당 포함 수익률은 Yahoo에서 직접 못 가져오므로, 가격 수익률만 계산
+    // 배당 포함 수익률은 StockAnalysis에서 가져옴
     return {
       price,
       dailyChange,
@@ -105,6 +98,9 @@ export async function getEtfOverview(ticker) {
   const descMatch = html.match(/(?:The fund|The ETF|This ETF|The investment)[^<]{20,400}\./);
   const description = descMatch ? stripHtml(descMatch[0]) : "";
 
+  // 실제 StockAnalysis key 이름 매칭 (확인된 것들)
+  const totalReturn = stats["Total Return"] || null;
+
   return {
     name,
     ticker: ticker.toUpperCase(),
@@ -115,16 +111,24 @@ export async function getEtfOverview(ticker) {
     yearLow: yahooQuote?.yearLow || 0,
     exchange: yahooQuote?.exchange || "",
     returns: yahooQuote?.returns || {},
+    // 실제 확인된 key 이름들
     expenseRatio: stats["Expense Ratio"] || "-",
-    aum: stats["Assets Under Management"] || stats["AUM"] || stats["Net Assets"] || "-",
-    category: stats["Category"] || stats["Asset Class"] || "-",
-    issuer: stats["Issuer"] || stats["Fund Family"] || "-",
+    aum: stats["Assets"] || stats["Net Assets"] || stats["Assets Under Management"] || stats["AUM"] || "-",
+    category: stats["Category"] || "-",
+    issuer: stats["ETF Provider"] || stats["Issuer"] || stats["Fund Family"] || "-",
     index: stats["Index Tracked"] || stats["Benchmark"] || "-",
-    holdings: stats["Holdings"] || stats["Number of Holdings"] || "-",
+    holdingsCount: stats["Holdings"] || "-",
     inception: stats["Inception Date"] || "-",
-    divYield: stats["Dividend Yield"] || stats["Yield"] || "-",
+    divYield: stats["Dividend Yield"] || "-",
+    divTTM: stats["Dividend (ttm)"] || stats["Dividend"] || "-",
     pe: stats["PE Ratio"] || "-",
-    beta: stats["Beta (5Y)"] || "-",
+    beta: stats["Beta"] || stats["Beta (5Y)"] || "-",
+    payoutFreq: stats["Payout Frequency"] || "-",
+    payoutRatio: stats["Payout Ratio"] || "-",
+    sharesOut: stats["Shares Out"] || "-",
+    region: stats["Region"] || "-",
+    assetClass: stats["Asset Class"] || "-",
+    totalReturn,
   };
 }
 
@@ -134,56 +138,50 @@ export async function getEtfHoldings(ticker) {
 
   const holdings = [];
 
-  // Method 1: Parse table rows
+  // StockAnalysis holdings table: Name | Symbol | Weight
   const tbodyMatch = html.match(/<tbody[^>]*>([\s\S]*?)<\/tbody>/);
-  if (tbodyMatch) {
-    const rows = tbodyMatch[1].split("</tr>");
-    for (const row of rows) {
-      if (!row.includes("<td")) continue;
-      const cells = [...row.matchAll(/<td[^>]*>([\s\S]*?)<\/td>/g)];
-      if (cells.length < 2) continue;
+  if (!tbodyMatch) return [];
 
-      const texts = cells.map(c => stripHtml(c[1]));
+  const rows = tbodyMatch[1].split("</tr>");
+  for (const row of rows) {
+    if (!row.includes("<td")) continue;
+    const cells = [...row.matchAll(/<td[^>]*>([\s\S]*?)<\/td>/g)];
+    if (cells.length < 2) continue;
 
-      // Try to find: symbol (uppercase 1-6 chars), weight (number with optional %)
-      let symbol = "", name = "", weight = "";
-      for (const t of texts) {
-        if (!symbol && /^[A-Z][A-Z0-9.]{0,7}$/.test(t)) symbol = t;
-        else if (!weight && /^\d+\.?\d*%?$/.test(t.replace(",", ""))) weight = t.replace("%", "").replace(",", "");
-        else if (!name && t.length > 1 && !/^\d+$/.test(t) && !/^[A-Z]{1,6}$/.test(t)) name = t;
+    const texts = cells.map(c => stripHtml(c[1]));
+
+    // 각 cell에서 링크 안의 종목 심볼 추출
+    const linkMatch = row.match(/href="\/stocks\/([^/"]+)\//);
+    const symbol = linkMatch ? linkMatch[1].toUpperCase() : "";
+
+    // 비중: 마지막에서 % 포함된 값 찾기
+    let weight = "";
+    for (let j = texts.length - 1; j >= 0; j--) {
+      const cleaned = texts[j].replace("%", "").replace(",", "").trim();
+      if (/^\d+\.?\d*$/.test(cleaned) && parseFloat(cleaned) <= 100) {
+        weight = cleaned;
+        break;
       }
-
-      // If no clear symbol found, try first non-number text
-      if (!symbol && texts.length >= 2) {
-        for (const t of texts) {
-          if (t.length >= 1 && t.length <= 10 && !/^\d+\.?\d*%?$/.test(t) && !/^\d+$/.test(t)) {
-            symbol = t;
-            break;
-          }
-        }
-      }
-
-      // Weight: try last column that looks numeric
-      if (!weight) {
-        for (let j = texts.length - 1; j >= 0; j--) {
-          const cleaned = texts[j].replace("%", "").replace(",", "").trim();
-          if (/^\d+\.?\d*$/.test(cleaned) && parseFloat(cleaned) < 100) {
-            weight = cleaned;
-            break;
-          }
-        }
-      }
-
-      if (symbol && weight) {
-        holdings.push({
-          symbol: String(symbol),
-          name: String(name || symbol),
-          weight: String(weight),
-        });
-      }
-
-      if (holdings.length >= 15) break;
     }
+
+    // 이름: 첫 번째 긴 텍스트
+    let name = "";
+    for (const t of texts) {
+      if (t.length > 3 && !/^\d+\.?\d*%?$/.test(t.replace(",","")) && t !== symbol) {
+        name = t;
+        break;
+      }
+    }
+
+    if ((symbol || name) && weight) {
+      holdings.push({
+        symbol: String(symbol || name.substring(0, 6)),
+        name: String(name || symbol),
+        weight: String(weight),
+      });
+    }
+
+    if (holdings.length >= 15) break;
   }
 
   return holdings;
@@ -197,11 +195,11 @@ export async function getEtfDividend(ticker) {
 
   return {
     yield: stats["Dividend Yield"] || stats["Yield"] || "-",
-    annualDiv: stats["Annual Dividend"] || stats["Dividend Per Share"] || "-",
-    frequency: stats["Payout Frequency"] || stats["Payment Frequency"] || "-",
-    exDate: stats["Ex-Dividend Date"] || "-",
-    payDate: stats["Pay Date"] || stats["Payment Date"] || "-",
-    growthRate3Y: stats["3-Year Growth Rate"] || "-",
-    growthRate5Y: stats["5-Year Growth Rate"] || "-",
+    annualDiv: stats["Annual Dividend"] || stats["Dividend Per Share"] || stats["Dividend (ttm)"] || "-",
+    frequency: stats["Payout Frequency"] || stats["Payment Frequency"] || stats["Frequency"] || "-",
+    exDate: stats["Ex-Dividend Date"] || stats["Last Ex-Dividend Date"] || "-",
+    payDate: stats["Pay Date"] || stats["Payment Date"] || stats["Last Pay Date"] || "-",
+    growthRate3Y: stats["3-Year Growth Rate"] || stats["3Y CAGR"] || "-",
+    growthRate5Y: stats["5-Year Growth Rate"] || stats["5Y CAGR"] || "-",
   };
 }
