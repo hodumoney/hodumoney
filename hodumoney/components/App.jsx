@@ -1905,7 +1905,7 @@ function EtfPage() {
                   { label: "추적 지수", value: data.index },
                   { label: "보수율 (TER)", value: data.expenseRatio },
                   { label: "순자산 (AUM)", value: data.aum },
-                  { label: "구성종목 수", value: data.holdings },
+                  { label: "구성종목 수", value: data.holdingsCount },
                   { label: "설정일", value: data.inception },
                   { label: "배당수익률", value: data.divYield },
                   { label: "52주 최고", value: `$${safeNum(data.yearHigh).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` },
@@ -1982,14 +1982,14 @@ function EtfPage() {
                 <div className="card-title">구성종목 TOP 15</div>
                 <div className="card-description">이 ETF에 가장 많이 포함된 종목과 비중</div>
               </div>
-              {data.holdings && data.holdings.length > 0 ? (
+              {data.holdingsList && data.holdingsList.length > 0 ? (
                 <div className="card" style={{ padding: 0, overflow: "hidden" }}>
-                  {data.holdings.filter(h => h && typeof h === "object" && h.symbol).map((h, i) => {
+                  {data.holdingsList.filter(h => h && typeof h === "object" && h.symbol).map((h, i) => {
                     const sym = String(h.symbol || "");
                     const nm = String(h.name || sym);
                     const wt = String(h.weight || "0");
                     return (
-                    <div key={i} style={{ display: "flex", alignItems: "center", padding: "12px 20px", borderBottom: i < data.holdings.length - 1 ? "1px solid var(--border)" : "none", gap: 12 }}>
+                    <div key={i} style={{ display: "flex", alignItems: "center", padding: "12px 20px", borderBottom: i < data.holdingsList.length - 1 ? "1px solid var(--border)" : "none", gap: 12 }}>
                       <div style={{ width: 28, height: 28, borderRadius: 6, background: "var(--accent-blue-light)", color: "var(--accent-blue)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 12, fontWeight: 700, flexShrink: 0 }}>
                         {i + 1}
                       </div>
