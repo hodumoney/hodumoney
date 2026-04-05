@@ -62,7 +62,7 @@ const MENU_ITEMS = [
   { id: "company", label: "기업 분석", icon: "🔍", ready: true },
   { id: "watchlist", label: "관심 종목", icon: "⭐", ready: true },
   { id: "briefing", label: "호두 브리핑", icon: "🗞️", ready: true },
-  { id: "etf", label: "ETF 분석", icon: "📦", ready: false },
+  { id: "etf", label: "ETF 분석", icon: "📦", ready: true },
   { id: "correlation", label: "상관관계 분석", icon: "🔗", ready: false },
   { id: "backtest", label: "백테스트", icon: "⏪", ready: false },
 ];
@@ -1792,6 +1792,227 @@ function CompanyPage({ searchTicker, onQuickSearch, onUsageConsume, user, isInWa
   );
 }
 
+// ─── ETF 분석 Page ──────────────────────────────────────────────
+function EtfPage() {
+  const [query, setQuery] = useState("");
+  const [data, setData] = useState(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
+  const [activeTab, setActiveTab] = useState("overview");
+
+  const handleSearch = (ticker) => {
+    const t = (ticker || query).trim().toUpperCase();
+    if (!t) return;
+    setLoading(true); setError(null); setData(null);
+    fetch(`/api/etf?symbol=${encodeURIComponent(t)}`)
+      .then(r => r.json())
+      .then(d => {
+        if (d.error) { setError(d.error); setData(null); }
+        else setData(d);
+      })
+      .catch(() => setError("데이터를 불러올 수 없습니다"))
+      .finally(() => setLoading(false));
+  };
+
+  const safeNum = (v) => (typeof v === "number" && isFinite(v)) ? v : 0;
+  const fmtPct = (v) => {
+    if (v === null || v === undefined) return "-";
+    const n = typeof v === "number" ? v : parseFloat(v);
+    if (!isFinite(n)) return "-";
+    return `${n >= 0 ? "+" : ""}${n.toFixed(2)}%`;
+  };
+  const pctColor = (v) => {
+    const n = typeof v === "number" ? v : parseFloat(v);
+    if (!isFinite(n)) return "var(--text-tertiary)";
+    return n >= 0 ? "#c0392b" : "#2980b9";
+  };
+
+  // 검색 화면
+  if (!data && !loading && !error) {
+    return (
+      <div className="content-area" style={{ display: "flex", alignItems: "center", justifyContent: "center", minHeight: "calc(100vh - 60px)" }}>
+        <div className="fade-up" style={{ textAlign: "center", width: "100%", maxWidth: 560, padding: "0 20px" }}>
+          <div style={{ fontSize: 48, marginBottom: 16, opacity: 0.6 }}>📦</div>
+          <h3 style={{ fontSize: 26, fontWeight: 800, marginBottom: 8, letterSpacing: "-0.5px" }}>ETF를 검색해보세요</h3>
+          <p style={{ fontSize: 14, color: "var(--text-tertiary)", lineHeight: 1.6, marginBottom: 28 }}>ETF 티커를 입력하면 개요, 수익률, 배당, 구성종목을 한눈에 볼 수 있습니다.</p>
+          <div style={{ display: "flex", gap: 8, maxWidth: 420, margin: "0 auto 20px" }}>
+            <input type="text" placeholder="ETF 티커 입력 (예: VOO, QQQ, SPY)" value={query} onChange={e => setQuery(e.target.value)}
+              onKeyDown={e => { if (e.key === "Enter") handleSearch(); }}
+              style={{ flex: 1, padding: "12px 16px", border: "1.5px solid var(--border)", borderRadius: 12, fontSize: 15, fontFamily: "inherit", outline: "none" }} />
+            <button onClick={() => handleSearch()} style={{ padding: "12px 24px", background: "#5D4037", color: "white", border: "none", borderRadius: 12, fontSize: 15, fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }}>분석</button>
+          </div>
+          <div style={{ display: "flex", gap: 8, justifyContent: "center", flexWrap: "wrap" }}>
+            {["VOO", "QQQ", "SPY", "SCHD", "VTI", "JEPI"].map(t => (
+              <button key={t} onClick={() => { setQuery(t); handleSearch(t); }}
+                style={{ padding: "8px 18px", borderRadius: 20, border: "1px solid var(--border)", background: "white", fontFamily: "inherit", fontSize: 13, fontWeight: 600, cursor: "pointer", color: "#5D4037" }}>{t}</button>
+            ))}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="content-area">
+      {/* 검색바 */}
+      <div className="card fade-up" style={{ padding: 14, marginBottom: 16 }}>
+        <div style={{ display: "flex", gap: 8 }}>
+          <input type="text" placeholder="ETF 티커 (예: VOO)" value={query} onChange={e => setQuery(e.target.value)}
+            onKeyDown={e => { if (e.key === "Enter") handleSearch(); }}
+            style={{ flex: 1, padding: "10px 14px", border: "1.5px solid var(--border)", borderRadius: 10, fontSize: 14, fontFamily: "inherit", outline: "none" }} />
+          <button onClick={() => handleSearch()} style={{ padding: "10px 20px", background: "#5D4037", color: "white", border: "none", borderRadius: 10, fontSize: 14, fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }}>분석</button>
+        </div>
+      </div>
+
+      {loading && <div style={{ textAlign: "center", padding: 60, color: "var(--text-tertiary)" }}>ETF 데이터 불러오는 중...</div>}
+      {error && <div style={{ textAlign: "center", padding: 60, color: "var(--accent-red)" }}>{error}</div>}
+
+      {data && (
+        <div className="fade-up">
+          {/* 히어로 */}
+          <div className="company-hero fade-up">
+            <div className="company-info">
+              <h2 style={{ margin: 0 }}>{data.name}</h2>
+              <div className="company-ticker">{data.ticker} · {data.exchange} · ETF</div>
+              {data.description && <div className="company-desc" style={{ maxWidth: 600 }}>{data.description}</div>}
+            </div>
+            <div className="price-block">
+              <div className="price-current">${safeNum(data.price).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
+              <div className={`price-change ${data.dailyChange >= 0 ? "positive" : "negative"}`}>
+                {data.dailyChange >= 0 ? "+" : ""}{safeNum(data.dailyChange).toFixed(2)}% 오늘
+              </div>
+            </div>
+          </div>
+
+          {/* 차트 */}
+          <PriceChart ticker={data.ticker} dailyChange={data.dailyChange / 100} onPeriodChange={() => {}} />
+
+          {/* 탭 */}
+          <div className="tab-group fade-up fade-up-d1">
+            {[{ id: "overview", label: "개요" }, { id: "returns", label: "수익률" }, { id: "dividend", label: "배당" }, { id: "holdings", label: "구성종목" }].map(t => (
+              <button key={t.id} className={`tab-btn ${activeTab === t.id ? "active" : ""}`} onClick={() => setActiveTab(t.id)}>{t.label}</button>
+            ))}
+          </div>
+
+          {/* 개요 탭 */}
+          {activeTab === "overview" && (
+            <div className="fade-up fade-up-d2">
+              <div className="stats-grid" style={{ gridTemplateColumns: "repeat(3, 1fr)" }}>
+                {[
+                  { label: "운용사", value: data.issuer },
+                  { label: "카테고리", value: data.category },
+                  { label: "추적 지수", value: data.index },
+                  { label: "보수율 (TER)", value: data.expenseRatio },
+                  { label: "순자산 (AUM)", value: data.aum },
+                  { label: "구성종목 수", value: data.holdings },
+                  { label: "설정일", value: data.inception },
+                  { label: "배당수익률", value: data.divYield },
+                  { label: "52주 최고", value: `$${safeNum(data.yearHigh).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` },
+                ].map((s, i) => (
+                  <div className="stat-item" key={i}>
+                    <div className="stat-label">{s.label}</div>
+                    <div className="stat-value">{s.value || "-"}</div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* 수익률 탭 */}
+          {activeTab === "returns" && (
+            <div className="fade-up fade-up-d2">
+              <div style={{ marginBottom: 12 }}>
+                <div className="card-title">기간별 수익률</div>
+                <div className="card-description">과거 기간별 총 수익률 (배당 미포함, 가격 기준)</div>
+              </div>
+              <div className="card" style={{ padding: 20 }}>
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 16 }}>
+                  {[
+                    { label: "1개월", value: data.returns?.["1M"] },
+                    { label: "3개월", value: data.returns?.["3M"] },
+                    { label: "6개월", value: data.returns?.["6M"] },
+                    { label: "1년", value: data.returns?.["1Y"] },
+                  ].map((r, i) => (
+                    <div key={i} style={{ textAlign: "center" }}>
+                      <div style={{ fontSize: 12, color: "var(--text-tertiary)", marginBottom: 6 }}>{r.label}</div>
+                      <div style={{ fontSize: 22, fontWeight: 800, color: pctColor(r.value), fontVariantNumeric: "tabular-nums" }}>
+                        {fmtPct(r.value)}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* 배당 탭 */}
+          {activeTab === "dividend" && (
+            <div className="fade-up fade-up-d2">
+              <div style={{ marginBottom: 12 }}>
+                <div className="card-title">배당 정보</div>
+                <div className="card-description">이 ETF의 배당 현황과 이력</div>
+              </div>
+              {data.dividend ? (
+                <div className="stats-grid" style={{ gridTemplateColumns: "repeat(3, 1fr)" }}>
+                  {[
+                    { label: "배당수익률", value: data.dividend.yield },
+                    { label: "주당 배당금 (연)", value: data.dividend.annualDiv },
+                    { label: "배당 주기", value: data.dividend.frequency },
+                    { label: "최근 배당락일", value: data.dividend.exDate },
+                    { label: "3년 배당성장률", value: data.dividend.growthRate3Y },
+                    { label: "5년 배당성장률", value: data.dividend.growthRate5Y },
+                  ].map((s, i) => (
+                    <div className="stat-item" key={i}>
+                      <div className="stat-label">{s.label}</div>
+                      <div className="stat-value">{s.value || "-"}</div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div style={{ textAlign: "center", padding: 40, color: "var(--text-tertiary)" }}>배당 정보가 없습니다</div>
+              )}
+            </div>
+          )}
+
+          {/* 구성종목 탭 */}
+          {activeTab === "holdings" && (
+            <div className="fade-up fade-up-d2">
+              <div style={{ marginBottom: 12 }}>
+                <div className="card-title">구성종목 TOP 15</div>
+                <div className="card-description">이 ETF에 가장 많이 포함된 종목과 비중</div>
+              </div>
+              {data.holdings && data.holdings.length > 0 ? (
+                <div className="card" style={{ padding: 0, overflow: "hidden" }}>
+                  {data.holdings.map((h, i) => (
+                    <div key={i} style={{ display: "flex", alignItems: "center", padding: "12px 20px", borderBottom: i < data.holdings.length - 1 ? "1px solid var(--border)" : "none", gap: 12 }}>
+                      <div style={{ width: 28, height: 28, borderRadius: 6, background: "var(--accent-blue-light)", color: "var(--accent-blue)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 12, fontWeight: 700, flexShrink: 0 }}>
+                        {i + 1}
+                      </div>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ fontSize: 14, fontWeight: 700, color: "var(--text-primary)" }}>{h.symbol}</div>
+                        <div style={{ fontSize: 12, color: "var(--text-tertiary)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{h.name}</div>
+                      </div>
+                      <div style={{ minWidth: 60, textAlign: "right" }}>
+                        <div style={{ fontSize: 15, fontWeight: 700, color: "var(--accent-blue)" }}>{h.weight}%</div>
+                      </div>
+                      {/* 비중 바 */}
+                      <div style={{ width: 80, height: 8, background: "#F2F3F5", borderRadius: 4, overflow: "hidden", flexShrink: 0 }}>
+                        <div style={{ width: `${Math.min(100, parseFloat(h.weight) * 10)}%`, height: "100%", background: "var(--accent-blue)", borderRadius: 4 }} />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div style={{ textAlign: "center", padding: 40, color: "var(--text-tertiary)" }}>구성종목 데이터를 불러올 수 없습니다</div>
+              )}
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ─── Coming Soon Page ────────────────────────────────────────────
 function ComingSoonPage({ icon, title }) {
   return (
@@ -2981,7 +3202,7 @@ export default function App() {
             : <CompanyPage searchTicker={null} onQuickSearch={handleQuickSearch} user={user} isInWatchlist={isInWatchlist} addToWatchlist={addToWatchlist} removeFromWatchlist={removeFromWatchlist} />
         )}
         {activePage === "briefing" && <BriefingPage user={user} />}
-        {activePage === "etf" && <ComingSoonPage icon="📦" title="ETF 분석" />}
+        {activePage === "etf" && <EtfPage />}
         {activePage === "correlation" && <ComingSoonPage icon="🔗" title="상관관계 분석" />}
         {activePage === "backtest" && <ComingSoonPage icon="⏪" title="백테스트" />}
         {activePage === "watchlist" && <WatchlistPage user={user} onLogin={() => setShowAuth("login")} onSearch={(ticker) => { setSearchedTicker(ticker); setActivePage("company"); }} watchlist={watchlist} addToWatchlist={addToWatchlist} removeFromWatchlist={removeFromWatchlist} />}
