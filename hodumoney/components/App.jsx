@@ -1887,21 +1887,25 @@ function EtfPage() {
           {activeTab === "overview" && (
             <div className="fade-up fade-up-d2">
               <div className="stats-grid" style={{ gridTemplateColumns: "repeat(3, 1fr)" }}>
-                {[
-                  { label: "운용사", value: data.issuer },
-                  { label: "카테고리", value: data.category },
-                  { label: "추적 지수", value: data.index },
-                  { label: "수수료 (TER)", value: data.expenseRatio },
-                  { label: "순자산 (AUM)", value: data.aum },
-                  { label: "구성종목 수", value: data.holdingsCount },
-                  { label: "PER", value: data.pe },
-                  { label: "베타", value: data.beta },
-                  { label: "상장일", value: data.inception },
-                  { label: "52주 최고", value: `$${safeNum(data.yearHigh).toFixed(2)}` },
-                  { label: "52주 최저", value: `$${safeNum(data.yearLow).toFixed(2)}` },
-                ].map((s, i) => (
-                  <div className="stat-item" key={i}><div className="stat-label">{s.label}</div><div className="stat-value">{s.value || "-"}</div></div>
-                ))}
+                {(() => {
+                  const catMap = { "Large Blend": "대형 혼합", "Large Value": "대형 가치", "Large Growth": "대형 성장", "Mid-Cap Blend": "중형 혼합", "Mid-Cap Value": "중형 가치", "Mid-Cap Growth": "중형 성장", "Small Blend": "소형 혼합", "Small Value": "소형 가치", "Small Growth": "소형 성장", "Derivative Income": "파생 인컴", "Technology": "기술", "Foreign Large Blend": "해외 대형 혼합", "Diversified Emerging Mkts": "신흥시장", "Equity": "주식형", "Bond": "채권형", "Commodity": "원자재" };
+                  const catKr = catMap[data.category] || data.category || "-";
+                  return [
+                    { label: "운용사", value: data.issuer },
+                    { label: "카테고리", value: catKr },
+                    { label: "추적 지수", value: data.index },
+                    { label: "수수료 (TER)", value: data.expenseRatio },
+                    { label: "순자산 (AUM)", value: data.aum },
+                    { label: "구성종목 수", value: data.holdingsCount },
+                    { label: "PER", value: data.pe },
+                    { label: "베타 (β)", value: data.beta },
+                    { label: "상장일", value: data.inception },
+                    { label: "52주 최고", value: `$${safeNum(data.yearHigh).toFixed(2)}` },
+                    { label: "52주 최저", value: `$${safeNum(data.yearLow).toFixed(2)}` },
+                  ].map((s, i) => (
+                    <div className="stat-item" key={i}><div className="stat-label">{s.label}</div><div className="stat-value">{s.value || "-"}</div></div>
+                  ));
+                })()}
               </div>
             </div>
           )}
@@ -1944,18 +1948,35 @@ function EtfPage() {
             <div className="fade-up fade-up-d2">
               <div style={{ marginBottom: 12 }}><div className="card-title">배당 정보</div><div className="card-description">이 ETF의 배당 현황</div></div>
               {data.dividend ? (
-                <div className="stats-grid" style={{ gridTemplateColumns: "repeat(3, 1fr)" }}>
-                  {[
-                    { label: "배당수익률", value: data.dividend.yield },
-                    { label: "주당 배당금 (연)", value: data.dividend.annualDiv },
-                    { label: "배당 주기", value: data.dividend.frequency },
-                    { label: "배당락일", value: data.dividend.exDate },
-                    { label: "배당성향", value: data.dividend.payoutRatio },
-                    { label: "배당성장률 (1Y)", value: data.dividend.divGrowth },
-                  ].map((s, i) => (
-                    <div className="stat-item" key={i}><div className="stat-label">{s.label}</div><div className="stat-value">{s.value || "-"}</div></div>
-                  ))}
-                </div>
+                <>
+                  <div className="stats-grid" style={{ gridTemplateColumns: "repeat(3, 1fr)" }}>
+                    {(() => {
+                      // 배당 주기 한글 변환
+                      const freqMap = { "Monthly": "월배당", "Quarterly": "분기배당", "Semi-Annual": "반기배당", "Annual": "연배당", "Annually": "연배당" };
+                      const freqKr = freqMap[data.dividend.frequency] || data.dividend.frequency || "-";
+                      // 배당락일 한글 변환 (Apr 1, 2026 → 2026년 4월 1일)
+                      const monthMap = { Jan:"1",Feb:"2",Mar:"3",Apr:"4",May:"5",Jun:"6",Jul:"7",Aug:"8",Sep:"9",Oct:"10",Nov:"11",Dec:"12" };
+                      let exDateKr = data.dividend.exDate || "-";
+                      const dateM = exDateKr.match(/([A-Z][a-z]+)\s+(\d+),?\s+(\d{4})/);
+                      if (dateM) exDateKr = `${dateM[3]}년 ${monthMap[dateM[1]]||dateM[1]}월 ${dateM[2]}일`;
+
+                      return [
+                        { label: "배당수익률", value: data.dividend.yield },
+                        { label: "주당 배당금 (연)", value: data.dividend.annualDiv },
+                        { label: "배당 주기", value: freqKr },
+                        { label: "배당락일", value: exDateKr },
+                        { label: "배당성향", value: data.dividend.payoutRatio, sub: "순이익 중 배당으로 지급하는 비율" },
+                        { label: "배당 성장률", value: data.dividend.divGrowth },
+                      ].map((s, i) => (
+                        <div className="stat-item" key={i}>
+                          <div className="stat-label">{s.label}</div>
+                          <div className="stat-value">{s.value || "-"}</div>
+                          {s.sub && <div style={{ fontSize: 11, color: "var(--text-tertiary)", marginTop: 4 }}>{s.sub}</div>}
+                        </div>
+                      ));
+                    })()}
+                  </div>
+                </>
               ) : <div style={{ textAlign: "center", padding: 40, color: "var(--text-tertiary)" }}>배당 정보를 불러올 수 없습니다</div>}
             </div>
           )}
@@ -1966,27 +1987,29 @@ function EtfPage() {
               {/* 구성종목 요약 */}
               {data.holdingsStats && (
                 <div className="stats-grid" style={{ gridTemplateColumns: "repeat(3, 1fr)", marginBottom: 16 }}>
-                  {[
-                    { label: "구성종목 수", value: data.holdingsStats.totalHoldings },
-                    { label: "상위 10 비중", value: data.holdingsStats.top10Pct },
-                    { label: "자산유형", value: data.holdingsStats.assetClass },
-                    { label: "카테고리", value: data.holdingsStats.category },
-                    { label: "순자산", value: data.holdingsStats.assets },
-                    { label: "PER", value: data.holdingsStats.pe },
-                  ].map((s, i) => (
-                    <div className="stat-item" key={i}><div className="stat-label">{s.label}</div><div className="stat-value">{s.value || "-"}</div></div>
-                  ))}
+                  {(() => {
+                    const acMap = { "Equity": "주식형", "Bond": "채권형", "Fixed Income": "채권형", "Commodity": "원자재", "Real Estate": "부동산", "Currency": "통화", "Multi-Asset": "혼합형", "Alternatives": "대안투자" };
+                    const acKr = acMap[data.holdingsStats.assetClass] || data.holdingsStats.assetClass || "-";
+                    return [
+                      { label: "구성종목 수", value: data.holdingsStats.totalHoldings },
+                      { label: "상위 10 비중", value: data.holdingsStats.top10Pct },
+                      { label: "자산유형", value: acKr },
+                    ].map((s, i) => (
+                      <div className="stat-item" key={i}><div className="stat-label">{s.label}</div><div className="stat-value">{s.value || "-"}</div></div>
+                    ));
+                  })()}
                 </div>
               )}
 
-              <div style={{ marginBottom: 12 }}><div className="card-title">구성종목 TOP 15</div><div className="card-description">이 ETF에 가장 많이 포함된 종목과 비중</div></div>
+              <div style={{ marginBottom: 12 }}><div className="card-title">구성종목 TOP 10</div><div className="card-description">이 ETF에 가장 많이 포함된 종목과 비중</div></div>
               {data.holdingsList && data.holdingsList.length > 0 ? (
                 <div className="card" style={{ padding: 0, overflow: "hidden" }}>
-                  {data.holdingsList.filter(h => h && h.symbol).map((h, i) => {
+                  {data.holdingsList.filter(h => h && h.symbol).slice(0, 10).map((h, i) => {
                     const sym = String(h.symbol||""), nm = String(h.name||sym), wt = String(h.weight||"0");
                     const wtNum = parseFloat(wt) || 0;
+                    const maxWt = parseFloat(data.holdingsList[0]?.weight) || 10;
                     return (
-                      <div key={i} style={{ display: "flex", alignItems: "center", padding: "14px 20px", borderBottom: i < data.holdingsList.length - 1 ? "1px solid var(--border)" : "none", gap: 14 }}>
+                      <div key={i} style={{ display: "flex", alignItems: "center", padding: "14px 20px", borderBottom: i < Math.min(data.holdingsList.length, 10) - 1 ? "1px solid var(--border)" : "none", gap: 14 }}>
                         <div style={{ width: 30, height: 30, borderRadius: 8, background: "var(--accent-blue-light)", color: "var(--accent-blue)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 13, fontWeight: 700, flexShrink: 0 }}>{i + 1}</div>
                         <div style={{ flex: 1, minWidth: 0 }}>
                           <div style={{ fontSize: 14, fontWeight: 700 }}>{sym}</div>
@@ -1994,7 +2017,7 @@ function EtfPage() {
                         </div>
                         <div style={{ width: 60, textAlign: "right", fontSize: 15, fontWeight: 700, color: "var(--accent-blue)", flexShrink: 0 }}>{wt}%</div>
                         <div style={{ width: 100, height: 10, background: "#F2F3F5", borderRadius: 5, overflow: "hidden", flexShrink: 0 }}>
-                          <div style={{ width: `${Math.min(100, wtNum / (parseFloat(data.holdingsList[0]?.weight) || 10) * 100)}%`, height: "100%", background: "var(--accent-blue)", borderRadius: 5, transition: "width 0.3s" }} />
+                          <div style={{ width: `${Math.min(100, wtNum / maxWt * 100)}%`, height: "100%", background: "var(--accent-blue)", borderRadius: 5, transition: "width 0.3s" }} />
                         </div>
                       </div>
                     );
