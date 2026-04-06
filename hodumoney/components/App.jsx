@@ -1891,15 +1891,14 @@ function EtfPage() {
                   { label: "운용사", value: data.issuer },
                   { label: "카테고리", value: data.category },
                   { label: "추적 지수", value: data.index },
-                  { label: "보수율 (TER)", value: data.expenseRatio },
+                  { label: "수수료 (TER)", value: data.expenseRatio },
                   { label: "순자산 (AUM)", value: data.aum },
                   { label: "구성종목 수", value: data.holdingsCount },
                   { label: "PER", value: data.pe },
                   { label: "베타", value: data.beta },
-                  { label: "설정일", value: data.inception },
+                  { label: "상장일", value: data.inception },
                   { label: "52주 최고", value: `$${safeNum(data.yearHigh).toFixed(2)}` },
                   { label: "52주 최저", value: `$${safeNum(data.yearLow).toFixed(2)}` },
-                  { label: "발행주식수", value: data.sharesOut },
                 ].map((s, i) => (
                   <div className="stat-item" key={i}><div className="stat-label">{s.label}</div><div className="stat-value">{s.value || "-"}</div></div>
                 ))}
