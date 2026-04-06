@@ -11,12 +11,7 @@ export async function GET(request) {
       getEtfOverview(symbol), getEtfHoldings(symbol), getEtfDividend(symbol),
     ]);
     if (!overview) return Response.json({ error: "ETF를 찾을 수 없습니다: " + symbol }, { status: 404 });
-    return Response.json({
-      ...overview,
-      holdingsStats: holdings.stats,
-      holdingsList: holdings.list,
-      dividend,
-    });
+    return Response.json({ ...overview, holdingsStats: holdings.stats, holdingsList: holdings.list, dividend });
   } catch (err) {
     return Response.json({ error: "Error: " + err.message }, { status: 500 });
   }
