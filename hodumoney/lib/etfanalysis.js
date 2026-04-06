@@ -40,7 +40,8 @@ function parseAllPairs(html) {
       if (lines[i] === label || lines[i].startsWith(label)) {
         // 값은 바로 다음 줄 또는 같은 줄의 나머지
         const nextVal = lines[i+1];
-        if (nextVal && !labels.includes(nextVal) && nextVal.length < 30 && !d[label]) {
+        const noise = ["News","Trending","Articles","Home","Stocks","ETFs","IPOs","Tools","Collapse","Log In","Sign Up","Chart","History","Watchlist","Overview","Holdings","Dividends","Full Chart","Compare","Market Movers"];
+        if (nextVal && !labels.includes(nextVal) && !noise.includes(nextVal) && nextVal.length < 40 && nextVal.length > 0 && !d[label]) {
           d[label] = nextVal;
         }
       }
