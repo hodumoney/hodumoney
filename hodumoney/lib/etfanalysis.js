@@ -1,4 +1,4 @@
-// lib/etfanalysis.js — StockAnalysis ETF + Yahoo Finance (실제 HTML key 매칭 완료)
+// lib/etfanalysis.js — StockAnalysis ETF + Yahoo Finance (text-based parsing)
 
 const SA_ETF = "https://stockanalysis.com/etf";
 const UA = { "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36" };
@@ -12,20 +12,39 @@ async function fetchEtfPage(ticker, path) {
   } catch { return null; }
 }
 
-function parsePairs(html) {
+/**
+ * 범용 key-value 파서: td 쌍 + 텍스트 라벨 패턴 모두 시도
+ */
+function parseAllPairs(html) {
   if (!html) return {};
   const d = {};
-  // Method 1: td pairs
+  // 1) td pairs
   const tds = [...html.matchAll(/<td[^>]*>([\s\S]*?)<\/td>/g)];
   for (let i = 0; i < tds.length - 1; i += 2) {
     const k = stripHtml(tds[i][1]), v = stripHtml(tds[i+1][1]);
-    if (k && v) d[k] = v;
+    if (k && v && k.length < 50) d[k] = v;
   }
-  // Method 2: key-value from spans/divs (StockAnalysis uses this for some sections)
-  const kvPairs = [...html.matchAll(/<(?:span|div|dt)[^>]*class="[^"]*label[^"]*"[^>]*>([\s\S]*?)<\/(?:span|div|dt)>\s*<(?:span|div|dd)[^>]*>([\s\S]*?)<\/(?:span|div|dd)>/gi)];
-  for (const m of kvPairs) {
-    const k = stripHtml(m[1]), v = stripHtml(m[2]);
-    if (k && v && !d[k]) d[k] = v;
+  // 2) 라벨 다음에 오는 값 패턴 (StockAnalysis 배당/개요 페이지 구조)
+  // "Dividend Yield\n\n3.43%" 또는 "Expense Ratio\n\n0.06%" 형태
+  const text = html.replace(/<[^>]*>/g, "\n").replace(/\n{2,}/g, "\n");
+  const lines = text.split("\n").map(l => l.trim()).filter(Boolean);
+  const labels = [
+    "Dividend Yield", "Annual Dividend", "Ex-Dividend Date", "Payout Frequency",
+    "Payout Ratio", "Dividend Growth", "Expense Ratio", "Assets", "PE Ratio",
+    "Shares Out", "Holdings", "Beta", "Inception Date", "ETF Provider",
+    "Category", "Index Tracked", "Asset Class", "Region",
+    "Total Holdings", "Top 10 Percentage", "ETF Category",
+  ];
+  for (let i = 0; i < lines.length - 1; i++) {
+    for (const label of labels) {
+      if (lines[i] === label || lines[i].startsWith(label)) {
+        // 값은 바로 다음 줄 또는 같은 줄의 나머지
+        const nextVal = lines[i+1];
+        if (nextVal && !labels.includes(nextVal) && nextVal.length < 30 && !d[label]) {
+          d[label] = nextVal;
+        }
+      }
+    }
   }
   return d;
 }
@@ -56,7 +75,7 @@ async function getYahooEtfQuote(ticker) {
 export async function getEtfOverview(ticker) {
   const [html, yq] = await Promise.all([fetchEtfPage(ticker,""), getYahooEtfQuote(ticker)]);
   if (!html && !yq) return null;
-  const s = parsePairs(html||"");
+  const s = parseAllPairs(html||"");
   const nameM = (html||"").match(/<h1[^>]*>([^<]+)/);
   const descM = (html||"").match(/(?:The fund|The ETF|This ETF|The investment)[^<]{20,400}\./);
   return {
@@ -66,30 +85,23 @@ export async function getEtfOverview(ticker) {
     price: yq?.price||0, dailyChange: yq?.dailyChange||0,
     yearHigh: yq?.yearHigh||0, yearLow: yq?.yearLow||0,
     exchange: yq?.exchange||"", returns: yq?.returns||{},
-    // Overview page keys (confirmed from actual HTML)
     expenseRatio: s["Expense Ratio"]||"-",
-    aum: s["Assets"]||s["Net Assets"]||"-",
+    aum: s["Assets"]||"-",
     category: s["Category"]||s["ETF Category"]||"-",
-    issuer: s["ETF Provider"]||s["Issuer"]||"-",
+    issuer: s["ETF Provider"]||"-",
     index: s["Index Tracked"]||"-",
     holdingsCount: s["Holdings"]||s["Total Holdings"]||"-",
     inception: s["Inception Date"]||"-",
     divYield: s["Dividend Yield"]||"-",
-    divTTM: s["Dividend (ttm)"]||s["Dividend"]||"-",
     pe: s["PE Ratio"]||"-",
     beta: s["Beta"]||"-",
-    payoutFreq: s["Payout Frequency"]||"-",
-    sharesOut: s["Shares Out"]||"-",
-    assetClass: s["Asset Class"]||"-",
-    region: s["Region"]||"-",
   };
 }
 
 export async function getEtfHoldings(ticker) {
   const html = await fetchEtfPage(ticker, "holdings/");
   if (!html) return { stats: {}, list: [] };
-
-  const s = parsePairs(html);
+  const s = parseAllPairs(html);
   const stats = {
     totalHoldings: s["Total Holdings"]||s["Holdings"]||"-",
     top10Pct: s["Top 10 Percentage"]||"-",
@@ -98,8 +110,6 @@ export async function getEtfHoldings(ticker) {
     assets: s["Assets"]||"-",
     pe: s["PE Ratio"]||"-",
   };
-
-  // Parse holdings table: No. | Symbol | Name | % Weight | Shares
   const list = [];
   const tbM = html.match(/<tbody[^>]*>([\s\S]*?)<\/tbody>/);
   if (tbM) {
@@ -107,15 +117,11 @@ export async function getEtfHoldings(ticker) {
       if (!row.includes("<td")) continue;
       const cells = [...row.matchAll(/<td[^>]*>([\s\S]*?)<\/td>/g)].map(c=>stripHtml(c[1]));
       if (cells.length < 4) continue;
-      // Link-based symbol extraction
       const linkM = row.match(/href="\/stocks\/([^/"]+)\//);
       const sym = linkM ? linkM[1].toUpperCase() : (cells[1]||"");
       const name = cells[2]||"";
       const weight = (cells[3]||"").replace("%","").trim();
-      const shares = cells[4] ? cells[4].replace(/,/g,"") : "";
-      if (sym && weight) {
-        list.push({ symbol: String(sym), name: String(name||sym), weight: String(weight), shares: String(shares) });
-      }
+      if (sym && weight) list.push({ symbol: String(sym), name: String(name||sym), weight: String(weight) });
       if (list.length >= 15) break;
     }
   }
@@ -125,14 +131,13 @@ export async function getEtfHoldings(ticker) {
 export async function getEtfDividend(ticker) {
   const html = await fetchEtfPage(ticker, "dividend/");
   if (!html) return null;
-  const s = parsePairs(html);
-  // Confirmed keys from actual VOO dividend page
+  const s = parseAllPairs(html);
   return {
     yield: s["Dividend Yield"]||"-",
     annualDiv: s["Annual Dividend"]||"-",
     exDate: s["Ex-Dividend Date"]||"-",
     frequency: s["Payout Frequency"]||"-",
     payoutRatio: s["Payout Ratio"]||"-",
-    divGrowth: s["Dividend Growth"]||s["Dividend Growth(1Y)"]||"-",
+    divGrowth: s["Dividend Growth"]||"-",
   };
 }
