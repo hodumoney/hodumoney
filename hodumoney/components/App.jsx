@@ -1939,20 +1939,24 @@ function EtfPage() {
           {activeTab === "overview" && (
             <div className="fade-up fade-up-d2">
               <div className="stats-grid" style={{ gridTemplateColumns: "repeat(3, 1fr)" }}>
-                {[
-                  { label: "운용사", value: data.issuer },
-                  { label: "추적 지수", value: data.index },
-                  { label: "수수료 (TER)", value: data.expenseRatio },
-                  { label: "순자산 (AUM)", value: data.aum },
-                  { label: "구성종목 수", value: data.holdingsCount },
-                  { label: "PER", value: data.pe },
-                  { label: "베타 (β)", value: data.beta },
-                  { label: "상장일", value: data.inception },
-                  { label: "52주 최고", value: `$${safeNum(data.yearHigh).toFixed(2)}` },
-                  { label: "52주 최저", value: `$${safeNum(data.yearLow).toFixed(2)}` },
-                ].map((s, i) => (
-                  <div className="stat-item" key={i}><div className="stat-label">{s.label}</div><div className="stat-value">{s.value || "-"}</div></div>
-                ))}
+                {(() => {
+                  const monthMap = {Jan:"1",Feb:"2",Mar:"3",Apr:"4",May:"5",Jun:"6",Jul:"7",Aug:"8",Sep:"9",Oct:"10",Nov:"11",Dec:"12"};
+                  const toKrDate = (d) => { const m = (d||"").match(/([A-Z][a-z]+)\s+(\d+),?\s+(\d{4})/); return m ? `${m[3]}년 ${monthMap[m[1]]||m[1]}월 ${m[2]}일` : d||"-"; };
+                  return [
+                    { label: "운용사", value: data.issuer },
+                    { label: "추적 지수", value: data.index },
+                    { label: "수수료 (TER)", value: data.expenseRatio },
+                    { label: "순자산 (AUM)", value: data.aum },
+                    { label: "구성종목 수", value: data.holdingsCount },
+                    { label: "PER", value: data.pe },
+                    { label: "베타 (β)", value: data.beta },
+                    { label: "상장일", value: toKrDate(data.inception) },
+                    { label: "52주 최고", value: `$${safeNum(data.yearHigh).toFixed(2)}` },
+                    { label: "52주 최저", value: `$${safeNum(data.yearLow).toFixed(2)}` },
+                  ].map((s, i) => (
+                    <div className="stat-item" key={i}><div className="stat-label">{s.label}</div><div className="stat-value">{s.value || "-"}</div></div>
+                  ));
+                })()}
               </div>
             </div>
           )}
@@ -1969,31 +1973,35 @@ function EtfPage() {
                   { label: "6개월", value: data.returns?.["6M"], divAdj: divNum / 2 },
                   { label: "1년", value: data.returns?.["1Y"], divAdj: divNum },
                 ];
-                const maxAbs = Math.max(...periods.map(p => Math.abs(typeof p.value === "number" ? p.value : 0)), 1);
+                const vals = periods.map(p => typeof p.value === "number" ? p.value : 0);
+                const maxAbs = Math.max(...vals.map(Math.abs), 1);
                 return (
-                  <div className="card" style={{ padding: 20 }}>
-                    {periods.map((r, i) => {
-                      const priceRet = typeof r.value === "number" ? r.value : null;
-                      const totalRet = priceRet !== null ? priceRet + r.divAdj : null;
-                      const barW = priceRet !== null ? Math.abs(priceRet) / maxAbs * 100 : 0;
-                      const isPos = priceRet !== null && priceRet >= 0;
-                      return (
-                        <div key={i} style={{ marginBottom: i < 3 ? 20 : 0 }}>
-                          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 8 }}>
-                            <span style={{ fontSize: 13, fontWeight: 600, color: "var(--text-secondary)" }}>{r.label}</span>
-                            <div style={{ textAlign: "right" }}>
-                              <span style={{ fontSize: 20, fontWeight: 800, color: pctColor(priceRet), fontVariantNumeric: "tabular-nums" }}>{fmtPct(priceRet)}</span>
-                              {totalRet !== null && divNum > 0 && (
-                                <span style={{ fontSize: 12, color: "var(--text-tertiary)", marginLeft: 8 }}>배당 포함 {fmtPct(totalRet)}</span>
-                              )}
+                  <div className="card" style={{ padding: "24px 20px" }}>
+                    <div style={{ display: "flex", gap: 12, alignItems: "flex-end", height: 200, justifyContent: "center" }}>
+                      {periods.map((r, i) => {
+                        const priceRet = typeof r.value === "number" ? r.value : null;
+                        const totalRet = priceRet !== null ? priceRet + r.divAdj : null;
+                        const isPos = priceRet !== null && priceRet >= 0;
+                        const barH = priceRet !== null ? Math.abs(priceRet) / maxAbs * 80 : 0;
+                        return (
+                          <div key={i} style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", height: "100%", justifyContent: "flex-end" }}>
+                            {/* 값 텍스트 */}
+                            <div style={{ fontSize: 16, fontWeight: 800, color: pctColor(priceRet), fontVariantNumeric: "tabular-nums", marginBottom: 6, textAlign: "center" }}>
+                              {fmtPct(priceRet)}
                             </div>
+                            {totalRet !== null && divNum > 0 && (
+                              <div style={{ fontSize: 10, color: "var(--text-tertiary)", marginBottom: 6, textAlign: "center", whiteSpace: "nowrap" }}>
+                                배당포함 {fmtPct(totalRet)}
+                              </div>
+                            )}
+                            {/* 바 */}
+                            <div style={{ width: "100%", maxWidth: 60, height: `${Math.max(8, barH)}%`, background: isPos ? "#3182F6" : "#F04452", borderRadius: "6px 6px 0 0", transition: "height 0.5s ease", minHeight: 8 }} />
+                            {/* 라벨 */}
+                            <div style={{ fontSize: 12, fontWeight: 600, color: "var(--text-secondary)", marginTop: 8 }}>{r.label}</div>
                           </div>
-                          <div style={{ height: 12, background: "#F2F3F5", borderRadius: 6, overflow: "hidden", position: "relative" }}>
-                            <div style={{ width: `${barW}%`, height: "100%", background: isPos ? "#3182F6" : "#F04452", borderRadius: 6, transition: "width 0.5s ease" }} />
-                          </div>
-                        </div>
-                      );
-                    })}
+                        );
+                      })}
+                    </div>
                   </div>
                 );
               })()}
