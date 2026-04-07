@@ -1794,6 +1794,58 @@ function CompanyPage({ searchTicker, onQuickSearch, onUsageConsume, user, isInWa
 }
 
 // ─── ETF 분석 Page ──────────────────────────────────────────────
+function EtfHoldingsTab({ data }) {
+  const [expanded, setExpanded] = useState(false);
+  const acMap = { "Equity": "주식형", "Bond": "채권형", "Fixed Income": "채권형", "Commodity": "원자재", "Real Estate": "부동산", "Currency": "통화", "Multi-Asset": "혼합형", "Alternatives": "대안투자" };
+  const acKr = acMap[data.holdingsStats?.assetClass] || data.holdingsStats?.assetClass || "-";
+  const allItems = (data.holdingsList || []).filter(h => h && h.symbol);
+  const showItems = expanded ? allItems : allItems.slice(0, 10);
+  const maxWt = parseFloat(allItems[0]?.weight) || 10;
+
+  return (
+    <div className="fade-up fade-up-d2">
+      {data.holdingsStats && (
+        <div className="stats-grid" style={{ gridTemplateColumns: "repeat(3, 1fr)", marginBottom: 16 }}>
+          {[
+            { label: "구성종목 수", value: data.holdingsStats.totalHoldings },
+            { label: "상위 10 비중", value: data.holdingsStats.top10Pct },
+            { label: "자산유형", value: acKr },
+          ].map((s, i) => (
+            <div className="stat-item" key={i}><div className="stat-label">{s.label}</div><div className="stat-value">{s.value || "-"}</div></div>
+          ))}
+        </div>
+      )}
+      <div style={{ marginBottom: 12 }}><div className="card-title">구성종목 TOP {expanded ? allItems.length : 10}</div><div className="card-description">이 ETF에 가장 많이 포함된 종목과 비중</div></div>
+      {allItems.length > 0 ? (
+        <div className="card" style={{ padding: 0, overflow: "hidden" }}>
+          {showItems.map((h, i) => {
+            const sym = String(h.symbol||""), nm = String(h.name||sym), wt = String(h.weight||"0");
+            const wtNum = parseFloat(wt) || 0;
+            return (
+              <div key={i} style={{ display: "flex", alignItems: "center", padding: "14px 20px", borderBottom: i < showItems.length - 1 ? "1px solid var(--border)" : "none", gap: 14 }}>
+                <div style={{ width: 30, height: 30, borderRadius: 8, background: "var(--accent-blue-light)", color: "var(--accent-blue)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 13, fontWeight: 700, flexShrink: 0 }}>{i + 1}</div>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontSize: 14, fontWeight: 700 }}>{sym}</div>
+                  <div style={{ fontSize: 12, color: "var(--text-tertiary)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{nm}</div>
+                </div>
+                <div style={{ width: 60, textAlign: "right", fontSize: 15, fontWeight: 700, color: "var(--accent-blue)", flexShrink: 0 }}>{wt}%</div>
+                <div style={{ width: 100, height: 10, background: "#F2F3F5", borderRadius: 5, overflow: "hidden", flexShrink: 0 }}>
+                  <div style={{ width: `${Math.min(100, wtNum / maxWt * 100)}%`, height: "100%", background: "var(--accent-blue)", borderRadius: 5, transition: "width 0.3s" }} />
+                </div>
+              </div>
+            );
+          })}
+          {allItems.length > 10 && (
+            <button onClick={() => setExpanded(!expanded)} style={{ width: "100%", padding: "14px", border: "none", borderTop: "1px solid var(--border)", background: "transparent", cursor: "pointer", fontSize: 14, fontWeight: 600, color: "var(--accent-blue)", fontFamily: "inherit" }}>
+              {expanded ? "▲ 접기" : `▼ ${allItems.length - 10}개 더 보기 (총 ${allItems.length}개)`}
+            </button>
+          )}
+        </div>
+      ) : <div style={{ textAlign: "center", padding: 40, color: "var(--text-tertiary)" }}>구성종목 데이터를 불러올 수 없습니다</div>}
+    </div>
+  );
+}
+
 function EtfPage() {
   const [query, setQuery] = useState("");
   const [data, setData] = useState(null);
@@ -1887,25 +1939,20 @@ function EtfPage() {
           {activeTab === "overview" && (
             <div className="fade-up fade-up-d2">
               <div className="stats-grid" style={{ gridTemplateColumns: "repeat(3, 1fr)" }}>
-                {(() => {
-                  const catMap = { "Large Blend": "대형 혼합", "Large Value": "대형 가치", "Large Growth": "대형 성장", "Mid-Cap Blend": "중형 혼합", "Mid-Cap Value": "중형 가치", "Mid-Cap Growth": "중형 성장", "Small Blend": "소형 혼합", "Small Value": "소형 가치", "Small Growth": "소형 성장", "Derivative Income": "파생 인컴", "Technology": "기술", "Foreign Large Blend": "해외 대형 혼합", "Diversified Emerging Mkts": "신흥시장", "Equity": "주식형", "Bond": "채권형", "Commodity": "원자재" };
-                  const catKr = catMap[data.category] || data.category || "-";
-                  return [
-                    { label: "운용사", value: data.issuer },
-                    { label: "카테고리", value: catKr },
-                    { label: "추적 지수", value: data.index },
-                    { label: "수수료 (TER)", value: data.expenseRatio },
-                    { label: "순자산 (AUM)", value: data.aum },
-                    { label: "구성종목 수", value: data.holdingsCount },
-                    { label: "PER", value: data.pe },
-                    { label: "베타 (β)", value: data.beta },
-                    { label: "상장일", value: data.inception },
-                    { label: "52주 최고", value: `$${safeNum(data.yearHigh).toFixed(2)}` },
-                    { label: "52주 최저", value: `$${safeNum(data.yearLow).toFixed(2)}` },
-                  ].map((s, i) => (
-                    <div className="stat-item" key={i}><div className="stat-label">{s.label}</div><div className="stat-value">{s.value || "-"}</div></div>
-                  ));
-                })()}
+                {[
+                  { label: "운용사", value: data.issuer },
+                  { label: "추적 지수", value: data.index },
+                  { label: "수수료 (TER)", value: data.expenseRatio },
+                  { label: "순자산 (AUM)", value: data.aum },
+                  { label: "구성종목 수", value: data.holdingsCount },
+                  { label: "PER", value: data.pe },
+                  { label: "베타 (β)", value: data.beta },
+                  { label: "상장일", value: data.inception },
+                  { label: "52주 최고", value: `$${safeNum(data.yearHigh).toFixed(2)}` },
+                  { label: "52주 최저", value: `$${safeNum(data.yearLow).toFixed(2)}` },
+                ].map((s, i) => (
+                  <div className="stat-item" key={i}><div className="stat-label">{s.label}</div><div className="stat-value">{s.value || "-"}</div></div>
+                ))}
               </div>
             </div>
           )}
@@ -1913,33 +1960,43 @@ function EtfPage() {
           {/* ─── 수익률 탭 ─── */}
           {activeTab === "returns" && (
             <div className="fade-up fade-up-d2">
-              <div style={{ marginBottom: 12 }}><div className="card-title">기간별 수익률</div><div className="card-description">가격 기준 수익률 (Yahoo Finance 실시간)</div></div>
-              <div className="card" style={{ padding: 20 }}>
-                <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 16 }}>
-                  {[{ label: "1개월", value: data.returns?.["1M"] }, { label: "3개월", value: data.returns?.["3M"] }, { label: "6개월", value: data.returns?.["6M"] }, { label: "1년", value: data.returns?.["1Y"] }].map((r, i) => (
-                    <div key={i} style={{ textAlign: "center" }}>
-                      <div style={{ fontSize: 12, color: "var(--text-tertiary)", marginBottom: 6 }}>{r.label}</div>
-                      <div style={{ fontSize: 22, fontWeight: 800, color: pctColor(r.value), fontVariantNumeric: "tabular-nums" }}>{fmtPct(r.value)}</div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-              {data.divYield && data.divYield !== "-" && (
-                <div className="card" style={{ padding: 16, marginTop: 12, background: "var(--bg-primary)" }}>
-                  <div style={{ fontSize: 13, color: "var(--text-secondary)", lineHeight: 1.6 }}>
-                    💡 <strong>배당 포함 수익률</strong>: 연간 배당수익률 <strong style={{ color: "#c0392b" }}>{data.divYield}</strong>를 위 수익률에 더하면 토탈 리턴(배당 재투자 수익률)을 대략 계산할 수 있습니다.
-                    {data.returns?.["1Y"] != null && data.divYield !== "-" && (() => {
-                      const priceReturn = data.returns["1Y"];
-                      const divNum = parseFloat(data.divYield);
-                      if (isFinite(priceReturn) && isFinite(divNum)) {
-                        const total = priceReturn + divNum;
-                        return <> 예상 1년 토탈 리턴: <strong style={{ color: pctColor(total) }}>{fmtPct(total)}</strong></>;
-                      }
-                      return null;
-                    })()}
+              <div style={{ marginBottom: 12 }}><div className="card-title">기간별 수익률</div><div className="card-description">가격 기준 + 배당 포함 토탈 리턴</div></div>
+              {(() => {
+                const divNum = parseFloat(data.divYield) || 0;
+                const periods = [
+                  { label: "1개월", value: data.returns?.["1M"], divAdj: divNum / 12 },
+                  { label: "3개월", value: data.returns?.["3M"], divAdj: divNum / 4 },
+                  { label: "6개월", value: data.returns?.["6M"], divAdj: divNum / 2 },
+                  { label: "1년", value: data.returns?.["1Y"], divAdj: divNum },
+                ];
+                const maxAbs = Math.max(...periods.map(p => Math.abs(typeof p.value === "number" ? p.value : 0)), 1);
+                return (
+                  <div className="card" style={{ padding: 20 }}>
+                    {periods.map((r, i) => {
+                      const priceRet = typeof r.value === "number" ? r.value : null;
+                      const totalRet = priceRet !== null ? priceRet + r.divAdj : null;
+                      const barW = priceRet !== null ? Math.abs(priceRet) / maxAbs * 100 : 0;
+                      const isPos = priceRet !== null && priceRet >= 0;
+                      return (
+                        <div key={i} style={{ marginBottom: i < 3 ? 20 : 0 }}>
+                          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 8 }}>
+                            <span style={{ fontSize: 13, fontWeight: 600, color: "var(--text-secondary)" }}>{r.label}</span>
+                            <div style={{ textAlign: "right" }}>
+                              <span style={{ fontSize: 20, fontWeight: 800, color: pctColor(priceRet), fontVariantNumeric: "tabular-nums" }}>{fmtPct(priceRet)}</span>
+                              {totalRet !== null && divNum > 0 && (
+                                <span style={{ fontSize: 12, color: "var(--text-tertiary)", marginLeft: 8 }}>배당 포함 {fmtPct(totalRet)}</span>
+                              )}
+                            </div>
+                          </div>
+                          <div style={{ height: 12, background: "#F2F3F5", borderRadius: 6, overflow: "hidden", position: "relative" }}>
+                            <div style={{ width: `${barW}%`, height: "100%", background: isPos ? "#3182F6" : "#F04452", borderRadius: 6, transition: "width 0.5s ease" }} />
+                          </div>
+                        </div>
+                      );
+                    })}
                   </div>
-                </div>
-              )}
+                );
+              })()}
             </div>
           )}
 
@@ -1964,7 +2021,7 @@ function EtfPage() {
                         { label: "배당수익률", value: data.dividend.yield },
                         { label: "주당 배당금 (연)", value: data.dividend.annualDiv },
                         { label: "배당 주기", value: freqKr },
-                        { label: "배당락일", value: exDateKr },
+                        { label: "최근 배당락일", value: exDateKr },
                         { label: "배당성향", value: data.dividend.payoutRatio, sub: "순이익 중 배당으로 지급하는 비율" },
                         { label: "배당 성장률", value: data.dividend.divGrowth },
                       ].map((s, i) => (
@@ -1983,48 +2040,7 @@ function EtfPage() {
 
           {/* ─── 구성종목 탭 ─── */}
           {activeTab === "holdings" && (
-            <div className="fade-up fade-up-d2">
-              {/* 구성종목 요약 */}
-              {data.holdingsStats && (
-                <div className="stats-grid" style={{ gridTemplateColumns: "repeat(3, 1fr)", marginBottom: 16 }}>
-                  {(() => {
-                    const acMap = { "Equity": "주식형", "Bond": "채권형", "Fixed Income": "채권형", "Commodity": "원자재", "Real Estate": "부동산", "Currency": "통화", "Multi-Asset": "혼합형", "Alternatives": "대안투자" };
-                    const acKr = acMap[data.holdingsStats.assetClass] || data.holdingsStats.assetClass || "-";
-                    return [
-                      { label: "구성종목 수", value: data.holdingsStats.totalHoldings },
-                      { label: "상위 10 비중", value: data.holdingsStats.top10Pct },
-                      { label: "자산유형", value: acKr },
-                    ].map((s, i) => (
-                      <div className="stat-item" key={i}><div className="stat-label">{s.label}</div><div className="stat-value">{s.value || "-"}</div></div>
-                    ));
-                  })()}
-                </div>
-              )}
-
-              <div style={{ marginBottom: 12 }}><div className="card-title">구성종목 TOP 10</div><div className="card-description">이 ETF에 가장 많이 포함된 종목과 비중</div></div>
-              {data.holdingsList && data.holdingsList.length > 0 ? (
-                <div className="card" style={{ padding: 0, overflow: "hidden" }}>
-                  {data.holdingsList.filter(h => h && h.symbol).slice(0, 10).map((h, i) => {
-                    const sym = String(h.symbol||""), nm = String(h.name||sym), wt = String(h.weight||"0");
-                    const wtNum = parseFloat(wt) || 0;
-                    const maxWt = parseFloat(data.holdingsList[0]?.weight) || 10;
-                    return (
-                      <div key={i} style={{ display: "flex", alignItems: "center", padding: "14px 20px", borderBottom: i < Math.min(data.holdingsList.length, 10) - 1 ? "1px solid var(--border)" : "none", gap: 14 }}>
-                        <div style={{ width: 30, height: 30, borderRadius: 8, background: "var(--accent-blue-light)", color: "var(--accent-blue)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 13, fontWeight: 700, flexShrink: 0 }}>{i + 1}</div>
-                        <div style={{ flex: 1, minWidth: 0 }}>
-                          <div style={{ fontSize: 14, fontWeight: 700 }}>{sym}</div>
-                          <div style={{ fontSize: 12, color: "var(--text-tertiary)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{nm}</div>
-                        </div>
-                        <div style={{ width: 60, textAlign: "right", fontSize: 15, fontWeight: 700, color: "var(--accent-blue)", flexShrink: 0 }}>{wt}%</div>
-                        <div style={{ width: 100, height: 10, background: "#F2F3F5", borderRadius: 5, overflow: "hidden", flexShrink: 0 }}>
-                          <div style={{ width: `${Math.min(100, wtNum / maxWt * 100)}%`, height: "100%", background: "var(--accent-blue)", borderRadius: 5, transition: "width 0.3s" }} />
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              ) : <div style={{ textAlign: "center", padding: 40, color: "var(--text-tertiary)" }}>구성종목 데이터를 불러올 수 없습니다</div>}
-            </div>
+            <EtfHoldingsTab data={data} />
           )}
         </div>
       )}
