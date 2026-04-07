@@ -84,23 +84,25 @@ export async function getEtfOverview(ticker) {
   const s = parseAllPairs(html||"");
   const nameM = (html||"").match(/<h1[^>]*>([^<]+)/);
   const descM = (html||"").match(/(?:The fund|The ETF|This ETF|The investment)[^<]{20,400}\./);
+  const decodeEntities = (s) => (s||"").replace(/&amp;/g,"&").replace(/&lt;/g,"<").replace(/&gt;/g,">").replace(/&#x27;/g,"'").replace(/&quot;/g,'"').replace(/&nbsp;/g," ");
+  const clean = (v) => (!v || v === "-" || v.toLowerCase() === "n/a" || v === "—") ? "-" : v;
   return {
-    name: nameM ? nameM[1].replace(/\s*\([^)]*\)\s*$/,"").trim() : ticker,
+    name: nameM ? decodeEntities(nameM[1]).replace(/\s*\([^)]*\)\s*$/,"").trim() : ticker,
     ticker: ticker.toUpperCase(),
-    description: descM ? stripHtml(descM[0]) : "",
+    description: descM ? decodeEntities(stripHtml(descM[0])) : "",
     price: yq?.price||0, dailyChange: yq?.dailyChange||0,
     yearHigh: yq?.yearHigh||0, yearLow: yq?.yearLow||0,
     exchange: yq?.exchange||"", returns: yq?.returns||{},
-    expenseRatio: s["Expense Ratio"]||"-",
-    aum: s["Assets"]||"-",
-    category: s["Category"]||s["ETF Category"]||"-",
-    issuer: s["ETF Provider"]||"-",
-    index: s["Index Tracked"]||"-",
-    holdingsCount: s["Holdings"]||s["Total Holdings"]||"-",
-    inception: s["Inception Date"]||"-",
-    divYield: s["Dividend Yield"]||"-",
-    pe: s["PE Ratio"]||"-",
-    beta: s["Beta"]||"-",
+    expenseRatio: clean(s["Expense Ratio"]),
+    aum: clean(s["Assets"]),
+    category: clean(s["Category"]||s["ETF Category"]),
+    issuer: clean(s["ETF Provider"]),
+    index: decodeEntities(clean(s["Index Tracked"])),
+    holdingsCount: clean(s["Holdings"]||s["Total Holdings"]),
+    inception: clean(s["Inception Date"]),
+    divYield: clean(s["Dividend Yield"]),
+    pe: clean(s["PE Ratio"]),
+    beta: clean(s["Beta"]),
   };
 }
 
