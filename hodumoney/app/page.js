@@ -144,30 +144,33 @@ const styles = `
   .app-container { display: flex; min-height: 100vh; }
 
   .sidebar {
-    width: 240px; background: var(--bg-card); border-right: none;
-    padding: 24px 0; position: fixed; top: 0; left: 0; height: 100vh;
-    overflow-y: auto; z-index: 100; transition: transform 0.3s ease;
+    width: 232px; background: var(--bg-card); border-right: none;
+    padding: 0; position: fixed; top: 0; left: 0; height: 100vh;
+    overflow: hidden; z-index: 100; transition: transform 0.3s ease;
     box-shadow: 1px 0 0 var(--border-strong);
+    display: flex; flex-direction: column;
   }
   .sidebar-logo {
-    padding: 36px 24px 28px; display: flex; flex-direction: column; align-items: center; gap: 0;
-    margin: 0; border-bottom: none; cursor: pointer; text-align: center;
+    padding: 24px 20px 12px; display: flex; align-items: center; gap: 10px;
+    cursor: pointer; flex-shrink: 0;
   }
   .sidebar-logo::before { display: none; }
   .sidebar-logo::after { display: none; }
-  .logo-icon { font-size: 36px; margin-bottom: 8px; }
-  .logo-text { font-size: 28px; font-weight: 900; color: #5D4037; letter-spacing: -0.5px; line-height: 1; }
-  .logo-sub { font-size: 12px; color: var(--text-tertiary); font-weight: 500; margin-top: 8px; letter-spacing: 0.3px; }
-  .sidebar-section { padding: 0 12px; margin-bottom: 8px; }
-  .sidebar-section-label { font-size: 11px; font-weight: 600; color: var(--text-tertiary); text-transform: uppercase; letter-spacing: 0.5px; padding: 0 12px; margin-bottom: 6px; }
-  .sidebar-item { display: flex; align-items: center; gap: 12px; padding: 12px 14px; border-radius: var(--radius-sm); cursor: pointer; transition: all 0.15s ease; font-size: 15px; font-weight: 500; color: var(--text-secondary); position: relative; }
+  .logo-icon { font-size: 22px; }
+  .logo-text { font-size: 15px; font-weight: 900; color: #5D4037; letter-spacing: -0.3px; line-height: 1; }
+  .logo-sub { font-size: 10px; color: var(--text-tertiary); font-weight: 500; margin-top: 2px; }
+  .sidebar-divider { height: 1px; background: var(--border); margin: 6px 20px; flex-shrink: 0; }
+  .sidebar-nav { flex: 1; padding: 0 10px; overflow: hidden; }
+  .sidebar-section { margin-bottom: 0; }
+  .sidebar-section-label { font-size: 10px; font-weight: 600; color: var(--text-tertiary); letter-spacing: 0.3px; padding: 10px 12px 3px; }
+  .sidebar-item { display: flex; align-items: center; gap: 10px; padding: 9px 12px; border-radius: 10px; cursor: pointer; transition: all 0.15s ease; font-size: 14px; font-weight: 500; color: var(--text-secondary); position: relative; }
   .sidebar-item:hover { background: var(--bg-hover); color: var(--text-primary); }
   .sidebar-item.active { background: var(--accent-blue-light); color: var(--accent-blue); font-weight: 700; }
-  .sidebar-item .item-icon { font-size: 18px; width: 28px; text-align: center; }
+  .sidebar-item .item-icon { font-size: 16px; width: 22px; text-align: center; }
   .sidebar-item .badge-soon { font-size: 10px; background: #F2F3F5; color: var(--text-tertiary); padding: 2px 6px; border-radius: 4px; margin-left: auto; font-weight: 600; }
-  .sidebar-divider { height: 1px; background: var(--border); margin: 12px 24px; }
+  .sidebar-bottom { flex-shrink: 0; padding: 8px 14px 14px; }
 
-  .main-content { flex: 1; margin-left: 240px; padding: 0; min-height: 100vh; }
+  .main-content { flex: 1; margin-left: 232px; padding: 0; min-height: 100vh; }
 
   .top-bar {
     position: sticky; top: 0; background: rgba(255,255,255,0.92); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
@@ -2186,70 +2189,60 @@ export default function App() {
       <aside className={`sidebar ${sidebarOpen ? "open" : ""}`}>
         <div className="sidebar-logo" onClick={() => handlePageChange("market")}>
           <div className="logo-icon">🥜</div>
-          <div className="logo-text">HODU MONEY</div>
-          <div className="logo-sub">투자를 쉽게 정리합니다</div>
+          <div>
+            <div className="logo-text">HODU MONEY</div>
+            <div className="logo-sub">투자를 쉽게 정리합니다</div>
+          </div>
         </div>
-        {/* 로그인 */}
-        {user ? (
-          <div style={{ padding: "12px 12px 4px" }}>
-            <div className="auth-user">
-              <span>🙂</span>
-              <span className="auth-user-email">{user.name || user.email}</span>
-              <button className="auth-logout" onClick={async () => {
-                try {
-                  const { signOut } = await import("firebase/auth");
-                  const auth = await getFirebaseAuth();
-                  await signOut(auth);
-                } catch (e) {}
+        <div style={{ padding: "0 14px 0", flexShrink: 0 }}>
+          {user ? (
+            <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "7px 10px", background: "#F7F8FA", borderRadius: 8 }}>
+              <span style={{ fontSize: 13 }}>🙂</span>
+              <span style={{ fontSize: 13, fontWeight: 600, flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{user.name || user.email.split("@")[0]}</span>
+              <button onClick={async () => {
+                try { const { signOut } = await import("firebase/auth"); const auth = await getFirebaseAuth(); await signOut(auth); } catch (e) {}
                 setUser(null);
-              }}>로그아웃</button>
+              }} style={{ fontSize: 10, color: "var(--text-tertiary)", background: "none", border: "none", cursor: "pointer", fontFamily: "inherit", fontWeight: 600, flexShrink: 0 }}>로그아웃</button>
             </div>
-            <div style={{ fontSize: 11, color: "var(--text-tertiary)", textAlign: "center", marginTop: 6, lineHeight: 1.4 }}>
-              ⭐ 관심종목을 등록하고 한눈에 확인하세요
+          ) : (
+            <div onClick={() => setShowAuth("login")} style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 6, padding: "9px", background: "#5D4037", color: "white", borderRadius: 8, fontWeight: 700, fontSize: 13, cursor: "pointer", fontFamily: "inherit" }}>
+              🔐 Google로 로그인
             </div>
-          </div>
-        ) : (
-          <div style={{ padding: "12px 12px 4px" }}>
-            <div className="sidebar-item" onClick={() => setShowAuth("login")} style={{ background: "#5D4037", color: "white", borderRadius: "var(--radius-sm)", justifyContent: "center", fontWeight: 700 }}>
-              <span className="item-icon">🔐</span><span>Google로 로그인</span>
-            </div>
-            <div style={{ fontSize: 11, color: "var(--text-tertiary)", textAlign: "center", marginTop: 6, lineHeight: 1.4 }}>
-              로그인하면 관심종목을 등록할 수 있어요
-            </div>
-          </div>
-        )}
-        <div className="sidebar-divider" />
-        <div className="sidebar-section">
-          <div className="sidebar-section-label">분석 도구</div>
-          {MENU_ITEMS.filter(i => i.section === "분석 도구").map(item => (
-            <div key={item.id} className={`sidebar-item ${activePage === item.id ? "active" : ""}`} onClick={() => {
-              if (item.id === "watchlist" && !user) { setShowAuth("login"); return; }
-              handlePageChange(item.id);
-            }}>
-              <span className="item-icon">{item.icon}</span>
-              <span>{item.label}</span>
-            </div>
-          ))}
+          )}
         </div>
         <div className="sidebar-divider" />
-        <div className="sidebar-section">
-          <div className="sidebar-section-label">정보</div>
-          {MENU_ITEMS.filter(i => i.section === "정보").map(item => (
-            <div key={item.id} className={`sidebar-item ${activePage === item.id ? "active" : ""}`} onClick={() => handlePageChange(item.id)}>
-              <span className="item-icon">{item.icon}</span>
-              <span>{item.label}</span>
-            </div>
-          ))}
+        <div className="sidebar-nav">
+          <div className="sidebar-section">
+            <div className="sidebar-section-label">분석 도구</div>
+            {MENU_ITEMS.filter(i => i.section === "분석 도구").map(item => (
+              <div key={item.id} className={`sidebar-item ${activePage === item.id ? "active" : ""}`} onClick={() => {
+                if (item.id === "watchlist" && !user) { setShowAuth("login"); return; }
+                handlePageChange(item.id);
+              }}>
+                <span className="item-icon">{item.icon}</span>
+                <span>{item.label}</span>
+              </div>
+            ))}
+          </div>
+          <div className="sidebar-section">
+            <div className="sidebar-section-label">정보</div>
+            {MENU_ITEMS.filter(i => i.section === "정보").map(item => (
+              <div key={item.id} className={`sidebar-item ${activePage === item.id ? "active" : ""}`} onClick={() => handlePageChange(item.id)}>
+                <span className="item-icon">{item.icon}</span>
+                <span>{item.label}</span>
+              </div>
+            ))}
+          </div>
         </div>
-        <div className="sidebar-divider" />
-        <div style={{ padding: "8px 24px" }}>
-          <a href="https://litt.ly/hodumoney/sale/QnPfK6I" target="_blank" rel="noopener noreferrer" style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 8, padding: "12px 16px", background: "linear-gradient(135deg, #5D4037, #8D6E63)", color: "white", borderRadius: "var(--radius-sm)", fontWeight: 700, fontSize: 14, textDecoration: "none", cursor: "pointer", fontFamily: "inherit", transition: "opacity 0.15s" }}>
+        {/* 하단 고정 */}
+        <div className="sidebar-bottom">
+          <a href="https://litt.ly/hodumoney/sale/QnPfK6I" target="_blank" rel="noopener noreferrer" style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 6, padding: "9px", background: "linear-gradient(135deg, #5D4037, #8D6E63)", color: "white", borderRadius: 8, fontWeight: 700, fontSize: 12, textDecoration: "none", fontFamily: "inherit" }}>
             🎫 무제한 이용권 구매
           </a>
-        </div>
-        <div style={{ padding: "4px 24px 12px" }}>
-          <div className={usageBadgeClass}>
-            {isUnlocked ? "✓ " : "🔑 "}기업분석 {usageBadgeText}
+          <div style={{ textAlign: "center", marginTop: 5 }}>
+            <span className={usageBadgeClass} style={{ fontSize: 10 }}>
+              {isUnlocked ? "✓ " : "🔑 "}기업분석 {usageBadgeText}
+            </span>
           </div>
         </div>
       </aside>
