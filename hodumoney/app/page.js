@@ -151,14 +151,14 @@ const styles = `
     display: flex; flex-direction: column;
   }
   .sidebar-logo {
-    padding: 24px 20px 12px; display: flex; align-items: center; gap: 10px;
-    cursor: pointer; flex-shrink: 0;
+    padding: 28px 20px 16px; display: flex; flex-direction: column; align-items: center;
+    cursor: pointer; flex-shrink: 0; text-align: center;
   }
   .sidebar-logo::before { display: none; }
   .sidebar-logo::after { display: none; }
-  .logo-icon { font-size: 22px; }
-  .logo-text { font-size: 15px; font-weight: 900; color: #5D4037; letter-spacing: -0.3px; line-height: 1; }
-  .logo-sub { font-size: 10px; color: var(--text-tertiary); font-weight: 500; margin-top: 2px; }
+  .logo-icon { font-size: 36px; margin-bottom: 4px; }
+  .logo-text { font-size: 16px; font-weight: 900; color: #5D4037; letter-spacing: 1px; line-height: 1.3; }
+  .logo-sub { font-size: 11px; color: var(--text-tertiary); font-weight: 500; margin-top: 4px; }
   .sidebar-divider { height: 1px; background: var(--border); margin: 6px 20px; flex-shrink: 0; }
   .sidebar-nav { flex: 1; padding: 0 10px; overflow: hidden; }
   .sidebar-section { margin-bottom: 0; }
@@ -811,7 +811,7 @@ function SentimentGaugeVisual({ value, reversed }) {
 
 // ─── Inline Chart Panel (period-aware) ───────────────────────────
 function InlineChart({ item, onClose }) {
-  const [period, setPeriod] = useState("1D");
+  const [period, setPeriod] = useState("1Y");
   const [chartData, setChartData] = useState(item?.history || []);
   const [chartLoading, setChartLoading] = useState(false);
   const originalChange = { change: item?.change || "-", pct: item?.pct || "-", up: item?.up || false };
@@ -2189,10 +2189,8 @@ export default function App() {
       <aside className={`sidebar ${sidebarOpen ? "open" : ""}`}>
         <div className="sidebar-logo" onClick={() => handlePageChange("market")}>
           <div className="logo-icon">🥜</div>
-          <div>
-            <div className="logo-text">HODU MONEY</div>
-            <div className="logo-sub">투자를 쉽게 정리합니다</div>
-          </div>
+          <div className="logo-text">HODU MONEY</div>
+          <div className="logo-sub">투자를 쉽게 정리합니다</div>
         </div>
         <div style={{ padding: "0 14px 0", flexShrink: 0 }}>
           {user ? (
@@ -2236,11 +2234,11 @@ export default function App() {
         </div>
         {/* 하단 고정 */}
         <div className="sidebar-bottom">
-          <a href="https://litt.ly/hodumoney/sale/QnPfK6I" target="_blank" rel="noopener noreferrer" style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 6, padding: "9px", background: "linear-gradient(135deg, #5D4037, #8D6E63)", color: "white", borderRadius: 8, fontWeight: 700, fontSize: 12, textDecoration: "none", fontFamily: "inherit" }}>
+          <a href="https://litt.ly/hodumoney/sale/QnPfK6I" target="_blank" rel="noopener noreferrer" style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 6, padding: "11px", background: "linear-gradient(135deg, #5D4037, #8D6E63)", color: "white", borderRadius: 10, fontWeight: 700, fontSize: 13, textDecoration: "none", fontFamily: "inherit" }}>
             🎫 무제한 이용권 구매
           </a>
-          <div style={{ textAlign: "center", marginTop: 5 }}>
-            <span className={usageBadgeClass} style={{ fontSize: 10 }}>
+          <div style={{ textAlign: "center", marginTop: 6 }}>
+            <span className={usageBadgeClass} style={{ fontSize: 11 }}>
               {isUnlocked ? "✓ " : "🔑 "}기업분석 {usageBadgeText}
             </span>
           </div>
