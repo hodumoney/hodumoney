@@ -1,4 +1,4 @@
-// app/api/stock/route.js — 100% StockAnalysis + Yahoo hybrid
+// app/api/stock/route.js — StockAnalysis + Yahoo price hybrid (dot-ticker: __data.json fallback)
 import {
   getOverview, getIncome, getBalance, getCashFlow, getRatios
 } from "@/lib/stockanalysis";
@@ -22,7 +22,14 @@ export async function GET(request) {
 
     if (!overview) return Response.json({ error: symbol + " not found" }, { status: 404 });
 
-    const rev = (arr) => (arr || [0,0,0,0,0]).slice(0, 5).reverse();
+    const rev = (arr) => {
+      const a = arr || [];
+      if (a.length === 0) return [null, null, null, null, null];
+      const sliced = a.slice(0, 5).reverse();
+      // Pad to 5 elements with null if shorter
+      while (sliced.length < 5) sliced.unshift(null);
+      return sliced;
+    };
 
     const buildData = (inc, bal, cf, rat) => {
       const revArr = rev(inc.revenue);
@@ -32,13 +39,13 @@ export async function GET(request) {
       return {
         labels: rev(inc.labels || ["1","2","3","4","5"]),
         coreMetrics: {
-          per: { value: rev(rat.pe)[4] || 0, trend: rev(rat.pe), meaning: "회사가 1년에 버는 돈에 비해 주가가 얼마나 비싼지" },
-          pbr: { value: rev(rat.pb)[4] || 0, trend: rev(rat.pb), meaning: "회사의 순자산(자본)에 비해 주가가 얼마나 비싼지" },
-          eps: { value: rev(inc.eps)[4] || 0, trend: rev(inc.eps), meaning: "주식 한 주당 회사가 1년간 벌어들이는 이익" },
-          de: { value: rev(rat.deRatio)[4] || 0, trend: rev(rat.deRatio), meaning: "회사의 자기자본에 비해 빚이 얼마나 있는지" },
-          roe: { value: rev(rat.roe)[4] || 0, trend: rev(rat.roe), meaning: "주주의 돈(자본)을 운용해 연 몇%의 이익을 냈는지" },
-          div: { value: rev(rat.divYield)[4] || 0, trend: rev(rat.divYield), meaning: "배당으로 받는 수익률" },
-          ebitda: { value: rev(inc.ebitda)[4] || 0, trend: rev(inc.ebitda), meaning: "세금·이자·감가상각을 빼기 전 실제로 벌어들인 현금 흐름" },
+          per: { value: rev(rat.pe)[4] ?? null, trend: rev(rat.pe), meaning: "회사가 1년에 버는 돈에 비해 주가가 얼마나 비싼지" },
+          pbr: { value: rev(rat.pb)[4] ?? null, trend: rev(rat.pb), meaning: "회사의 순자산(자본)에 비해 주가가 얼마나 비싼지" },
+          eps: { value: rev(inc.eps)[4] ?? null, trend: rev(inc.eps), meaning: "주식 한 주당 회사가 1년간 벌어들이는 이익" },
+          de: { value: rev(rat.deRatio)[4] ?? null, trend: rev(rat.deRatio), meaning: "회사의 자기자본에 비해 빚이 얼마나 있는지" },
+          roe: { value: rev(rat.roe)[4] ?? null, trend: rev(rat.roe), meaning: "주주의 돈(자본)을 운용해 연 몇%의 이익을 냈는지" },
+          div: { value: rev(rat.divYield)[4] ?? null, trend: rev(rat.divYield), meaning: "배당으로 받는 수익률" },
+          ebitda: { value: rev(inc.ebitda)[4] ?? null, trend: rev(inc.ebitda), meaning: "세금·이자·감가상각을 빼기 전 실제로 벌어들인 현금 흐름" },
         },
         income: {
           labels: rev(inc.labels || []),
