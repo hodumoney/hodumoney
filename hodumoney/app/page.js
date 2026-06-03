@@ -157,7 +157,7 @@ const styles = `
   .sidebar-logo::before { display: none; }
   .sidebar-logo::after { display: none; }
   .logo-icon { font-size: 36px; margin-bottom: 4px; }
-  .logo-text { font-size: 16px; font-weight: 900; color: #5D4037; letter-spacing: 1px; line-height: 1.3; }
+  .logo-text { font-size: 20px; font-weight: 900; color: #5D4037; letter-spacing: 1.5px; line-height: 1.25; text-align: center; }
   .logo-sub { font-size: 11px; color: var(--text-tertiary); font-weight: 500; margin-top: 4px; }
   .sidebar-divider { height: 1px; background: var(--border); margin: 6px 20px; flex-shrink: 0; }
   .sidebar-nav { flex: 1; padding: 0 10px; overflow: hidden; }
@@ -891,7 +891,7 @@ function InlineChart({ item, onClose }) {
           <div style={{ height: 220, display: "flex", alignItems: "center", justifyContent: "center", color: "var(--text-tertiary)", fontSize: 13 }}>데이터 없음</div>
         ) : (
           <ResponsiveContainer width="100%" height={220}>
-            <AreaChart data={data} margin={{ top: 8, right: 8, left: -10, bottom: 0 }}>
+            <AreaChart data={data} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
               <defs>
                 <linearGradient id={gradId} x1="0" y1="0" x2="0" y2="1">
                   <stop offset="0%" stopColor={color} stopOpacity={0.15} />
@@ -905,7 +905,7 @@ function InlineChart({ item, onClose }) {
                   return `${(v / 1000).toFixed(2).replace(/\.00$/, "").replace(/(\.\d)0$/, "$1")}k`;
                 }
                 return v.toFixed(v < 10 ? 2 : 1);
-              }} width={58} />
+              }} width={68} />
               <Tooltip contentStyle={{ background: "white", border: "1px solid #E5E8EB", borderRadius: 10, boxShadow: "0 4px 12px rgba(0,0,0,0.08)", padding: "8px 14px", fontSize: 13, fontWeight: 600 }} formatter={(val) => [typeof val === "number" ? val.toLocaleString(undefined, { maximumFractionDigits: 2 }) : val, ""]} labelStyle={{ color: "#8B95A1", fontSize: 11, marginBottom: 2 }} />
               <Area type="monotone" dataKey="value" stroke={color} strokeWidth={2.5} fill={`url(#${gradId})`} dot={false} activeDot={{ r: 5, stroke: color, strokeWidth: 2, fill: "white" }} />
             </AreaChart>
@@ -1001,11 +1001,11 @@ function CoreValuations({ data, currency }) {
                 <div className="metric-card-expand-body">
                   {hasValidTrend ? (
                   <ResponsiveContainer width="100%" height={200}>
-                    <AreaChart data={chartData} margin={{ top: 8, right: 8, left: -10, bottom: 0 }}>
+                    <AreaChart data={chartData} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
                       <defs><linearGradient id={`mg-${key}`} x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="#3182F6" stopOpacity={0.15} /><stop offset="100%" stopColor="#3182F6" stopOpacity={0.02} /></linearGradient></defs>
                       <CartesianGrid strokeDasharray="3 3" stroke="#F2F3F5" vertical={false} />
                       <XAxis dataKey="label" axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: "#8B95A1" }} />
-                      <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: "#8B95A1" }} domain={[d => { const pad = Math.abs(d) * 0.1 || 1; return d - pad; }, d => { const pad = Math.abs(d) * 0.1 || 1; return d + pad; }]} tickFormatter={v => v >= 1000 ? `${(v/1000).toFixed(1)}k` : v < -1000 ? `${(v/1000).toFixed(1)}k` : v.toFixed(Math.abs(v) < 10 ? 2 : 0)} width={56} />
+                      <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: "#8B95A1" }} domain={[d => { const pad = Math.abs(d) * 0.1 || 1; return d - pad; }, d => { const pad = Math.abs(d) * 0.1 || 1; return d + pad; }]} tickFormatter={v => v >= 1000 ? `${(v/1000).toFixed(1)}k` : v < -1000 ? `${(v/1000).toFixed(1)}k` : v.toFixed(Math.abs(v) < 10 ? 2 : 0)} width={68} />
                       <Tooltip contentStyle={{ background: "white", border: "1px solid #E5E8EB", borderRadius: 10, boxShadow: "0 4px 12px rgba(0,0,0,0.08)", padding: "8px 14px", fontSize: 13, fontWeight: 600 }} formatter={(val) => [typeof val === "number" ? val.toLocaleString(undefined, { maximumFractionDigits: 2 }) : val, label]} labelStyle={{ color: "#8B95A1", fontSize: 11 }} />
                       <Area type="monotone" dataKey="value" stroke="#3182F6" strokeWidth={2.5} fill={`url(#mg-${key})`} dot={{ r: 4, stroke: "#3182F6", strokeWidth: 2, fill: "white" }} activeDot={{ r: 6, stroke: "#3182F6", strokeWidth: 2, fill: "white" }} />
                     </AreaChart>
@@ -1081,11 +1081,11 @@ function FinRowCard({ label, values, labels, expanded, onToggle, fmtFn, allowNeg
         <div className="metric-card-expand" onClick={e => e.stopPropagation()}>
           <div className="metric-card-expand-body" style={{ paddingTop: 14 }}>
             <ResponsiveContainer width="100%" height={180}>
-              <AreaChart data={chartData} margin={{ top: 8, right: 8, left: -10, bottom: 0 }}>
+              <AreaChart data={chartData} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
                 <defs><linearGradient id={`fg-${label.replace(/[^a-zA-Z]/g,"")}`} x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="#3182F6" stopOpacity={0.15} /><stop offset="100%" stopColor="#3182F6" stopOpacity={0.02} /></linearGradient></defs>
                 <CartesianGrid strokeDasharray="3 3" stroke="#F2F3F5" vertical={false} />
                 <XAxis dataKey="label" axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: "#8B95A1" }} />
-                <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: "#8B95A1" }} domain={[d => { const pad = Math.abs(d) * 0.1 || 1; return d - pad; }, d => { const pad = Math.abs(d) * 0.1 || 1; return d + pad; }]} tickFormatter={v => Math.abs(v) >= 1000 ? `${(v/1000).toFixed(0)}k` : v.toFixed(Math.abs(v) < 10 ? 2 : 0)} width={56} />
+                <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: "#8B95A1" }} domain={[d => { const pad = Math.abs(d) * 0.1 || 1; return d - pad; }, d => { const pad = Math.abs(d) * 0.1 || 1; return d + pad; }]} tickFormatter={v => Math.abs(v) >= 1000 ? `${(v/1000).toFixed(0)}k` : v.toFixed(Math.abs(v) < 10 ? 2 : 0)} width={68} />
                 <Tooltip contentStyle={{ background: "white", border: "1px solid #E5E8EB", borderRadius: 10, boxShadow: "0 4px 12px rgba(0,0,0,0.08)", padding: "8px 14px", fontSize: 13, fontWeight: 600 }} formatter={(val) => [typeof val === "number" ? (fmtFn ? fmtFn(val) : val.toLocaleString()) : val, ""]} labelStyle={{ color: "#8B95A1", fontSize: 11 }} />
                 <Area type="monotone" dataKey="value" stroke="#3182F6" strokeWidth={2.5} fill={`url(#fg-${label.replace(/[^a-zA-Z]/g,"")})`} dot={{ r: 4, stroke: "#3182F6", strokeWidth: 2, fill: "white" }} activeDot={{ r: 6, stroke: "#3182F6", strokeWidth: 2, fill: "white" }} />
               </AreaChart>
@@ -1434,11 +1434,11 @@ function PriceChart({ ticker, dailyChange, onPeriodChange }) {
         <div style={{ height: 220, display: "flex", alignItems: "center", justifyContent: "center", color: "var(--text-tertiary)", fontSize: 13 }}>No data</div>
       ) : (
         <ResponsiveContainer width="100%" height={220}>
-          <AreaChart data={chartData} margin={{ top: 8, right: 8, left: -10, bottom: 0 }}>
+          <AreaChart data={chartData} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
             <defs><linearGradient id="priceGrad" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor={color} stopOpacity={0.12} /><stop offset="100%" stopColor={color} stopOpacity={0.01} /></linearGradient></defs>
             <CartesianGrid strokeDasharray="3 3" stroke="#F2F3F5" vertical={false} />
             <XAxis dataKey="date" axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: "#8B95A1" }} interval={Math.max(0, Math.floor(chartData.length / 6) - 1)} />
-            <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: "#8B95A1" }} domain={["dataMin * 0.97", "dataMax * 1.03"]} tickFormatter={v => `$${v >= 1000 ? Math.round(v).toLocaleString() : v.toFixed(1)}`} width={58} />
+            <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: "#8B95A1" }} domain={["dataMin * 0.97", "dataMax * 1.03"]} tickFormatter={v => `$${v >= 1000 ? Math.round(v).toLocaleString() : v.toFixed(1)}`} width={68} />
             <Tooltip contentStyle={{ background: "white", border: "1px solid #E5E8EB", borderRadius: 10, boxShadow: "0 4px 12px rgba(0,0,0,0.08)", padding: "8px 14px", fontSize: 13, fontWeight: 600 }} formatter={(val) => [`$${typeof val === "number" ? val.toFixed(2) : val}`, ""]} labelStyle={{ color: "#8B95A1", fontSize: 11 }} />
             <Area type="monotone" dataKey="price" stroke={color} strokeWidth={2} fill="url(#priceGrad)" dot={false} activeDot={{ r: 4, stroke: color, strokeWidth: 2, fill: "white" }} />
           </AreaChart>
@@ -2189,7 +2189,7 @@ export default function App() {
       <aside className={`sidebar ${sidebarOpen ? "open" : ""}`}>
         <div className="sidebar-logo" onClick={() => handlePageChange("market")}>
           <div className="logo-icon">🥜</div>
-          <div className="logo-text">HODU MONEY</div>
+          <div className="logo-text">HODU<br/>MONEY</div>
           <div className="logo-sub">투자를 쉽게 정리합니다</div>
         </div>
         <div style={{ padding: "0 14px 0", flexShrink: 0 }}>
@@ -2235,7 +2235,7 @@ export default function App() {
         {/* 하단 고정 */}
         <div className="sidebar-bottom">
           <a href="https://litt.ly/hodumoney/sale/QnPfK6I" target="_blank" rel="noopener noreferrer" style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 6, padding: "11px", background: "linear-gradient(135deg, #5D4037, #8D6E63)", color: "white", borderRadius: 10, fontWeight: 700, fontSize: 13, textDecoration: "none", fontFamily: "inherit" }}>
-            🎫 무제한 이용권 구매
+            무제한 이용권 구매
           </a>
           <div style={{ textAlign: "center", marginTop: 6 }}>
             <span className={usageBadgeClass} style={{ fontSize: 11 }}>
