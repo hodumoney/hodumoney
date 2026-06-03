@@ -57,7 +57,105 @@ async function fetchPage(ticker, path, quarterly) {
     });
 
     if (!res.ok) return null;
-    return await res.text();
+    const html = await res.text();
+
+    // Check if HTML has actual table data
+    if (html && html.includes("<tbody")) return html;
+
+    // Dot-ticker fallback: try __data.json (SvelteKit data endpoint)
+    if (ticker.includes(".")) {
+      const dataUrl = `${base}/${ticker.toLowerCase()}/${normalizedPath}__data.json${q}`;
+      try {
+        const dataRes = await fetch(dataUrl, { headers: UA, cache: "no-store" });
+        if (dataRes.ok) {
+          const jsonText = await dataRes.text();
+          // Convert __data.json to fake HTML table so parseTable can handle it
+          const fakeHtml = convertDataJsonToHtml(jsonText, normalizedPath);
+          if (fakeHtml) return fakeHtml;
+        }
+      } catch {}
+    }
+
+    return html; // Return original HTML even if no tbody (overview page etc.)
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * SvelteKit __data.json → fake HTML table 변환
+ * __data.json은 devalue 인코딩이지만, 숫자/문자열 데이터는 JSON 안에 직접 들어있음
+ */
+function convertDataJsonToHtml(jsonText, path) {
+  try {
+    const data = JSON.parse(jsonText);
+    if (!data || !data.nodes) return null;
+
+    // SvelteKit devalue: nodes[0].data contains the page data
+    // The data is encoded as an array where even indices are types and odd are values
+    // We need to find the financial table data within it
+
+    // Strategy: Find arrays of numbers that look like financial data
+    // The __data.json contains all page data as a flat structure
+    const str = JSON.stringify(data);
+
+    // Extract row labels and their values
+    // Look for patterns like: "Revenue",... followed by number arrays
+    const financialLabels = [
+      "Revenue", "Gross Profit", "Operating Income", "Net Income", "EBITDA",
+      "EPS (Diluted)", "Shares Outstanding", "Operating Expenses", "Cost of Revenue",
+      "PE Ratio", "PB Ratio", "EPS", "Debt / Equity", "Return on Equity",
+      "Dividend Yield", "EV/EBITDA", "PEG Ratio", "Current Ratio",
+      "Total Assets", "Total Liabilities", "Shareholders' Equity", "Total Current Liabilities",
+      "Free Cash Flow", "Operating Cash Flow", "Investing Cash Flow", "Financing Cash Flow",
+      "Net Cash Flow", "Capital Expenditures"
+    ];
+
+    // Try to find a tabular data structure in the devalue format
+    // devalue format: [type_markers, ...values]
+    // The data array contains all values sequentially
+
+    // Approach: Find all string+number sequences that match label→values pattern
+    const allStrings = [];
+    const allNumbers = [];
+
+    function walk(obj, depth) {
+      if (depth > 10) return;
+      if (Array.isArray(obj)) {
+        obj.forEach(item => walk(item, depth + 1));
+      } else if (obj && typeof obj === "object") {
+        Object.entries(obj).forEach(([k, v]) => walk(v, depth + 1));
+      } else if (typeof obj === "string") {
+        allStrings.push(obj);
+      } else if (typeof obj === "number") {
+        allNumbers.push(obj);
+      }
+    }
+    walk(data, 0);
+
+    // Build fake HTML with found data
+    // Look for label sequences followed by number arrays in the raw JSON
+    const rows = [];
+    for (const label of financialLabels) {
+      const labelIdx = str.indexOf(`"${label}"`);
+      if (labelIdx === -1) continue;
+
+      // Find the next array of numbers after this label
+      const afterLabel = str.substring(labelIdx + label.length + 2, labelIdx + label.length + 500);
+      const numArrayMatch = afterLabel.match(/\[([-\d.,\s"null]+)\]/);
+      if (numArrayMatch) {
+        const nums = numArrayMatch[1].split(",").map(v => {
+          const cleaned = v.trim().replace(/"/g, "");
+          return cleaned === "null" ? "-" : cleaned;
+        });
+        if (nums.length >= 2 && nums.some(n => n !== "-" && !isNaN(parseFloat(n)))) {
+          rows.push(`<tr><td>${label}</td>${nums.map(n => `<td>${n}</td>`).join("")}</tr>`);
+        }
+      }
+    }
+
+    if (rows.length === 0) return null;
+    return `<tbody>${rows.join("")}</tbody>`;
   } catch {
     return null;
   }
