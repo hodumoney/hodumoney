@@ -977,9 +977,10 @@ function CoreValuations({ data, currency }) {
                       );
                     });
                   }
-                  // All positive: original logic
+                  // All positive: bars proportional to actual magnitude (not min-max normalized)
+                  const allMax = Math.max(...trendData.map(v => Math.abs(safeVal(v)))) || 1;
                   return trendData.map((v, i) => (
-                    <div key={i} className="m-bar" style={{ height: `${Math.max(15, 15 + ((safeVal(v) - trendMin) / trendRange) * 85)}%` }} />
+                    <div key={i} className="m-bar" style={{ height: `${Math.max(15, (Math.abs(safeVal(v)) / allMax) * 100)}%` }} />
                   ));
                 })()}
               </div>
@@ -993,7 +994,7 @@ function CoreValuations({ data, currency }) {
                       <defs><linearGradient id={`mg-${key}`} x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="#3182F6" stopOpacity={0.15} /><stop offset="100%" stopColor="#3182F6" stopOpacity={0.02} /></linearGradient></defs>
                       <CartesianGrid strokeDasharray="3 3" stroke="#F2F3F5" vertical={false} />
                       <XAxis dataKey="label" axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: "#8B95A1" }} />
-                      <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: "#8B95A1" }} tickFormatter={v => v >= 1000 ? `${(v/1000).toFixed(1)}k` : v.toFixed(v < 10 ? 2 : 0)} width={52} />
+                      <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: "#8B95A1" }} domain={[d => { const pad = Math.abs(d) * 0.1 || 1; return d - pad; }, d => { const pad = Math.abs(d) * 0.1 || 1; return d + pad; }]} tickFormatter={v => v >= 1000 ? `${(v/1000).toFixed(1)}k` : v < -1000 ? `${(v/1000).toFixed(1)}k` : v.toFixed(Math.abs(v) < 10 ? 2 : 0)} width={56} />
                       <Tooltip contentStyle={{ background: "white", border: "1px solid #E5E8EB", borderRadius: 10, boxShadow: "0 4px 12px rgba(0,0,0,0.08)", padding: "8px 14px", fontSize: 13, fontWeight: 600 }} formatter={(val) => [typeof val === "number" ? val.toLocaleString(undefined, { maximumFractionDigits: 2 }) : val, label]} labelStyle={{ color: "#8B95A1", fontSize: 11 }} />
                       <Area type="monotone" dataKey="value" stroke="#3182F6" strokeWidth={2.5} fill={`url(#mg-${key})`} dot={{ r: 4, stroke: "#3182F6", strokeWidth: 2, fill: "white" }} activeDot={{ r: 6, stroke: "#3182F6", strokeWidth: 2, fill: "white" }} />
                     </AreaChart>
@@ -1051,9 +1052,10 @@ function FinRowCard({ label, values, labels, expanded, onToggle, fmtFn, allowNeg
                 );
               });
             }
-            // All positive: original
+            // All positive: proportional to actual magnitude
+            const allMax = Math.max(...values.map(v => Math.abs(v))) || 1;
             return values.map((v, i) => (
-              <div key={i} className="m-bar" style={{ height: `${Math.max(15, 15 + ((v - vMin) / vRange) * 85)}%` }} />
+              <div key={i} className="m-bar" style={{ height: `${Math.max(15, (Math.abs(v) / allMax) * 100)}%` }} />
             ));
           })()}
         </div>
@@ -1067,7 +1069,7 @@ function FinRowCard({ label, values, labels, expanded, onToggle, fmtFn, allowNeg
                 <defs><linearGradient id={`fg-${label.replace(/[^a-zA-Z]/g,"")}`} x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="#3182F6" stopOpacity={0.15} /><stop offset="100%" stopColor="#3182F6" stopOpacity={0.02} /></linearGradient></defs>
                 <CartesianGrid strokeDasharray="3 3" stroke="#F2F3F5" vertical={false} />
                 <XAxis dataKey="label" axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: "#8B95A1" }} />
-                <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: "#8B95A1" }} tickFormatter={v => Math.abs(v) >= 1000 ? `${(v/1000).toFixed(0)}k` : v.toFixed(v < 10 && v > -10 ? 2 : 0)} width={52} />
+                <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: "#8B95A1" }} domain={[d => { const pad = Math.abs(d) * 0.1 || 1; return d - pad; }, d => { const pad = Math.abs(d) * 0.1 || 1; return d + pad; }]} tickFormatter={v => Math.abs(v) >= 1000 ? `${(v/1000).toFixed(0)}k` : v.toFixed(Math.abs(v) < 10 ? 2 : 0)} width={56} />
                 <Tooltip contentStyle={{ background: "white", border: "1px solid #E5E8EB", borderRadius: 10, boxShadow: "0 4px 12px rgba(0,0,0,0.08)", padding: "8px 14px", fontSize: 13, fontWeight: 600 }} formatter={(val) => [typeof val === "number" ? (fmtFn ? fmtFn(val) : val.toLocaleString()) : val, ""]} labelStyle={{ color: "#8B95A1", fontSize: 11 }} />
                 <Area type="monotone" dataKey="value" stroke="#3182F6" strokeWidth={2.5} fill={`url(#fg-${label.replace(/[^a-zA-Z]/g,"")})`} dot={{ r: 4, stroke: "#3182F6", strokeWidth: 2, fill: "white" }} activeDot={{ r: 6, stroke: "#3182F6", strokeWidth: 2, fill: "white" }} />
               </AreaChart>
@@ -2016,6 +2018,10 @@ export default function App() {
   };
 
   const handleSearchSelect = (ticker) => {
+    if (!user) {
+      setShowAuth("login");
+      return;
+    }
     if (!isUnlocked && usageCount >= MAX_FREE_ANALYSES) {
       setShowPaywall(true);
       return;
@@ -2025,6 +2031,10 @@ export default function App() {
   };
 
   const handleQuickSearch = (ticker) => {
+    if (!user) {
+      setShowAuth("login");
+      return;
+    }
     if (!isUnlocked && usageCount >= MAX_FREE_ANALYSES) {
       setShowPaywall(true);
       return;
