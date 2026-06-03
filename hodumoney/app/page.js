@@ -59,9 +59,11 @@ function genHistory(current, months = 12, volatility = 0.02, trend = 0) {
 
 // ─── Constants & Data ────────────────────────────────────────────
 const MENU_ITEMS = [
-  { id: "market", label: "시장 동향", icon: "📊", ready: true },
-  { id: "company", label: "기업 분석", icon: "🔍", ready: true },
-  { id: "watchlist", label: "관심 종목", icon: "⭐", ready: true },
+  { id: "market", label: "시장 동향", icon: "📊", section: "분석 도구" },
+  { id: "company", label: "기업 분석", icon: "🔍", section: "분석 도구" },
+  { id: "watchlist", label: "관심 종목", icon: "⭐", section: "분석 도구" },
+  { id: "guide", label: "사용 가이드", icon: "📖", section: "정보" },
+  { id: "contact", label: "문의하기", icon: "💬", section: "정보" },
 ];
 
 const INDICES_US = [
@@ -916,17 +918,18 @@ function InlineChart({ item, onClose }) {
 function CoreValuations({ data, currency }) {
   const [expandedKey, setExpandedKey] = useState(null);
   const safeVal = (v) => (typeof v === "number" && isFinite(v)) ? v : 0;
+  const hasData = (v) => v !== null && v !== undefined && typeof v === "number" && isFinite(v);
   const isKRW = currency === "KRW";
   const sym = isKRW ? "₩" : "$";
   const unit = isKRW ? "백만" : "M";
   const metrics = [
-    { key: "per", label: "PER", fmt: v => safeVal(v).toFixed(2), desc: "회사가 1년에 버는 돈에 비해 주가가 얼마나 비싼지" },
-    { key: "pbr", label: "PBR", fmt: v => safeVal(v).toFixed(2), desc: "회사의 순자산(자본)에 비해 주가가 얼마나 비싼지" },
-    { key: "eps", label: `EPS (${sym})`, fmt: v => `${sym}${safeVal(v).toLocaleString(undefined, { maximumFractionDigits: isKRW ? 0 : 2 })}`, desc: "주식 한 주당 회사가 1년간 벌어들이는 이익" },
-    { key: "de", label: "부채비율 (D/E)", fmt: v => `${(safeVal(v) * 100).toFixed(0)}%`, desc: "회사의 자기자본에 비해 빚이 얼마나 있는지" },
-    { key: "roe", label: "ROE (%)", fmt: v => `${safeVal(v).toFixed(1)}%`, desc: "주주의 돈(자본)을 운용해 연 몇%의 이익을 냈는지" },
-    { key: "div", label: "배당수익률 (%)", fmt: v => `${safeVal(v).toFixed(2)}%`, desc: "배당으로 받는 수익률" },
-    { key: "ebitda", label: `EBITDA (${sym}${unit})`, fmt: v => `${sym}${Math.round(safeVal(v)).toLocaleString()}${unit}`, desc: "세금·이자·감가상각을 빼기 전 실제로 벌어들인 현금 흐름" },
+    { key: "per", label: "PER", fmt: v => hasData(v) ? safeVal(v).toFixed(2) : "-", desc: "회사가 1년에 버는 돈에 비해 주가가 얼마나 비싼지" },
+    { key: "pbr", label: "PBR", fmt: v => hasData(v) ? safeVal(v).toFixed(2) : "-", desc: "회사의 순자산(자본)에 비해 주가가 얼마나 비싼지" },
+    { key: "eps", label: `EPS (${sym})`, fmt: v => hasData(v) ? `${sym}${safeVal(v).toLocaleString(undefined, { maximumFractionDigits: isKRW ? 0 : 2 })}` : "-", desc: "주식 한 주당 회사가 1년간 벌어들이는 이익" },
+    { key: "de", label: "부채비율 (D/E)", fmt: v => hasData(v) ? `${(safeVal(v) * 100).toFixed(0)}%` : "-", desc: "회사의 자기자본에 비해 빚이 얼마나 있는지" },
+    { key: "roe", label: "ROE (%)", fmt: v => hasData(v) ? `${safeVal(v).toFixed(1)}%` : "-", desc: "주주의 돈(자본)을 운용해 연 몇%의 이익을 냈는지" },
+    { key: "div", label: "배당수익률 (%)", fmt: v => hasData(v) ? `${safeVal(v).toFixed(2)}%` : "-", desc: "배당으로 받는 수익률" },
+    { key: "ebitda", label: `EBITDA (${sym}${unit})`, fmt: v => hasData(v) ? `${sym}${Math.round(safeVal(v)).toLocaleString()}${unit}` : "-", desc: "세금·이자·감가상각을 빼기 전 실제로 벌어들인 현금 흐름" },
   ];
   const toggle = (key) => setExpandedKey(expandedKey === key ? null : key);
   const trendLabels = data.labels && data.labels.length > 0 ? data.labels : ["Q1", "Q2", "Q3", "Q4", "Q5"];
@@ -940,12 +943,13 @@ function CoreValuations({ data, currency }) {
       {metrics.map(({ key, label, fmt: fmtFn, desc }) => {
         const metric = data.coreMetrics?.[key];
         if (!metric) return null;
-        const trendData = metric.trend || [0, 0, 0, 0, 0];
+        const trendData = metric.trend || [null, null, null, null, null];
+        const hasValidTrend = trendData.some(v => v !== null && v !== undefined && typeof v === "number" && isFinite(v));
         const isOpen = expandedKey === key;
-        const trendMin = Math.min(...trendData.map(v => safeVal(v)));
-        const trendMax = Math.max(...trendData.map(v => safeVal(v)));
+        const trendMin = Math.min(...trendData.filter(v => typeof v === "number" && isFinite(v)));
+        const trendMax = Math.max(...trendData.filter(v => typeof v === "number" && isFinite(v)));
         const trendRange = trendMax - trendMin || 1;
-        const chartData = trendData.map((v, i) => ({ label: trendLabels[i] || `Q${i+1}`, value: safeVal(v) }));
+        const chartData = trendData.map((v, i) => ({ label: trendLabels[i] || `Q${i+1}`, value: (typeof v === "number" && isFinite(v)) ? v : null }));
 
         return (
           <div className={`metric-card ${isOpen ? "expanded" : ""}`} key={key} onClick={() => toggle(key)}>
@@ -957,7 +961,10 @@ function CoreValuations({ data, currency }) {
               <div className="metric-card-desc">{desc}</div>
               <div className="metric-card-mini">
                 {(() => {
-                  const hasNeg = trendData.some(v => safeVal(v) < 0);
+                  if (!hasValidTrend) {
+                    return <div style={{ fontSize: 11, color: "var(--text-tertiary)", display: "flex", alignItems: "center" }}>데이터 없음</div>;
+                  }
+                  const hasNeg = trendData.some(v => typeof v === "number" && v < 0);
                   const absMax = Math.max(...trendData.map(v => Math.abs(safeVal(v)))) || 1;
                   if (hasNeg) {
                     // Bidirectional: bars above/below midline
@@ -989,6 +996,7 @@ function CoreValuations({ data, currency }) {
             {isOpen && (
               <div className="metric-card-expand" onClick={e => e.stopPropagation()}>
                 <div className="metric-card-expand-body">
+                  {hasValidTrend ? (
                   <ResponsiveContainer width="100%" height={200}>
                     <AreaChart data={chartData} margin={{ top: 8, right: 8, left: -10, bottom: 0 }}>
                       <defs><linearGradient id={`mg-${key}`} x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="#3182F6" stopOpacity={0.15} /><stop offset="100%" stopColor="#3182F6" stopOpacity={0.02} /></linearGradient></defs>
@@ -999,6 +1007,9 @@ function CoreValuations({ data, currency }) {
                       <Area type="monotone" dataKey="value" stroke="#3182F6" strokeWidth={2.5} fill={`url(#mg-${key})`} dot={{ r: 4, stroke: "#3182F6", strokeWidth: 2, fill: "white" }} activeDot={{ r: 6, stroke: "#3182F6", strokeWidth: 2, fill: "white" }} />
                     </AreaChart>
                   </ResponsiveContainer>
+                  ) : (
+                    <div style={{ textAlign: "center", padding: "40px 0", color: "var(--text-tertiary)", fontSize: 14 }}>이 종목의 해당 지표 데이터가 제공되지 않습니다</div>
+                  )}
                   <InsightPanel metricKey={key} />
                 </div>
               </div>
@@ -1012,12 +1023,14 @@ function CoreValuations({ data, currency }) {
 
 // ─── Reusable Financial Row Card ─────────────────────────────────
 function FinRowCard({ label, values, labels, expanded, onToggle, fmtFn, allowNeg, desc, metricKey }) {
-  const lastVal = values[values.length - 1];
-  const vMin = Math.min(...values);
-  const vMax = Math.max(...values);
+  const validValues = values.filter(v => typeof v === "number" && isFinite(v));
+  const hasAnyData = validValues.length > 0;
+  const lastVal = hasAnyData ? validValues[validValues.length - 1] : null;
+  const vMin = hasAnyData ? Math.min(...validValues) : 0;
+  const vMax = hasAnyData ? Math.max(...validValues) : 0;
   const vRange = vMax - vMin || 1;
-  const chartData = values.map((v, i) => ({ label: labels[i], value: v }));
-  const isNeg = allowNeg && lastVal < 0;
+  const chartData = values.map((v, i) => ({ label: labels[i], value: (typeof v === "number" && isFinite(v)) ? v : null }));
+  const isNeg = allowNeg && typeof lastVal === "number" && lastVal < 0;
 
   return (
     <div className={`metric-card ${expanded ? "expanded" : ""}`} onClick={onToggle}>
@@ -1025,15 +1038,15 @@ function FinRowCard({ label, values, labels, expanded, onToggle, fmtFn, allowNeg
         <div className="metric-card-left">
           <div className="metric-card-name">{label}</div>
           <div className="metric-card-value" style={isNeg ? { color: "var(--accent-blue)" } : {}}>
-            {fmtFn ? fmtFn(lastVal) : (isNeg ? `-${Math.abs(lastVal).toLocaleString()}` : lastVal.toLocaleString())}
+            {!hasAnyData ? "-" : fmtFn ? fmtFn(lastVal) : (isNeg ? `-${Math.abs(lastVal).toLocaleString()}` : (lastVal || 0).toLocaleString())}
           </div>
         </div>
         {desc && <div className="metric-card-desc">{desc}</div>}
         <div className="metric-card-mini">
           {(() => {
-            const hasNeg = values.some(v => v < 0);
-            const hasPos = values.some(v => v > 0);
-            const absMax = Math.max(...values.map(v => Math.abs(v))) || 1;
+            if (!hasAnyData) return <div style={{ fontSize: 11, color: "var(--text-tertiary)", display: "flex", alignItems: "center" }}>데이터 없음</div>;
+            const hasNeg = validValues.some(v => v < 0);
+            const absMax = Math.max(...validValues.map(v => Math.abs(v))) || 1;
             
             if (hasNeg) {
               // Bidirectional bars for negative values
@@ -1858,6 +1871,72 @@ function UsageNotice({ message, onClose }) {
   );
 }
 
+// ─── 사용 가이드 Page ────────────────────────────────────────────
+function GuidePage() {
+  const sections = [
+    { icon: "📊", title: "시장 동향", desc: "미국과 한국의 주요 지수(S&P 500, 나스닥, 코스피 등)를 실시간으로 확인할 수 있습니다. 경제 지표, 심리 지표, 기준금리까지 한눈에 파악하세요.", free: true },
+    { icon: "🔍", title: "기업 분석", desc: "종목을 검색하면 핵심 밸류에이션(PER, PBR, EPS 등), 손익계산서, 대차대조표, 현금흐름표를 한국어로 쉽게 볼 수 있습니다. 각 항목을 클릭하면 트렌드 차트와 호두머니 코멘트가 표시됩니다.", free: false },
+    { icon: "⭐", title: "관심 종목", desc: "자주 보는 종목을 관심 종목으로 등록하면, 현재가와 기간별 수익률(1일/1주/1달/1년)을 한 페이지에서 확인할 수 있습니다. 로그인 후 이용 가능합니다.", free: false },
+  ];
+  return (
+    <div className="content-area" style={{ maxWidth: 680, margin: "0 auto", padding: "40px 20px" }}>
+      <div className="fade-up" style={{ textAlign: "center", marginBottom: 40 }}>
+        <div style={{ fontSize: 48, marginBottom: 12 }}>🥜</div>
+        <h2 style={{ fontSize: 26, fontWeight: 800, marginBottom: 8, letterSpacing: "-0.5px" }}>HODU MONEY 사용 가이드</h2>
+        <p style={{ fontSize: 15, color: "var(--text-tertiary)", lineHeight: 1.7 }}>어렵게 느껴지는 투자를 쉽게 정리합니다</p>
+      </div>
+      {sections.map((s, i) => (
+        <div key={i} className="card fade-up" style={{ marginBottom: 16, animationDelay: `${i * 0.1}s` }}>
+          <div style={{ display: "flex", alignItems: "flex-start", gap: 16 }}>
+            <div style={{ fontSize: 32, flexShrink: 0 }}>{s.icon}</div>
+            <div>
+              <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
+                <div style={{ fontSize: 18, fontWeight: 800 }}>{s.title}</div>
+                <span style={{ fontSize: 11, fontWeight: 600, padding: "2px 8px", borderRadius: 4, background: s.free ? "#E8FAF3" : "#FFF0F1", color: s.free ? "#03B26C" : "#F04452" }}>{s.free ? "무료" : "로그인 필요"}</span>
+              </div>
+              <p style={{ fontSize: 14, color: "var(--text-secondary)", lineHeight: 1.7, margin: 0 }}>{s.desc}</p>
+            </div>
+          </div>
+        </div>
+      ))}
+      <div className="card fade-up" style={{ marginTop: 24, textAlign: "center", padding: 28 }}>
+        <div style={{ fontSize: 15, fontWeight: 700, marginBottom: 12 }}>💡 무제한 이용권</div>
+        <p style={{ fontSize: 14, color: "var(--text-secondary)", lineHeight: 1.7, marginBottom: 16 }}>기업 분석은 무료 5회 체험 후, 무제한 이용권을 구매하시면 제한 없이 사용할 수 있습니다.</p>
+        <a href="https://litt.ly/hodumoney/sale/QnPfK6I" target="_blank" rel="noopener noreferrer" style={{ display: "inline-block", padding: "12px 28px", background: "#5D4037", color: "white", borderRadius: 10, fontSize: 15, fontWeight: 700, textDecoration: "none" }}>무제한 이용권 구매하기</a>
+      </div>
+    </div>
+  );
+}
+
+// ─── 문의하기 Page ───────────────────────────────────────────────
+function ContactPage() {
+  return (
+    <div className="content-area" style={{ maxWidth: 560, margin: "0 auto", padding: "60px 20px" }}>
+      <div className="fade-up" style={{ textAlign: "center", marginBottom: 40 }}>
+        <div style={{ fontSize: 48, marginBottom: 12 }}>💬</div>
+        <h2 style={{ fontSize: 26, fontWeight: 800, marginBottom: 8 }}>문의하기</h2>
+        <p style={{ fontSize: 15, color: "var(--text-tertiary)", lineHeight: 1.7 }}>궁금한 점이나 건의사항이 있으시면 언제든 연락해주세요</p>
+      </div>
+      <div className="card fade-up" style={{ textAlign: "center", padding: 32 }}>
+        <div style={{ fontSize: 14, color: "var(--text-secondary)", marginBottom: 16 }}>아래 이메일로 문의해주시면 빠르게 답변드리겠습니다</div>
+        <a href="mailto:hodusolution@naver.com" style={{ fontSize: 20, fontWeight: 800, color: "#5D4037", textDecoration: "none", display: "inline-flex", alignItems: "center", gap: 8, padding: "14px 28px", background: "#FFF8F0", borderRadius: 12, border: "1.5px solid #EFEBE9" }}>
+          📧 hodusolution@naver.com
+        </a>
+        <div style={{ marginTop: 20, fontSize: 13, color: "var(--text-tertiary)", lineHeight: 1.6 }}>
+          보통 1~2일 내 답변드립니다
+        </div>
+      </div>
+      <div className="card fade-up" style={{ marginTop: 16, textAlign: "center", padding: 28 }}>
+        <div style={{ fontSize: 15, fontWeight: 700, marginBottom: 12 }}>🔗 SNS</div>
+        <div style={{ display: "flex", gap: 12, justifyContent: "center" }}>
+          <a href="https://www.instagram.com/hodu.money/" target="_blank" rel="noopener noreferrer" style={{ padding: "10px 20px", background: "#F2F4F6", borderRadius: 10, fontSize: 14, fontWeight: 600, color: "var(--text-primary)", textDecoration: "none" }}>📸 인스타그램</a>
+          <a href="https://cafe.naver.com/hodumoney" target="_blank" rel="noopener noreferrer" style={{ padding: "10px 20px", background: "#F2F4F6", borderRadius: 10, fontSize: 14, fontWeight: 600, color: "var(--text-primary)", textDecoration: "none" }}>☕ 네이버 카페</a>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ─── Auth Modal (Firebase: 구글 로그인 + 이메일/비번) ────────────
 function AuthModal({ onClose, onLogin }) {
   const [error, setError] = useState("");
@@ -2065,7 +2144,7 @@ export default function App() {
   };
 
   const pageTitle = {
-    market: "시장 동향", company: "기업 분석", watchlist: "관심 종목",
+    market: "시장 동향", company: "기업 분석", watchlist: "관심 종목", guide: "사용 가이드", contact: "문의하기",
   };
 
   const usageBadgeClass = isUnlocked ? "usage-badge unlimited" : (usageCount >= MAX_FREE_ANALYSES ? "usage-badge warning" : "usage-badge");
@@ -2142,21 +2221,33 @@ export default function App() {
         <div className="sidebar-divider" />
         <div className="sidebar-section">
           <div className="sidebar-section-label">분석 도구</div>
-          {MENU_ITEMS.map(item => (
-            <div key={item.id} className={`sidebar-item ${activePage === item.id ? "active" : ""}`} onClick={() => handlePageChange(item.id)}>
+          {MENU_ITEMS.filter(i => i.section === "분석 도구").map(item => (
+            <div key={item.id} className={`sidebar-item ${activePage === item.id ? "active" : ""}`} onClick={() => {
+              if (item.id === "watchlist" && !user) { setShowAuth("login"); return; }
+              handlePageChange(item.id);
+            }}>
               <span className="item-icon">{item.icon}</span>
               <span>{item.label}</span>
-              {item.id === "company" && <span className="badge-soon" style={{ background: "#FFF0F1", color: "#F04452" }}>유료</span>}
             </div>
           ))}
         </div>
         <div className="sidebar-divider" />
         <div className="sidebar-section">
           <div className="sidebar-section-label">정보</div>
-          <div className="sidebar-item"><span className="item-icon">📖</span><span>사용 가이드</span></div>
-          <div className="sidebar-item"><span className="item-icon">💬</span><span>문의하기</span></div>
+          {MENU_ITEMS.filter(i => i.section === "정보").map(item => (
+            <div key={item.id} className={`sidebar-item ${activePage === item.id ? "active" : ""}`} onClick={() => handlePageChange(item.id)}>
+              <span className="item-icon">{item.icon}</span>
+              <span>{item.label}</span>
+            </div>
+          ))}
         </div>
-        <div style={{ padding: "12px 24px" }}>
+        <div className="sidebar-divider" />
+        <div style={{ padding: "8px 24px" }}>
+          <a href="https://litt.ly/hodumoney/sale/QnPfK6I" target="_blank" rel="noopener noreferrer" style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 8, padding: "12px 16px", background: "linear-gradient(135deg, #5D4037, #8D6E63)", color: "white", borderRadius: "var(--radius-sm)", fontWeight: 700, fontSize: 14, textDecoration: "none", cursor: "pointer", fontFamily: "inherit", transition: "opacity 0.15s" }}>
+            🎫 무제한 이용권 구매
+          </a>
+        </div>
+        <div style={{ padding: "4px 24px 12px" }}>
           <div className={usageBadgeClass}>
             {isUnlocked ? "✓ " : "🔑 "}기업분석 {usageBadgeText}
           </div>
@@ -2167,17 +2258,23 @@ export default function App() {
         <div className="top-bar">
           <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
             <button className="mobile-menu-btn" onClick={() => setSidebarOpen(true)}>☰</button>
-            <div className="top-bar-title">{pageTitle[activePage]}</div>
-          </div>
-          {activePage === "company" && searchedTicker && <SearchBox onSelect={handleSearchSelect} />}
-          {!user && (
-            <button onClick={() => setShowAuth("login")} style={{ padding: "7px 16px", borderRadius: 8, border: "1px solid var(--border)", background: "white", fontFamily: "inherit", fontSize: 13, fontWeight: 600, cursor: "pointer", color: "var(--text-secondary)", transition: "all 0.15s", whiteSpace: "nowrap" }}>로그인</button>
-          )}
-          {user && (
-            <div style={{ fontSize: 13, fontWeight: 600, color: "var(--text-secondary)", display: "flex", alignItems: "center", gap: 6 }}>
-              <span>🙂</span> {user.name || user.email.split("@")[0]}
+            <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+              <div className="top-bar-title">{pageTitle[activePage]}</div>
+              <div style={{ width: 4, height: 4, borderRadius: 2, background: "#A67B5B" }} />
+              <div style={{ fontSize: 12, color: "var(--text-tertiary)", fontWeight: 500 }}>HODU MONEY</div>
             </div>
-          )}
+          </div>
+          <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+            {activePage === "company" && searchedTicker && <SearchBox onSelect={handleSearchSelect} />}
+            {!user && (
+              <button onClick={() => setShowAuth("login")} style={{ padding: "8px 18px", borderRadius: 10, border: "none", background: "#5D4037", fontFamily: "inherit", fontSize: 13, fontWeight: 700, cursor: "pointer", color: "white", transition: "all 0.15s", whiteSpace: "nowrap" }}>로그인</button>
+            )}
+            {user && (
+              <div style={{ fontSize: 13, fontWeight: 600, color: "var(--text-secondary)", display: "flex", alignItems: "center", gap: 6, padding: "6px 12px", background: "var(--bg-hover)", borderRadius: 8 }}>
+                <span>🙂</span> {user.name || user.email.split("@")[0]}
+              </div>
+            )}
+          </div>
         </div>
 
         {activePage === "market" && <MarketPage />}
@@ -2187,6 +2284,8 @@ export default function App() {
             : <CompanyPage searchTicker={null} onQuickSearch={handleQuickSearch} user={user} isInWatchlist={isInWatchlist} addToWatchlist={addToWatchlist} removeFromWatchlist={removeFromWatchlist} />
         )}
         {activePage === "watchlist" && <WatchlistPage user={user} onLogin={() => setShowAuth("login")} onSearch={(ticker) => { setSearchedTicker(ticker); setActivePage("company"); }} watchlist={watchlist} addToWatchlist={addToWatchlist} removeFromWatchlist={removeFromWatchlist} />}
+        {activePage === "guide" && <GuidePage />}
+        {activePage === "contact" && <ContactPage />}
       </main>
     </div>
   );
