@@ -262,7 +262,7 @@ const styles = `
 
   .metric-card { background: var(--bg-card); border: none; border-radius: var(--radius-md); padding: 18px 22px; margin-bottom: 10px; cursor: pointer; transition: all 0.2s ease; position: relative; box-shadow: var(--shadow-card); }
   .metric-card:hover { box-shadow: var(--shadow-md); }
-  .metric-card.expanded { box-shadow: 0 0 0 2px var(--accent-blue), var(--shadow-md); }
+  .metric-card.expanded { box-shadow: var(--shadow-md); }
   .metric-card-top { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
   .metric-card-left { display: flex; align-items: center; gap: 16px; min-width: 0; }
   .metric-card-name { font-size: 14px; font-weight: 700; color: var(--text-primary); min-width: 120px; flex-shrink: 0; }
@@ -388,7 +388,7 @@ const styles = `
 
   .index-card.clickable, .econ-card.clickable { cursor: pointer; position: relative; }
   .index-card.clickable:active, .econ-card.clickable:active { transform: scale(0.98); }
-  .index-card.selected, .econ-card.selected { box-shadow: 0 0 0 2px var(--accent-blue), var(--shadow-md); }
+  .index-card.selected, .econ-card.selected { box-shadow: var(--shadow-md); }
     .card-chart-btn {
     position: absolute; top: 50%; right: 14px; transform: translateY(-50%); width: 32px; height: 32px;
     border: 1px solid var(--border); border-radius: 8px; background: #fff;
@@ -1278,16 +1278,20 @@ function MarketPage() {
           <div className="country-label">미국</div>
           <div className="econ-grid">
             {liveEconUS.map((ind, i) => (
-              <div className={`econ-card ${ind.isStatic ? "" : "clickable"} ${isSelected("econUS", ind.name) ? "selected" : ""}`} key={i} onClick={() => { if (!ind.isStatic) toggle("econUS", ind); }}>
-                {!ind.isStatic && <button className="card-chart-btn" onClick={(e) => { e.stopPropagation(); toggle("econUS", ind); }} title="차트 보기"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="2,12 5.5,7 8.5,9 14,3" /><polyline points="10,3 14,3 14,7" /></svg></button>}
-                <div className="econ-name">{ind.name}</div>
-                <div className="econ-value">{ind.value}</div>
-                {ind.change && !ind.isStatic && <div className={`econ-change ${ind.up ? "up" : "down"}`}>{ind.up ? "▲" : "▼"} {ind.change}{ind.pct ? ` (${ind.pct})` : ""}</div>}
-                {ind.status && <span className="econ-status" style={{ color: ind.statusColor || "var(--text-tertiary)" }}>{ind.status}</span>}
-              </div>
+              <React.Fragment key={i}>
+                <div className={`econ-card ${ind.isStatic ? "" : "clickable"} ${isSelected("econUS", ind.name) ? "selected" : ""}`} onClick={() => { if (!ind.isStatic) toggle("econUS", ind); }}>
+                  {!ind.isStatic && <button className="card-chart-btn" onClick={(e) => { e.stopPropagation(); toggle("econUS", ind); }} title="차트 보기"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="2,12 5.5,7 8.5,9 14,3" /><polyline points="10,3 14,3 14,7" /></svg></button>}
+                  <div className="econ-name">{ind.name}</div>
+                  <div className="econ-value">{ind.value}</div>
+                  {ind.change && !ind.isStatic && <div className={`econ-change ${ind.up ? "up" : "down"}`}>{ind.up ? "▲" : "▼"} {ind.change}{ind.pct ? ` (${ind.pct})` : ""}</div>}
+                  {ind.status && <span className="econ-status" style={{ color: ind.statusColor || "var(--text-tertiary)" }}>{ind.status}</span>}
+                </div>
+                {selectedIndex && selectedIndex.group === "econUS" && selectedIndex.name === ind.name && (
+                  <div style={{ gridColumn: "1 / -1" }}><InlineChart item={selectedIndex} onClose={() => setSelectedIndex(null)} /></div>
+                )}
+              </React.Fragment>
             ))}
           </div>
-          {selectedIndex && selectedIndex.group === "econUS" && <InlineChart item={selectedIndex} onClose={() => setSelectedIndex(null)} />}
         </div>
       )}
 
@@ -1296,16 +1300,20 @@ function MarketPage() {
           <div className="country-label">한국</div>
           <div className="econ-grid">
             {liveEconKR.map((ind, i) => (
-              <div className={`econ-card ${ind.isStatic ? "" : "clickable"} ${isSelected("econKR", ind.name) ? "selected" : ""}`} key={i} onClick={() => { if (!ind.isStatic) toggle("econKR", ind); }}>
-                {!ind.isStatic && <button className="card-chart-btn" onClick={(e) => { e.stopPropagation(); toggle("econKR", ind); }} title="차트 보기"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="2,12 5.5,7 8.5,9 14,3" /><polyline points="10,3 14,3 14,7" /></svg></button>}
-                <div className="econ-name">{ind.name}</div>
-                <div className="econ-value">{ind.value}</div>
-                {ind.change && !ind.isStatic && <div className={`econ-change ${ind.up ? "up" : "down"}`}>{ind.up ? "▲" : "▼"} {ind.change}{ind.pct ? ` (${ind.pct})` : ""}</div>}
-                {ind.status && <span className="econ-status" style={{ color: ind.statusColor || "var(--text-tertiary)" }}>{ind.status}</span>}
-              </div>
+              <React.Fragment key={i}>
+                <div className={`econ-card ${ind.isStatic ? "" : "clickable"} ${isSelected("econKR", ind.name) ? "selected" : ""}`} onClick={() => { if (!ind.isStatic) toggle("econKR", ind); }}>
+                  {!ind.isStatic && <button className="card-chart-btn" onClick={(e) => { e.stopPropagation(); toggle("econKR", ind); }} title="차트 보기"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="2,12 5.5,7 8.5,9 14,3" /><polyline points="10,3 14,3 14,7" /></svg></button>}
+                  <div className="econ-name">{ind.name}</div>
+                  <div className="econ-value">{ind.value}</div>
+                  {ind.change && !ind.isStatic && <div className={`econ-change ${ind.up ? "up" : "down"}`}>{ind.up ? "▲" : "▼"} {ind.change}{ind.pct ? ` (${ind.pct})` : ""}</div>}
+                  {ind.status && <span className="econ-status" style={{ color: ind.statusColor || "var(--text-tertiary)" }}>{ind.status}</span>}
+                </div>
+                {selectedIndex && selectedIndex.group === "econKR" && selectedIndex.name === ind.name && (
+                  <div style={{ gridColumn: "1 / -1" }}><InlineChart item={selectedIndex} onClose={() => setSelectedIndex(null)} /></div>
+                )}
+              </React.Fragment>
             ))}
           </div>
-          {selectedIndex && selectedIndex.group === "econKR" && <InlineChart item={selectedIndex} onClose={() => setSelectedIndex(null)} />}
         </div>
       )}
 
@@ -1316,7 +1324,7 @@ function MarketPage() {
         </div>
         <div className="sentiment-grid fade-up fade-up-d3">
           {liveVix && (
-            <div className={`sentiment-card ${isSelected("sentiment", liveVix.name) ? "selected" : ""}`} style={{ cursor: "pointer", border: isSelected("sentiment", liveVix.name) ? "2px solid var(--accent-blue)" : undefined }} onClick={() => toggle("sentiment", liveVix)}>
+            <div className={`sentiment-card ${isSelected("sentiment", liveVix.name) ? "selected" : ""}`} style={{ cursor: "pointer" }} onClick={() => toggle("sentiment", liveVix)}>
               <div className="sentiment-card-label">VIX 공포 지수</div>
               <SentimentGaugeVisual value={vixGauge} reversed />
               <div className="sentiment-value" style={{ color: liveVix.statusColor || "#F59E0B" }}>{liveVix.value}</div>
