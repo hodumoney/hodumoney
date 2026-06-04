@@ -1832,12 +1832,25 @@ function PaywallModal({ usageCount, maxFree, onCodeSubmit, onClose }) {
   const [code, setCode] = useState("");
   const [error, setError] = useState("");
 
-  const handleSubmit = () => {
-    if (onCodeSubmit(code.trim())) {
-      onClose();
-    } else {
-      setError("유효하지 않은 코드입니다");
+  const [loading, setLoading] = useState(false);
+
+  const handleSubmit = async () => {
+    if (!code.trim()) return;
+    setLoading(true);
+    setError("");
+    try {
+      const result = await onCodeSubmit(code.trim());
+      if (result) {
+        onClose();
+      } else {
+        setError("유효하지 않은 코드입니다");
+        setTimeout(() => setError(""), 2000);
+      }
+    } catch {
+      setError("오류가 발생했습니다");
       setTimeout(() => setError(""), 2000);
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -1864,7 +1877,7 @@ function PaywallModal({ usageCount, maxFree, onCodeSubmit, onClose }) {
           onKeyDown={e => { if (e.key === "Enter") handleSubmit(); }}
         />
         {error && <div className="paywall-error">{error}</div>}
-        <button className="paywall-submit" onClick={handleSubmit}>코드 인증</button>
+        <button className="paywall-submit" onClick={handleSubmit} disabled={loading}>{loading ? "확인 중..." : "코드 인증"}</button>
         <div className="paywall-counter">사용 {usageCount}/{maxFree}회</div>
       </div>
     </div>
@@ -2011,7 +2024,6 @@ function AuthModal({ onClose, onLogin }) {
 }
 
 // ─── Main App ────────────────────────────────────────────────────
-const VALID_CODES = ["MZHODU"];
 const MAX_FREE_ANALYSES = 5;
 
 export default function App() {
@@ -2028,6 +2040,25 @@ export default function App() {
   const [showAuth, setShowAuth] = useState(null); // null | "login" | "signup"
   const [watchlist, setWatchlist] = useState([]); // [{ ticker, name, addedAt }]
   const [watchlistLoading, setWatchlistLoading] = useState(false);
+
+  // 유저 변경 시: Firestore에서 unlock 상태 + 사용 횟수 로드
+  useEffect(() => {
+    if (!user?.uid) { setIsUnlocked(false); setUsageCount(0); return; }
+    (async () => {
+      try {
+        const { doc, getDoc } = await import("firebase/firestore");
+        const db = await getFirebaseFirestore();
+        const snap = await getDoc(doc(db, "users", user.uid));
+        if (snap.exists()) {
+          const d = snap.data();
+          if (d.isUnlocked) setIsUnlocked(true);
+          if (typeof d.usageCount === "number") setUsageCount(d.usageCount);
+        }
+      } catch (e) {
+        console.error("User data load error:", e);
+      }
+    })();
+  }, [user?.uid]);
 
   // 관심종목 Firestore에서 로드 (유저 변경 시)
   useEffect(() => {
@@ -2146,7 +2177,7 @@ export default function App() {
     setActivePage("company");
   };
 
-  const handleUsageConsume = () => {
+  const handleUsageConsume = async () => {
     if (isUnlocked) return;
     const newCount = usageCount + 1;
     setUsageCount(newCount);
@@ -2156,15 +2187,44 @@ export default function App() {
     } else {
       setNoticeMsg("무료 사용 횟수를 모두 사용했습니다");
     }
+    // Firestore에 사용 횟수 저장
+    if (user?.uid) {
+      try {
+        const { doc, setDoc } = await import("firebase/firestore");
+        const db = await getFirebaseFirestore();
+        await setDoc(doc(db, "users", user.uid), { usageCount: newCount, email: user.email }, { merge: true });
+      } catch (e) { console.error("Usage save error:", e); }
+    }
   };
 
-  const handleCodeSubmit = (code) => {
-    if (VALID_CODES.includes(code.toUpperCase())) {
-      setIsUnlocked(true);
-      setNoticeMsg("무제한 이용권이 활성화되었습니다!");
-      return true;
+  const handleCodeSubmit = async (code) => {
+    try {
+      const res = await fetch("/api/verify-code", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ code }),
+      });
+      const data = await res.json();
+      if (data.valid) {
+        setIsUnlocked(true);
+        setNoticeMsg(data.message || "무제한 이용권이 활성화되었습니다!");
+        // Firestore에 저장 (재로그인 시 유지)
+        if (user?.uid) {
+          try {
+            const { doc, setDoc } = await import("firebase/firestore");
+            const db = await getFirebaseFirestore();
+            await setDoc(doc(db, "users", user.uid), { isUnlocked: true, unlockedAt: new Date().toISOString(), email: user.email }, { merge: true });
+          } catch (e) { console.error("Unlock save error:", e); }
+        }
+        return true;
+      } else {
+        setNoticeMsg(data.error || "유효하지 않은 코드입니다");
+        return false;
+      }
+    } catch (e) {
+      setNoticeMsg("코드 확인 중 오류가 발생했습니다");
+      return false;
     }
-    return false;
   };
 
   const pageTitle = {
@@ -2255,12 +2315,17 @@ export default function App() {
         </div>
         {/* 하단 고정 */}
         <div className="sidebar-bottom">
-          <a href="https://litt.ly/hodumoney/sale/QnPfK6I" target="_blank" rel="noopener noreferrer" style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 6, padding: "11px", background: "linear-gradient(135deg, #5D4037, #8D6E63)", color: "white", borderRadius: 10, fontWeight: 700, fontSize: 13, textDecoration: "none", fontFamily: "inherit" }}>
-            무제한 이용권 구매
-          </a>
-          <div style={{ textAlign: "center", marginTop: 6 }}>
-            <span className={usageBadgeClass} style={{ fontSize: 11 }}>
-              {isUnlocked ? "✓ " : "🔑 "}기업분석 {usageBadgeText}
+          {!isUnlocked && (
+            <a href="https://litt.ly/hodumoney/sale/QnPfK6I" target="_blank" rel="noopener noreferrer" style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 6, padding: "11px", background: "linear-gradient(135deg, #5D4037, #8D6E63)", color: "white", borderRadius: 10, fontWeight: 700, fontSize: 13, textDecoration: "none", fontFamily: "inherit", marginBottom: 6 }}>
+              무제한 이용권 구매
+            </a>
+          )}
+          <div onClick={() => { if (!isUnlocked) { if (!user) { setShowAuth("login"); } else { setShowPaywall(true); } } }} style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 6, padding: "9px", background: isUnlocked ? "#E8FAF3" : "#F2F4F6", color: isUnlocked ? "#03B26C" : "var(--text-secondary)", borderRadius: 8, fontWeight: 700, fontSize: 12, cursor: isUnlocked ? "default" : "pointer", fontFamily: "inherit" }}>
+            {isUnlocked ? "✅ 무제한 이용권 등록 완료" : "🔑 이용권 코드 등록"}
+          </div>
+          <div style={{ textAlign: "center", marginTop: 5 }}>
+            <span className={usageBadgeClass} style={{ fontSize: 10 }}>
+              기업분석 {usageBadgeText}
             </span>
           </div>
         </div>
