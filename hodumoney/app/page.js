@@ -1,5 +1,5 @@
 "use client";
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useRef, useCallback, Fragment } from "react";
 import { LineChart, Line, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
 
 // ─── Firebase 설정 (lazy load — 빌드 시 실행 안 됨) ─────────────
@@ -1278,7 +1278,7 @@ function MarketPage() {
           <div className="country-label">미국</div>
           <div className="econ-grid">
             {liveEconUS.map((ind, i) => (
-              <React.Fragment key={i}>
+              <Fragment key={i}>
                 <div className={`econ-card ${ind.isStatic ? "" : "clickable"} ${isSelected("econUS", ind.name) ? "selected" : ""}`} onClick={() => { if (!ind.isStatic) toggle("econUS", ind); }}>
                   {!ind.isStatic && <button className="card-chart-btn" onClick={(e) => { e.stopPropagation(); toggle("econUS", ind); }} title="차트 보기"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="2,12 5.5,7 8.5,9 14,3" /><polyline points="10,3 14,3 14,7" /></svg></button>}
                   <div className="econ-name">{ind.name}</div>
@@ -1289,7 +1289,7 @@ function MarketPage() {
                 {selectedIndex && selectedIndex.group === "econUS" && selectedIndex.name === ind.name && (
                   <div style={{ gridColumn: "1 / -1" }}><InlineChart item={selectedIndex} onClose={() => setSelectedIndex(null)} /></div>
                 )}
-              </React.Fragment>
+              </Fragment>
             ))}
           </div>
         </div>
@@ -1300,7 +1300,7 @@ function MarketPage() {
           <div className="country-label">한국</div>
           <div className="econ-grid">
             {liveEconKR.map((ind, i) => (
-              <React.Fragment key={i}>
+              <Fragment key={i}>
                 <div className={`econ-card ${ind.isStatic ? "" : "clickable"} ${isSelected("econKR", ind.name) ? "selected" : ""}`} onClick={() => { if (!ind.isStatic) toggle("econKR", ind); }}>
                   {!ind.isStatic && <button className="card-chart-btn" onClick={(e) => { e.stopPropagation(); toggle("econKR", ind); }} title="차트 보기"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="2,12 5.5,7 8.5,9 14,3" /><polyline points="10,3 14,3 14,7" /></svg></button>}
                   <div className="econ-name">{ind.name}</div>
@@ -1311,7 +1311,7 @@ function MarketPage() {
                 {selectedIndex && selectedIndex.group === "econKR" && selectedIndex.name === ind.name && (
                   <div style={{ gridColumn: "1 / -1" }}><InlineChart item={selectedIndex} onClose={() => setSelectedIndex(null)} /></div>
                 )}
-              </React.Fragment>
+              </Fragment>
             ))}
           </div>
         </div>
