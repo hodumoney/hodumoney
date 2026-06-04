@@ -400,13 +400,14 @@ const styles = `
   .card-chart-btn:hover { border-color: var(--accent-blue); color: var(--accent-blue); background: var(--accent-blue-light); }
 
   .section-header-distinct {
-    margin-bottom: 20px; padding: 0 0 12px;
-    background: transparent; border: none; border-radius: 0;
-    border-bottom: 2px solid var(--border);
+    margin-bottom: 14px; margin-top: 28px; padding: 16px 20px;
+    background: var(--bg-card); border: none; border-radius: var(--radius-md);
+    box-shadow: var(--shadow-card); border-left: 3px solid #5D4037;
   }
-  .section-header-distinct .section-title { font-size: 20px; font-weight: 800; letter-spacing: -0.5px; color: var(--text-primary); }
-  .section-header-distinct .section-subtitle { font-size: 13px; color: var(--text-tertiary); font-weight: 400; margin-top: 3px; }
-  .section-header-distinct.indices, .section-header-distinct.econ { border-left: none; }
+  .section-header-distinct:first-child { margin-top: 0; }
+  .section-header-distinct .section-title { font-size: 18px; font-weight: 800; letter-spacing: -0.5px; color: var(--text-primary); }
+  .section-header-distinct .section-subtitle { font-size: 12px; color: var(--text-tertiary); font-weight: 400; margin-top: 3px; }
+  .section-header-distinct.indices, .section-header-distinct.econ { border-left: 3px solid #5D4037; }
 
   .data-table { width: 100%; border-collapse: collapse; font-size: 13px; }
   .data-table thead th { text-align: right; padding: 10px 12px; font-weight: 600; color: var(--text-tertiary); font-size: 12px; border-bottom: 1px solid var(--border); white-space: nowrap; }
@@ -1268,7 +1269,7 @@ function MarketPage() {
         </div>
       )}
 
-      <div className="section-header section-header-distinct econ fade-up fade-up-d2" style={{ marginTop: 20 }}>
+      <div className="section-header section-header-distinct econ fade-up fade-up-d2">
         <div><div className="section-title">경제 지표</div><div className="section-subtitle">기준금리·채권·환율 중심 지표</div></div>
       </div>
 
@@ -1308,26 +1309,30 @@ function MarketPage() {
         </div>
       )}
 
-      <div className="section-header fade-up fade-up-d3" style={{ marginTop: 20 }}>
-        <div><div className="section-title">심리 지표</div><div className="section-subtitle">시장 공포·탐욕 수준을 한눈에</div></div>
-      </div>
-      <div className="sentiment-grid fade-up fade-up-d3">
-        {liveVix && (
-          <div className={`sentiment-card ${isSelected("sentiment", liveVix.name) ? "selected" : ""}`} style={{ cursor: "pointer", border: isSelected("sentiment", liveVix.name) ? "2px solid var(--accent-blue)" : undefined }} onClick={() => toggle("sentiment", liveVix)}>
-            <div className="sentiment-card-label">VIX 공포 지수</div>
-            <SentimentGaugeVisual value={vixGauge} reversed />
-            <div className="sentiment-value" style={{ color: liveVix.statusColor || "#F59E0B" }}>{liveVix.value}</div>
-            <div className="sentiment-status" style={{ color: liveVix.statusColor || "#F59E0B" }}>{liveVix.status || "보통"}</div>
-            <div className="sentiment-desc">전일대비 변동폭을 기반으로 시장 불안 수준을 측정합니다</div>
-            <div className="sentiment-sub-values">
-              <span>전일대비: <strong style={{ color: liveVix.up ? "var(--accent-red)" : "var(--accent-blue)" }}>{liveVix.change} ({liveVix.pct})</strong></span>
-              {liveVix.yearHigh > 0 && <span>52주 최고: <strong>{liveVix.yearHigh.toFixed(2)}</strong></span>}
-              {liveVix.yearLow > 0 && <span>52주 최저: <strong>{liveVix.yearLow.toFixed(2)}</strong></span>}
+      {showUS && (
+        <>
+        <div className="section-header section-header-distinct fade-up fade-up-d3">
+          <div><div className="section-title">심리 지표</div><div className="section-subtitle">시장 공포·탐욕 수준을 한눈에</div></div>
+        </div>
+        <div className="sentiment-grid fade-up fade-up-d3">
+          {liveVix && (
+            <div className={`sentiment-card ${isSelected("sentiment", liveVix.name) ? "selected" : ""}`} style={{ cursor: "pointer", border: isSelected("sentiment", liveVix.name) ? "2px solid var(--accent-blue)" : undefined }} onClick={() => toggle("sentiment", liveVix)}>
+              <div className="sentiment-card-label">VIX 공포 지수</div>
+              <SentimentGaugeVisual value={vixGauge} reversed />
+              <div className="sentiment-value" style={{ color: liveVix.statusColor || "#F59E0B" }}>{liveVix.value}</div>
+              <div className="sentiment-status" style={{ color: liveVix.statusColor || "#F59E0B" }}>{liveVix.status || "보통"}</div>
+              <div className="sentiment-desc">전일대비 변동폭을 기반으로 시장 불안 수준을 측정합니다</div>
+              <div className="sentiment-sub-values">
+                <span>전일대비: <strong style={{ color: liveVix.up ? "var(--accent-red)" : "var(--accent-blue)" }}>{liveVix.change} ({liveVix.pct})</strong></span>
+                {liveVix.yearHigh > 0 && <span>52주 최고: <strong>{liveVix.yearHigh.toFixed(2)}</strong></span>}
+                {liveVix.yearLow > 0 && <span>52주 최저: <strong>{liveVix.yearLow.toFixed(2)}</strong></span>}
+              </div>
             </div>
-          </div>
-        )}
-      </div>
-      {selectedIndex && selectedIndex.group === "sentiment" && <InlineChart item={selectedIndex} onClose={() => setSelectedIndex(null)} />}
+          )}
+        </div>
+        {selectedIndex && selectedIndex.group === "sentiment" && <InlineChart item={selectedIndex} onClose={() => setSelectedIndex(null)} />}
+        </>
+      )}
 
       {marketData?.updatedAt && (
         <div style={{ textAlign: "right", fontSize: 11, color: "var(--text-tertiary)", marginTop: 8 }}>
@@ -1420,13 +1425,21 @@ function PriceChart({ ticker, dailyChange, onPeriodChange }) {
   const lastPrice = chartData.length > 0 ? chartData[chartData.length - 1].price : 0;
   const chartUp = lastPrice >= firstPrice;
   const color = chartUp ? "#F04452" : "#3182F6";
+  const periodReturn = firstPrice > 0 ? ((lastPrice - firstPrice) / firstPrice) * 100 : 0;
 
   return (
     <div className="card fade-up" style={{ padding: "16px" }}>
-      <div style={{ display: "flex", gap: 4, marginBottom: 12, flexWrap: "wrap" }}>
-        {["1D", "1M", "3M", "6M", "1Y", "3Y", "5Y", "10Y", "MAX"].map(p => (
-          <button key={p} className={`chart-period-btn ${period === p ? "active" : ""}`} onClick={() => setPeriod(p)} style={{ padding: "5px 10px" }}>{p}</button>
-        ))}
+      <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 12, flexWrap: "wrap" }}>
+        <div style={{ display: "flex", gap: 4, flexWrap: "wrap" }}>
+          {["1D", "1M", "3M", "6M", "1Y", "3Y", "5Y", "10Y", "MAX"].map(p => (
+            <button key={p} className={`chart-period-btn ${period === p ? "active" : ""}`} onClick={() => setPeriod(p)} style={{ padding: "5px 10px" }}>{p}</button>
+          ))}
+        </div>
+        {!loading && chartData.length > 0 && (
+          <div style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: 6, padding: "4px 12px", borderRadius: 8, background: chartUp ? "#FFF0F1" : "#EBF3FE", fontSize: 13, fontWeight: 700, color }}>
+            <span>{chartUp ? "▲" : "▼"} {Math.abs(periodReturn).toFixed(2)}%</span>
+          </div>
+        )}
       </div>
       {loading ? (
         <div style={{ height: 220, display: "flex", alignItems: "center", justifyContent: "center", color: "var(--text-tertiary)", fontSize: 13 }}>Loading...</div>
