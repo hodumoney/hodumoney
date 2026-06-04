@@ -1233,6 +1233,16 @@ function MarketPage() {
         </div>
       </div>
 
+      {loading && !marketData && (
+        <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "80px 20px", gap: 16 }}>
+          <div style={{ width: 40, height: 40, border: "3px solid #F2F4F6", borderTop: "3px solid #5D4037", borderRadius: "50%", animation: "spin 0.8s linear infinite" }} />
+          <div style={{ fontSize: 15, fontWeight: 600, color: "var(--text-secondary)" }}>시장 데이터를 불러오고 있습니다</div>
+          <div style={{ fontSize: 12, color: "var(--text-tertiary)" }}>잠시만 기다려주세요...</div>
+          <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
+        </div>
+      )}
+
+      {(!loading || marketData) && <>
       <div className="section-header section-header-distinct indices fade-up"><div className="section-title">주가지수</div><div className="section-subtitle">미국/한국 대표 지수</div></div>
 
       {showUS && liveIdxUS.length > 0 && (
@@ -1347,6 +1357,7 @@ function MarketPage() {
           마지막 업데이트: {new Date(marketData.updatedAt).toLocaleString("ko-KR")}
         </div>
       )}
+      </>}
     </div>
   );
 }
