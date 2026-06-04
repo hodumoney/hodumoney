@@ -59,8 +59,8 @@ function genHistory(current, months = 12, volatility = 0.02, trend = 0) {
 
 // ─── Constants & Data ────────────────────────────────────────────
 const MENU_ITEMS = [
-  { id: "market", label: "시장 동향", icon: "📊", section: "분석 도구" },
   { id: "company", label: "기업 분석", icon: "🔍", section: "분석 도구" },
+  { id: "market", label: "시장 동향", icon: "📊", section: "분석 도구" },
   { id: "watchlist", label: "관심 종목", icon: "⭐", section: "분석 도구" },
   { id: "guide", label: "사용 가이드", icon: "📖", section: "정보" },
   { id: "contact", label: "문의하기", icon: "💬", section: "정보" },
@@ -400,14 +400,14 @@ const styles = `
   .card-chart-btn:hover { border-color: var(--accent-blue); color: var(--accent-blue); background: var(--accent-blue-light); }
 
   .section-header-distinct {
-    margin-bottom: 14px; margin-top: 28px; padding: 16px 20px;
-    background: var(--bg-card); border: none; border-radius: var(--radius-md);
-    box-shadow: var(--shadow-card); border-left: 3px solid #5D4037;
+    margin-bottom: 14px; margin-top: 32px; padding: 0;
+    background: transparent; border: none; border-radius: 0;
+    border-left: none;
   }
   .section-header-distinct:first-child { margin-top: 0; }
-  .section-header-distinct .section-title { font-size: 18px; font-weight: 800; letter-spacing: -0.5px; color: var(--text-primary); }
-  .section-header-distinct .section-subtitle { font-size: 12px; color: var(--text-tertiary); font-weight: 400; margin-top: 3px; }
-  .section-header-distinct.indices, .section-header-distinct.econ { border-left: 3px solid #5D4037; }
+  .section-header-distinct .section-title { font-size: 20px; font-weight: 800; letter-spacing: -0.5px; color: var(--text-primary); }
+  .section-header-distinct .section-subtitle { font-size: 12px; color: var(--text-tertiary); font-weight: 400; margin-top: 4px; padding-bottom: 12px; border-bottom: 1.5px solid var(--border-strong); }
+  .section-header-distinct.indices, .section-header-distinct.econ { border-left: none; }
 
   .data-table { width: 100%; border-collapse: collapse; font-size: 13px; }
   .data-table thead th { text-align: right; padding: 10px 12px; font-weight: 600; color: var(--text-tertiary); font-size: 12px; border-bottom: 1px solid var(--border); white-space: nowrap; }
@@ -2007,7 +2007,7 @@ const VALID_CODES = ["MZHODU"];
 const MAX_FREE_ANALYSES = 5;
 
 export default function App() {
-  const [activePage, setActivePage] = useState("market");
+  const [activePage, setActivePage] = useState("company");
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [searchedTicker, setSearchedTicker] = useState("");
   const [usageCount, setUsageCount] = useState(0);
@@ -2200,7 +2200,7 @@ export default function App() {
       {showAuth && <AuthModal onClose={() => setShowAuth(null)} onLogin={(u) => setUser(u)} />}
 
       <aside className={`sidebar ${sidebarOpen ? "open" : ""}`}>
-        <div className="sidebar-logo" onClick={() => handlePageChange("market")}>
+        <div className="sidebar-logo" onClick={() => handlePageChange("company")}>
           <div className="logo-icon">🥜</div>
           <div className="logo-text">HODU<br/>MONEY</div>
           <div className="logo-sub">투자를 쉽게 정리합니다</div>
