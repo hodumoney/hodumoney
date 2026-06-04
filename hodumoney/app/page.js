@@ -1828,11 +1828,11 @@ function WatchlistPage({ user, onLogin, onSearch, watchlist, addToWatchlist, rem
 }
 
 // ─── Paywall Modal ───────────────────────────────────────────────
-function PaywallModal({ usageCount, maxFree, onCodeSubmit, onClose }) {
+function PaywallModal({ usageCount, maxFree, onCodeSubmit, onClose, mode }) {
   const [code, setCode] = useState("");
   const [error, setError] = useState("");
-
   const [loading, setLoading] = useState(false);
+  const isRegister = mode === "register";
 
   const handleSubmit = async () => {
     if (!code.trim()) return;
@@ -1858,16 +1858,21 @@ function PaywallModal({ usageCount, maxFree, onCodeSubmit, onClose }) {
     <div className="paywall-overlay" onClick={onClose}>
       <div className="paywall-card" onClick={e => e.stopPropagation()} style={{ position: "relative" }}>
         <button className="paywall-close" onClick={onClose}>✕</button>
-        <div style={{ fontSize: 40, marginBottom: 12 }}>🔒</div>
-        <h3>무료 분석 횟수를 모두 사용했어요</h3>
-        <p>기업 분석은 <strong>{maxFree}회</strong>까지 무료입니다.<br />코드를 입력하거나 구매하면 무제한으로 사용할 수 있어요!</p>
-        <a href="https://litt.ly/hodumoney/sale/QnPfK6I" target="_blank" rel="noopener noreferrer"
-          style={{ display: "block", width: "100%", padding: "12px", marginBottom: 12, border: "none", borderRadius: 10,
-            background: "linear-gradient(135deg, #3182F6, #1B64DA)", color: "white", fontSize: 15, fontWeight: 700,
-            cursor: "pointer", fontFamily: "inherit", textAlign: "center", textDecoration: "none", letterSpacing: "-0.3px" }}>
-          기업분석 무제한 이용권 구매하기
-        </a>
-        <div style={{ fontSize: 12, color: "var(--text-tertiary)", marginBottom: 16 }}>또는 이미 이용권이 있으시면 코드를 입력해주세요</div>
+        <div style={{ fontSize: 40, marginBottom: 12 }}>{isRegister ? "🔑" : "🔒"}</div>
+        <h3>{isRegister ? "이용권 코드 등록" : "무료 분석 횟수를 모두 사용했어요"}</h3>
+        <p>{isRegister
+          ? "구매하신 이용권 코드를 입력해주세요."
+          : <>기업 분석은 <strong>{maxFree}회</strong>까지 무료입니다.<br />코드를 입력하거나 구매하면 무제한으로 사용할 수 있어요!</>
+        }</p>
+        {!isRegister && (
+          <a href="https://litt.ly/hodumoney/sale/QnPfK6I" target="_blank" rel="noopener noreferrer"
+            style={{ display: "block", width: "100%", padding: "12px", marginBottom: 12, border: "none", borderRadius: 10,
+              background: "linear-gradient(135deg, #3182F6, #1B64DA)", color: "white", fontSize: 15, fontWeight: 700,
+              cursor: "pointer", fontFamily: "inherit", textAlign: "center", textDecoration: "none", letterSpacing: "-0.3px" }}>
+            기업분석 무제한 이용권 구매하기
+          </a>
+        )}
+        {!isRegister && <div style={{ fontSize: 12, color: "var(--text-tertiary)", marginBottom: 16 }}>또는 이미 이용권이 있으시면 코드를 입력해주세요</div>}
         <input
           className={`paywall-input ${error ? "error" : ""}`}
           type="text"
@@ -1878,7 +1883,7 @@ function PaywallModal({ usageCount, maxFree, onCodeSubmit, onClose }) {
         />
         {error && <div className="paywall-error">{error}</div>}
         <button className="paywall-submit" onClick={handleSubmit} disabled={loading}>{loading ? "확인 중..." : "코드 인증"}</button>
-        <div className="paywall-counter">사용 {usageCount}/{maxFree}회</div>
+        {!isRegister && <div className="paywall-counter">사용 {usageCount}/{maxFree}회</div>}
       </div>
     </div>
   );
@@ -2032,7 +2037,7 @@ export default function App() {
   const [searchedTicker, setSearchedTicker] = useState("");
   const [usageCount, setUsageCount] = useState(0);
   const [isUnlocked, setIsUnlocked] = useState(false);
-  const [showPaywall, setShowPaywall] = useState(false);
+  const [showPaywall, setShowPaywall] = useState(null); // null | "limit" | "register"
   const [showWelcome, setShowWelcome] = useState(false);
   const [welcomeShown, setWelcomeShown] = useState(false);
   const [noticeMsg, setNoticeMsg] = useState(null);
@@ -2041,9 +2046,16 @@ export default function App() {
   const [watchlist, setWatchlist] = useState([]); // [{ ticker, name, addedAt }]
   const [watchlistLoading, setWatchlistLoading] = useState(false);
 
-  // 유저 변경 시: Firestore에서 unlock 상태 + 사용 횟수 로드
+  // 유저 변경 시: Firestore + localStorage에서 unlock 상태 + 사용 횟수 로드
   useEffect(() => {
     if (!user?.uid) { setIsUnlocked(false); setUsageCount(0); return; }
+    // localStorage 즉시 복원 (Firestore 로딩 전에도 상태 유지)
+    try {
+      const local = JSON.parse(localStorage.getItem(`hodu_user_${user.uid}`) || "{}");
+      if (local.isUnlocked) setIsUnlocked(true);
+      if (typeof local.usageCount === "number") setUsageCount(local.usageCount);
+    } catch {}
+    // Firestore에서도 로드 (더 정확한 값으로 덮어씀)
     (async () => {
       try {
         const { doc, getDoc } = await import("firebase/firestore");
@@ -2053,6 +2065,8 @@ export default function App() {
           const d = snap.data();
           if (d.isUnlocked) setIsUnlocked(true);
           if (typeof d.usageCount === "number") setUsageCount(d.usageCount);
+          // localStorage도 동기화
+          try { localStorage.setItem(`hodu_user_${user.uid}`, JSON.stringify({ isUnlocked: !!d.isUnlocked, usageCount: d.usageCount || 0 })); } catch {}
         }
       } catch (e) {
         console.error("User data load error:", e);
@@ -2157,7 +2171,7 @@ export default function App() {
       return;
     }
     if (!isUnlocked && usageCount >= MAX_FREE_ANALYSES) {
-      setShowPaywall(true);
+      setShowPaywall("limit");
       return;
     }
     setSearchedTicker(ticker);
@@ -2170,7 +2184,7 @@ export default function App() {
       return;
     }
     if (!isUnlocked && usageCount >= MAX_FREE_ANALYSES) {
-      setShowPaywall(true);
+      setShowPaywall("limit");
       return;
     }
     setSearchedTicker(ticker);
@@ -2187,7 +2201,11 @@ export default function App() {
     } else {
       setNoticeMsg("무료 사용 횟수를 모두 사용했습니다");
     }
-    // Firestore에 사용 횟수 저장
+    // localStorage 즉시 저장
+    if (user?.uid) {
+      try { localStorage.setItem(`hodu_user_${user.uid}`, JSON.stringify({ isUnlocked, usageCount: newCount })); } catch {}
+    }
+    // Firestore에도 저장
     if (user?.uid) {
       try {
         const { doc, setDoc } = await import("firebase/firestore");
@@ -2208,6 +2226,10 @@ export default function App() {
       if (data.valid) {
         setIsUnlocked(true);
         setNoticeMsg(data.message || "무제한 이용권이 활성화되었습니다!");
+        // localStorage 즉시 저장
+        if (user?.uid) {
+          try { localStorage.setItem(`hodu_user_${user.uid}`, JSON.stringify({ isUnlocked: true, usageCount })); } catch {}
+        }
         // Firestore에 저장 (재로그인 시 유지)
         if (user?.uid) {
           try {
@@ -2254,10 +2276,11 @@ export default function App() {
 
       {showPaywall && (
         <PaywallModal
+          mode={showPaywall}
           usageCount={usageCount}
           maxFree={MAX_FREE_ANALYSES}
           onCodeSubmit={handleCodeSubmit}
-          onClose={() => setShowPaywall(false)}
+          onClose={() => setShowPaywall(null)}
         />
       )}
 
@@ -2320,7 +2343,7 @@ export default function App() {
               무제한 이용권 구매
             </a>
           )}
-          <div onClick={() => { if (!isUnlocked) { if (!user) { setShowAuth("login"); } else { setShowPaywall(true); } } }} style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 6, padding: "9px", background: isUnlocked ? "#E8FAF3" : "#F2F4F6", color: isUnlocked ? "#03B26C" : "var(--text-secondary)", borderRadius: 8, fontWeight: 700, fontSize: 12, cursor: isUnlocked ? "default" : "pointer", fontFamily: "inherit" }}>
+          <div onClick={() => { if (!isUnlocked) { if (!user) { setShowAuth("login"); } else { setShowPaywall("register"); } } }} style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 6, padding: "9px", background: isUnlocked ? "#E8FAF3" : "#F2F4F6", color: isUnlocked ? "#03B26C" : "var(--text-secondary)", borderRadius: 8, fontWeight: 700, fontSize: 12, cursor: isUnlocked ? "default" : "pointer", fontFamily: "inherit" }}>
             {isUnlocked ? "✅ 무제한 이용권 등록 완료" : "🔑 이용권 코드 등록"}
           </div>
           <div style={{ textAlign: "center", marginTop: 5 }}>
