@@ -22,6 +22,75 @@ export async function GET(request) {
 
     if (!overview) return Response.json({ error: symbol + " not found" }, { status: 404 });
 
+    const fyEnd = overview.fiscalYearEndMonth || 12; // 결산월
+
+    // 상대 시점 라벨 생성 (현재 기준) + 실제 연월 병기
+    // 분기: "1Q 전 (25.11~26.01)" / "최근 (26.02~04)" / "다음 분기 (예상)"
+    // 연간: "1년 전 (25년)" / "최근 (26년)" / "다음 해 (예상)"
+    function buildRelativeLabels(rawLabels, isQuarterly) {
+      const now = new Date();
+      const curYear = now.getFullYear();
+      const curMonth = now.getMonth() + 1;
+
+      const parsed = rawLabels.map(l => {
+        if (!l || typeof l !== "string") return null;
+        const isEst = l.includes("(예상)") || /E$/i.test(l.replace(" (예상)", "").trim());
+        const clean = l.replace(" (예상)", "").trim();
+
+        if (isQuarterly) {
+          const qm = clean.match(/Q(\d)\s*(\d{4})/);
+          if (!qm) return { isEst };
+          const q = parseInt(qm[1]);
+          const fy = parseInt(qm[2]);
+          const fyStartMonth = (fyEnd % 12) + 1;
+          const startMonthIdx = (fyStartMonth - 1) + (q - 1) * 3;
+          const startMonth = (startMonthIdx % 12) + 1;
+          const endMonthIdx = startMonthIdx + 2;
+          const endMonth = (endMonthIdx % 12) + 1;
+          const fyStartYear = fy - 1;
+          const startYear = fyStartYear + Math.floor(startMonthIdx / 12);
+          const endYear = fyStartYear + Math.floor(endMonthIdx / 12);
+          const midMonthIdx = startMonthIdx + 1;
+          const calYear = fyStartYear + Math.floor(midMonthIdx / 12);
+          const calMonth = (midMonthIdx % 12) + 1;
+          const quartersFromNow = Math.round(((curYear - calYear) * 12 + (curMonth - calMonth)) / 3);
+          const sy = String(startYear).slice(-2);
+          const ey = String(endYear).slice(-2);
+          const sm = String(startMonth).padStart(2, "0");
+          const em = String(endMonth).padStart(2, "0");
+          const range = startYear === endYear ? `${sy}.${sm}~${em}` : `${sy}.${sm}~${ey}.${em}`;
+          return { isEst, dist: quartersFromNow, range };
+        } else {
+          const fm = clean.match(/FY\s*(\d{4})/);
+          if (!fm) return { isEst };
+          const fy = parseInt(fm[1]);
+          const fyStartMonth = (fyEnd % 12) + 1;
+          const mainYear = fyStartMonth <= 6 ? fy - 1 : fy;
+          return { isEst, dist: curYear - mainYear, range: `${String(mainYear).slice(-2)}년` };
+        }
+      });
+
+      const realDists = parsed.filter(p => p && !p.isEst && typeof p.dist === "number").map(p => p.dist);
+      let baseDist = 0;
+      if (realDists.length > 0) {
+        baseDist = realDists.reduce((best, d) => Math.abs(d) < Math.abs(best) ? d : best, realDists[0]);
+      }
+
+      const unit = isQuarterly ? "Q" : "년";
+      return parsed.map(p => {
+        if (!p || typeof p.dist !== "number") return "-";
+        const rel = p.dist - baseDist; // 0 = 최근(기준)
+        const range = p.range ? ` (${p.range})` : "";
+        if (rel === 0) return `최근${range}`;
+        if (rel > 0) return `${rel}${unit} 전${range}`;
+        // 미래 → 예상
+        const ahead = -rel;
+        if (isQuarterly) return ahead === 1 ? "다음 분기 (예상)" : `${ahead}분기 후 (예상)`;
+        return ahead === 1 ? "다음 해 (예상)" : `${ahead}년 후 (예상)`;
+      });
+    }
+
+
     const rev = (arr) => {
       const a = arr || [];
       if (a.length === 0) return [null, null, null, null, null];
@@ -31,13 +100,15 @@ export async function GET(request) {
       return sliced;
     };
 
-    const buildData = (inc, bal, cf, rat) => {
+    const buildData = (inc, bal, cf, rat, isQuarterly) => {
+      const rawLabels = rev(inc.labels || ["1","2","3","4","5"]);
+      const labels = buildRelativeLabels(rawLabels, isQuarterly);
       const revArr = rev(inc.revenue);
       const opArr = rev(inc.operatingIncome);
       const niArr = rev(inc.netIncome);
 
       return {
-        labels: rev(inc.labels || ["1","2","3","4","5"]),
+        labels,
         coreMetrics: {
           per: { value: rev(rat.pe)[4] ?? null, trend: rev(rat.pe), meaning: "회사가 1년에 버는 돈에 비해 주가가 얼마나 비싼지" },
           pbr: { value: rev(rat.pb)[4] ?? null, trend: rev(rat.pb), meaning: "회사의 순자산(자본)에 비해 주가가 얼마나 비싼지" },
@@ -48,20 +119,20 @@ export async function GET(request) {
           ebitda: { value: rev(inc.ebitda)[4] ?? null, trend: rev(inc.ebitda), meaning: "세금·이자·감가상각을 빼기 전 실제로 벌어들인 현금 흐름" },
         },
         income: {
-          labels: rev(inc.labels || []),
+          labels,
           revenue: revArr,
           grossProfit: rev(inc.grossProfit),
           operatingIncome: opArr,
           netIncome: niArr,
         },
         balance: {
-          labels: rev(inc.labels || []),
+          labels,
           totalAssets: rev(bal.totalAssets),
           currentLiab: rev(bal.currentLiab),
           equity: rev(bal.equity),
         },
         cashflow: {
-          labels: rev(inc.labels || []),
+          labels,
           fcf: rev(cf.fcf),
           opCash: rev(cf.opCash),
           invCash: rev(cf.invCash),
@@ -69,7 +140,7 @@ export async function GET(request) {
           netChange: rev(cf.netChange),
         },
         advanced: {
-          labels: rev(inc.labels || []),
+          labels,
           evEbitda: rev(rat.evEbitda),
           pe: rev(rat.pe),
           peg: rev(rat.peg),
@@ -205,8 +276,8 @@ export async function GET(request) {
       currency,
       yahooSymbol,
       isKrx,
-      quarterly: buildData(incQ, balQ, cfQ, ratQ),
-      annual: buildData(incA, balA, cfA, ratA),
+      quarterly: buildData(incQ, balQ, cfQ, ratQ, true),
+      annual: buildData(incA, balA, cfA, ratA, false),
     });
   } catch (err) {
     return Response.json({ error: "Error: " + err.message }, { status: 500 });
