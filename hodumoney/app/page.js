@@ -256,7 +256,7 @@ const styles = `
 
   .stats-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-bottom: 16px; }
   .stat-item { background: var(--bg-card); border: none; border-radius: var(--radius-md); padding: 18px 20px; box-shadow: var(--shadow-card); }
-  .stat-label { font-size: 12px; color: var(--text-tertiary); font-weight: 500; margin-bottom: 8px; }
+  .stat-label { font-size: 12px; color: var(--text-tertiary); font-weight: 500; margin-bottom: 8px; word-break: keep-all; line-height: 1.4; }
   .stat-value { font-size: 20px; font-weight: 800; letter-spacing: -0.3px; }
   .stat-sub { font-size: 11px; color: var(--text-tertiary); margin-top: 3px; }
 
@@ -274,7 +274,7 @@ const styles = `
   .metric-card-arrow { font-size: 12px; color: var(--text-tertiary); transition: transform 0.2s ease; margin-left: 8px; flex-shrink: 0; }
   .metric-card.expanded .metric-card-arrow { transform: rotate(180deg); }
 
-  @keyframes expandMetric { from { opacity: 0; max-height: 0; padding-top: 0; } to { opacity: 1; max-height: 340px; padding-top: 14px; } }
+  @keyframes expandMetric { from { opacity: 0; max-height: 0; padding-top: 0; } to { opacity: 1; max-height: 700px; padding-top: 14px; } }
   .metric-card-expand { overflow: hidden; animation: expandMetric 0.3s cubic-bezier(0.16,1,0.3,1) forwards; border-top: 1px solid #F2F3F5; margin-top: 14px; }
   .metric-card-expand-body { padding-top: 4px; }
 
