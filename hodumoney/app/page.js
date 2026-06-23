@@ -303,6 +303,7 @@ const styles = `
   .fade-up-d3 { animation-delay: 0.15s; opacity: 0; }
   .fade-up-d4 { animation-delay: 0.2s; opacity: 0; }
 
+  .company-mobile-search { display: none; }
   .mobile-menu-btn { display: none; background: none; border: none; font-size: 22px; cursor: pointer; padding: 4px; color: var(--text-primary); }
   .sidebar-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.3); z-index: 99; }
 
@@ -318,6 +319,11 @@ const styles = `
     .price-block { text-align: left; }
     .search-wrapper { width: 220px; }
     .content-area { padding: 20px 16px 60px; }
+    .top-bar { padding: 0 16px; }
+    .top-bar-brand, .top-bar-brand-dot, .top-bar-search { display: none; }
+    .top-bar-title { font-size: 17px; }
+    .company-mobile-search { display: block; }
+    .company-mobile-search .search-wrapper { width: 100%; }
   }
 
   ::-webkit-scrollbar { width: 6px; height: 6px; }
@@ -1585,6 +1591,9 @@ function CompanyPage({ searchTicker, onQuickSearch, onUsageConsume, user, isInWa
 
   return (
     <div className="content-area">
+      <div className="company-mobile-search" style={{ marginBottom: 16 }}>
+        {onQuickSearch && <SearchBox onSelect={onQuickSearch} />}
+      </div>
       <div className="company-hero fade-up">
         <div className="company-info">
           <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
@@ -2367,22 +2376,24 @@ export default function App() {
 
       <main className="main-content">
         <div className="top-bar">
-          <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 12, minWidth: 0 }}>
             <button className="mobile-menu-btn" onClick={() => setSidebarOpen(true)}>☰</button>
-            <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 10, minWidth: 0 }}>
               <div className="top-bar-title">{pageTitle[activePage]}</div>
-              <div style={{ width: 4, height: 4, borderRadius: 2, background: "#A67B5B" }} />
-              <div style={{ fontSize: 12, color: "var(--text-tertiary)", fontWeight: 500 }}>HODU MONEY</div>
+              <div className="top-bar-brand-dot" style={{ width: 4, height: 4, borderRadius: 2, background: "#A67B5B", flexShrink: 0 }} />
+              <div className="top-bar-brand" style={{ fontSize: 12, color: "var(--text-tertiary)", fontWeight: 500, whiteSpace: "nowrap" }}>HODU MONEY</div>
             </div>
           </div>
-          <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-            {activePage === "company" && searchedTicker && <SearchBox onSelect={handleSearchSelect} />}
+          <div style={{ display: "flex", alignItems: "center", gap: 12, flexShrink: 0 }}>
+            <div className="top-bar-search">
+              {activePage === "company" && searchedTicker && <SearchBox onSelect={handleSearchSelect} />}
+            </div>
             {!user && (
               <button onClick={() => setShowAuth("login")} style={{ padding: "8px 18px", borderRadius: 10, border: "none", background: "#5D4037", fontFamily: "inherit", fontSize: 13, fontWeight: 700, cursor: "pointer", color: "white", transition: "all 0.15s", whiteSpace: "nowrap" }}>로그인</button>
             )}
             {user && (
-              <div style={{ fontSize: 13, fontWeight: 600, color: "var(--text-secondary)", display: "flex", alignItems: "center", gap: 6, padding: "6px 12px", background: "var(--bg-hover)", borderRadius: 8 }}>
-                <span>🙂</span> {user.name || user.email.split("@")[0]}
+              <div className="top-bar-user" style={{ fontSize: 13, fontWeight: 600, color: "var(--text-secondary)", display: "flex", alignItems: "center", gap: 6, padding: "6px 12px", background: "var(--bg-hover)", borderRadius: 8, maxWidth: 140, overflow: "hidden" }}>
+                <span style={{ flexShrink: 0 }}>🙂</span> <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{user.name || user.email.split("@")[0]}</span>
               </div>
             )}
           </div>
@@ -2391,7 +2402,7 @@ export default function App() {
         {activePage === "market" && <MarketPage />}
         {activePage === "company" && (
           searchedTicker
-            ? <CompanyPage searchTicker={searchedTicker} onUsageConsume={handleUsageConsume} user={user} isInWatchlist={isInWatchlist} addToWatchlist={addToWatchlist} removeFromWatchlist={removeFromWatchlist} />
+            ? <CompanyPage searchTicker={searchedTicker} onQuickSearch={handleQuickSearch} onUsageConsume={handleUsageConsume} user={user} isInWatchlist={isInWatchlist} addToWatchlist={addToWatchlist} removeFromWatchlist={removeFromWatchlist} />
             : <CompanyPage searchTicker={null} onQuickSearch={handleQuickSearch} user={user} isInWatchlist={isInWatchlist} addToWatchlist={addToWatchlist} removeFromWatchlist={removeFromWatchlist} />
         )}
         {activePage === "watchlist" && <WatchlistPage user={user} onLogin={() => setShowAuth("login")} onSearch={(ticker) => { setSearchedTicker(ticker); setActivePage("company"); }} watchlist={watchlist} addToWatchlist={addToWatchlist} removeFromWatchlist={removeFromWatchlist} />}
