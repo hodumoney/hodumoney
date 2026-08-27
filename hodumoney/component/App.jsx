@@ -1153,7 +1153,7 @@ function FinancialStatements({ data, currency }) {
 }
 
 // ─── Advanced Metrics ────────────────────────────────────────────
-function AdvancedMetrics({ data, currency }) {
+function AdvancedMetrics({ data, currency, viewMode }) {
   const [expandedKey, setExpandedKey] = useState(null);
   const toggle = (key) => setExpandedKey(expandedKey === key ? null : key);
   const labels = data.advanced.labels;
@@ -1169,10 +1169,10 @@ function AdvancedMetrics({ data, currency }) {
         { key: "opMargin", label: "영업이익률", values: data.advanced.opMargin, fmt: v => `${(v * 100).toFixed(1)}%`, desc: "핵심 영업의 효율성" },
         { key: "netMargin", label: "순이익률", values: data.advanced.netMargin, fmt: v => `${(v * 100).toFixed(1)}%`, desc: "최종 이익 비율" },
       ] },
-    { title: "👥 주주환원", desc: "자사주 매입 등 주주 가치를 높이는 활동",
+    ...(viewMode === "quarterly" ? [{ title: "👥 주주환원", desc: "자사주 매입 등 주주 가치를 높이는 활동",
       rows: [
-        { key: "shares", label: "발행주식수", values: data.shares.data, fmt: v => `${v.toLocaleString()}M`, desc: "시장에 유통되는 총 주식 수 (줄면 주주 친화적)" },
-      ] },
+        { key: "shares", label: "발행주식수", values: (data.shares && (data.shares.data || data.shares.quarterly)) || [], fmt: v => `${v.toLocaleString()}M`, desc: "시장에 유통되는 총 주식 수 (줄면 주주 친화적)" },
+      ] }] : []),
   ];
 
   return (
@@ -1664,7 +1664,7 @@ function CompanyPage({ searchTicker, onQuickSearch, onUsageConsume, user, isInWa
 
       {activeSection === "overview" && <CoreValuations data={viewMode === "quarterly" ? (data.quarterly || data) : (data.annual || data)} currency={data.currency} />}
       {activeSection === "financials" && <FinancialStatements data={viewMode === "quarterly" ? (data.quarterly || data) : (data.annual || data)} currency={data.currency} />}
-      {activeSection === "advanced" && <AdvancedMetrics data={viewMode === "quarterly" ? (data.quarterly || data) : (data.annual || data)} currency={data.currency} />}
+      {activeSection === "advanced" && <AdvancedMetrics data={viewMode === "quarterly" ? (data.quarterly || data) : (data.annual || data)} currency={data.currency} viewMode={viewMode} />}
 
       <div style={{ textAlign: "center", padding: "32px 0 0", fontSize: 11, color: "var(--text-tertiary)" }}>
         ©hodusolution · 본 데이터는 참고용이며, 투자 판단의 책임은 투자자 본인에게 있습니다.
