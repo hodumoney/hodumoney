@@ -226,7 +226,7 @@ function getRow(map, aliases) {
     }
   }
 
-  return [0, 0, 0, 0, 0];
+  return [null, null, null, null, null];
 }
 
 function extractLabels(html) {
