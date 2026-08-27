@@ -1033,13 +1033,14 @@ function CoreValuations({ data, currency }) {
 
 // ─── Reusable Financial Row Card ─────────────────────────────────
 function FinRowCard({ label, values, labels, expanded, onToggle, fmtFn, allowNeg, desc, metricKey }) {
-  const validValues = values.filter(v => typeof v === "number" && isFinite(v));
+  const safeValues = Array.isArray(values) ? values : [];
+  const validValues = safeValues.filter(v => typeof v === "number" && isFinite(v));
   const hasAnyData = validValues.length > 0;
   const lastVal = hasAnyData ? validValues[validValues.length - 1] : null;
   const vMin = hasAnyData ? Math.min(...validValues) : 0;
   const vMax = hasAnyData ? Math.max(...validValues) : 0;
   const vRange = vMax - vMin || 1;
-  const chartData = values.map((v, i) => ({ label: labels[i], value: (typeof v === "number" && isFinite(v)) ? v : null }));
+  const chartData = safeValues.map((v, i) => ({ label: labels[i], value: (typeof v === "number" && isFinite(v)) ? v : null }));
   const isNeg = allowNeg && typeof lastVal === "number" && lastVal < 0;
 
   return (
@@ -1059,25 +1060,25 @@ function FinRowCard({ label, values, labels, expanded, onToggle, fmtFn, allowNeg
             const absMax = Math.max(...validValues.map(v => Math.abs(v))) || 1;
             
             if (hasNeg) {
-              // Bidirectional bars for negative values
-              return values.map((v, i) => {
+              // Bidirectional bars for negative safeValues
+              return safeValues.map((v, i) => {
                 const pct = Math.abs(v) / absMax * 45;
                 const neg = v < 0;
                 return (
                   <div key={i} style={{ flex: 1, display: "flex", flexDirection: "column", justifyContent: "center", height: "100%", minWidth: 9 }}>
                     <div style={{ height: "50%", display: "flex", alignItems: "flex-end" }}>
-                      {!neg && <div style={{ width: "100%", height: `${Math.max(8, pct)}%`, background: "var(--accent-blue)", borderRadius: "3px 3px 0 0", opacity: i === values.length - 1 ? 1 : 0.45 }} />}
+                      {!neg && <div style={{ width: "100%", height: `${Math.max(8, pct)}%`, background: "var(--accent-blue)", borderRadius: "3px 3px 0 0", opacity: i === safeValues.length - 1 ? 1 : 0.45 }} />}
                     </div>
                     <div style={{ height: "50%", display: "flex", alignItems: "flex-start" }}>
-                      {neg && <div style={{ width: "100%", height: `${Math.max(8, pct)}%`, background: "#F04452", borderRadius: "0 0 3px 3px", opacity: i === values.length - 1 ? 1 : 0.45 }} />}
+                      {neg && <div style={{ width: "100%", height: `${Math.max(8, pct)}%`, background: "#F04452", borderRadius: "0 0 3px 3px", opacity: i === safeValues.length - 1 ? 1 : 0.45 }} />}
                     </div>
                   </div>
                 );
               });
             }
             // All positive: proportional to actual magnitude
-            const allMax = Math.max(...values.map(v => Math.abs(v))) || 1;
-            return values.map((v, i) => (
+            const allMax = Math.max(...safeValues.map(v => Math.abs(v))) || 1;
+            return safeValues.map((v, i) => (
               <div key={i} className="m-bar" style={{ height: `${Math.max(15, (Math.abs(v) / allMax) * 100)}%` }} />
             ));
           })()}
@@ -1109,29 +1110,32 @@ function FinRowCard({ label, values, labels, expanded, onToggle, fmtFn, allowNeg
 function FinancialStatements({ data, currency }) {
   const [expandedKey, setExpandedKey] = useState(null);
   const toggle = (key) => setExpandedKey(expandedKey === key ? null : key);
-  const labels = data.income.labels;
+  const income = data.income || {};
+  const balance = data.balance || {};
+  const cashflow = data.cashflow || {};
+  const labels = income.labels || [];
   const unitLabel = currency === "KRW" ? "단위: 백만 원 (₩M)" : "단위: 백만 달러 ($M)";
   const sections = [
     { title: "📋 손익 계산서", subtitle: unitLabel, desc: "회사가 얼마나 벌고, 얼마나 남겼는지 보여주는 성적표입니다",
       rows: [
-        { key: "revenue", label: "총 매출", values: data.income.revenue, desc: "회사가 물건이나 서비스를 팔아서 벌어들인 총 수입" },
-        { key: "grossProfit", label: "매출 총이익", values: data.income.grossProfit, desc: "매출에서 원가를 뺀 이익" },
-        { key: "opIncome", label: "영업이익", values: data.income.operatingIncome, desc: "영업활동으로 벌어들인 순이익" },
-        { key: "netIncome", label: "순이익", values: data.income.netIncome, desc: "최종 이익 (모든 비용, 세금, 이자 제외 후)" },
+        { key: "revenue", label: "총 매출", values: income.revenue, desc: "회사가 물건이나 서비스를 팔아서 벌어들인 총 수입" },
+        { key: "grossProfit", label: "매출 총이익", values: income.grossProfit, desc: "매출에서 원가를 뺀 이익" },
+        { key: "opIncome", label: "영업이익", values: income.operatingIncome, desc: "영업활동으로 벌어들인 순이익" },
+        { key: "netIncome", label: "순이익", values: income.netIncome, desc: "최종 이익 (모든 비용, 세금, 이자 제외 후)" },
       ] },
     { title: "🏦 재무 상태표", subtitle: unitLabel, desc: "회사가 가진 자산과 빚, 순자산을 보여주는 재무 건강 진단서입니다",
       rows: [
-        { key: "totalAssets", label: "총 자산", values: data.balance.totalAssets, desc: "회사가 소유한 모든 자산" },
-        { key: "currentLiab", label: "유동 부채", values: data.balance.currentLiab, desc: "1년 이내로 갚아야 하는 부채" },
-        { key: "equity", label: "자본 총계", values: data.balance.equity, desc: "회사의 순가치 (자산-부채)" },
+        { key: "totalAssets", label: "총 자산", values: balance.totalAssets, desc: "회사가 소유한 모든 자산" },
+        { key: "currentLiab", label: "유동 부채", values: balance.currentLiab, desc: "1년 이내로 갚아야 하는 부채" },
+        { key: "equity", label: "자본 총계", values: balance.equity, desc: "회사의 순가치 (자산-부채)" },
       ] },
     { title: "💰 현금 흐름표", subtitle: unitLabel, desc: "실제로 현금이 어디서 들어오고 어디로 나갔는지 추적합니다",
       rows: [
-        { key: "fcf", label: "자유현금흐름", values: data.cashflow.fcf, desc: "진짜 자유롭게 쓸 수 있는 돈" },
-        { key: "opCash", label: "영업활동 현금흐름", values: data.cashflow.opCash, desc: "본업으로 실제 벌어들인 현금" },
-        { key: "invCash", label: "투자활동 현금흐름", values: data.cashflow.invCash, allowNeg: true, desc: "설비 투자를 위해 지출한 돈" },
-        { key: "finCash", label: "재무활동 현금흐름", values: data.cashflow.finCash, allowNeg: true, desc: "대출, 주식 발행, 배당 등" },
-        { key: "netChange", label: "현금 증감액", values: data.cashflow.netChange, allowNeg: true, desc: "현금의 순증가/순감소" },
+        { key: "fcf", label: "자유현금흐름", values: cashflow.fcf, desc: "진짜 자유롭게 쓸 수 있는 돈" },
+        { key: "opCash", label: "영업활동 현금흐름", values: cashflow.opCash, desc: "본업으로 실제 벌어들인 현금" },
+        { key: "invCash", label: "투자활동 현금흐름", values: cashflow.invCash, allowNeg: true, desc: "설비 투자를 위해 지출한 돈" },
+        { key: "finCash", label: "재무활동 현금흐름", values: cashflow.finCash, allowNeg: true, desc: "대출, 주식 발행, 배당 등" },
+        { key: "netChange", label: "현금 증감액", values: cashflow.netChange, allowNeg: true, desc: "현금의 순증가/순감소" },
       ] },
   ];
 
@@ -1153,27 +1157,28 @@ function FinancialStatements({ data, currency }) {
 }
 
 // ─── Advanced Metrics ────────────────────────────────────────────
-function AdvancedMetrics({ data, currency }) {
+function AdvancedMetrics({ data, currency, viewMode }) {
   const [expandedKey, setExpandedKey] = useState(null);
   const toggle = (key) => setExpandedKey(expandedKey === key ? null : key);
-  const labels = data.advanced.labels;
+  const adv = data.advanced || {};
+  const labels = adv.labels || [];
+  const safeFmt = (fn) => (v) => (typeof v === "number" && isFinite(v)) ? fn(v) : "-";
   const sections = [
     { title: "📐 밸류에이션 심화", desc: "기업의 적정 가치를 다각도로 평가하는 심화 지표입니다",
       rows: [
-        { key: "evEbitda", label: "EV/EBITDA", values: data.advanced.evEbitda, fmt: v => `${v.toFixed(1)}x`, desc: "현금으로 이 회사를 사려면 몇 년치 이익이 필요한지" },
-        { key: "pe", label: "PER", values: data.advanced.pe, fmt: v => v.toFixed(1), desc: "주가 대비 이익 비율" },
-        { key: "peg", label: "PEG", values: data.advanced.peg, fmt: v => v.toFixed(2), desc: "성장률을 감안한 밸류에이션" },
+        { key: "evEbitda", label: "EV/EBITDA", values: adv.evEbitda, fmt: safeFmt(v => `${v.toFixed(1)}x`), desc: "현금으로 이 회사를 사려면 몇 년치 이익이 필요한지" },
+        { key: "pe", label: "PER", values: adv.pe, fmt: safeFmt(v => v.toFixed(1)), desc: "주가 대비 이익 비율" },
+        { key: "peg", label: "PEG", values: adv.peg, fmt: safeFmt(v => v.toFixed(2)), desc: "성장률을 감안한 밸류에이션" },
       ] },
     { title: "📊 수익성", desc: "매출 대비 얼마나 효율적으로 이익을 내고 있는지",
       rows: [
-        { key: "opMargin", label: "영업이익률", values: data.advanced.opMargin, fmt: v => `${(v * 100).toFixed(1)}%`, desc: "핵심 영업의 효율성" },
-        { key: "netMargin", label: "순이익률", values: data.advanced.netMargin, fmt: v => `${(v * 100).toFixed(1)}%`, desc: "최종 이익 비율" },
+        { key: "opMargin", label: "영업이익률", values: adv.opMargin, fmt: safeFmt(v => `${(v * 100).toFixed(1)}%`), desc: "핵심 영업의 효율성" },
+        { key: "netMargin", label: "순이익률", values: adv.netMargin, fmt: safeFmt(v => `${(v * 100).toFixed(1)}%`), desc: "최종 이익 비율" },
       ] },
-    { title: "👥 주주환원", desc: "자사주 매입 등 주주 가치를 높이는 활동",
+    ...(viewMode === "quarterly" ? [{ title: "👥 주주환원", desc: "자사주 매입 등 주주 가치를 높이는 활동",
       rows: [
-        { key: "sharesQ", label: "발행주식수 (분기)", values: data.shares.quarterly, fmt: v => `${v.toLocaleString()}M`, desc: "시장에 유통되는 총 주식 수" },
-        { key: "sharesY", label: "발행주식수 (연간)", values: data.shares.yearly, fmt: v => `${v.toLocaleString()}M`, desc: "주식 수가 줄면 주주 친화적" },
-      ] },
+        { key: "shares", label: "발행주식수", values: (data.shares && (data.shares.data || data.shares.quarterly)) || [], fmt: safeFmt(v => `${v.toLocaleString()}M`), desc: "시장에 유통되는 총 주식 수 (줄면 주주 친화적)" },
+      ] }] : []),
   ];
 
   return (
@@ -1407,6 +1412,7 @@ const METRIC_INSIGHTS = {
   opMargin: { up: "매출 대비 영업이익의 비중이 늘어나고 있는 상태입니다. 본업의 운영 효율성이 개선되고 있습니다.", down: "매출 대비 영업이익 비중이 줄어들고 있는 상태입니다. 경쟁 심화나 비용 증가가 원인일 수 있습니다.", comment: "비율이 높을수록 업계에서 독점적인 지위를 가졌거나 비용 관리를 잘 하고 있다는 뜻입니다. 동종 경쟁사와 한번 비교해보세요." },
   netMargin: { up: "매출 대비 최종 이익의 비중이 늘어나고 있는 상태입니다. 전반적인 재무 건전성이 좋아지고 있습니다.", down: "매출 대비 최종 이익 비중이 줄어들고 있는 상태입니다. 금융비용이나 세금 부담 증가가 원인일 수 있습니다.", comment: "영업 이익률과 차이가 너무 크다면(5% 이상) 영업 외 이익이나 비용이 과도하지 않은지 점검해야 합니다." },
   // 주주환원
+  shares: { up: "시장에 유통되는 주식 수가 늘어나고 있는 상태입니다. 유상증자나 스톡옵션 행사가 원인이며, 기존 주주의 지분율이 희석됩니다.", down: "자사주 매입 및 소각을 통해 주식 수가 줄어들고 있는 상태입니다. 주주 친화적인 정책을 시행하고 있습니다.", comment: "주식 수가 꾸준히 줄어드는 것(우하향)이 주주 친화적인 기업입니다." },
   sharesQ: { up: "시장에 유통되는 주식 수가 늘어나고 있는 상태입니다. 유상증자나 스톡옵션 행사가 원인이며, 기존 주주의 지분율이 희석됩니다.", down: "자사주 매입 및 소각을 통해 주식 수가 줄어들고 있는 상태입니다. 주주 친화적인 정책을 시행하고 있습니다.", comment: "주식 수가 꾸준히 줄어드는 것(우하향)이 주주 친화적인 기업입니다." },
   sharesY: { up: "연간 기준 발행 주식 수가 늘어나고 있는 상태입니다. 유상증자나 스톡옵션 행사가 원인일 수 있습니다.", down: "연간 기준 주식 수가 줄어들고 있는 상태입니다. 자사주 매입 및 소각으로 주주 가치가 높아지고 있습니다.", comment: "주식 수가 꾸준히 줄어드는 것(우하향)이 주주 친화적인 기업입니다." },
 };
@@ -1664,7 +1670,7 @@ function CompanyPage({ searchTicker, onQuickSearch, onUsageConsume, user, isInWa
 
       {activeSection === "overview" && <CoreValuations data={viewMode === "quarterly" ? (data.quarterly || data) : (data.annual || data)} currency={data.currency} />}
       {activeSection === "financials" && <FinancialStatements data={viewMode === "quarterly" ? (data.quarterly || data) : (data.annual || data)} currency={data.currency} />}
-      {activeSection === "advanced" && <AdvancedMetrics data={viewMode === "quarterly" ? (data.quarterly || data) : (data.annual || data)} currency={data.currency} />}
+      {activeSection === "advanced" && <AdvancedMetrics data={viewMode === "quarterly" ? (data.quarterly || data) : (data.annual || data)} currency={data.currency} viewMode={viewMode} />}
 
       <div style={{ textAlign: "center", padding: "32px 0 0", fontSize: 11, color: "var(--text-tertiary)" }}>
         ©hodusolution · 본 데이터는 참고용이며, 투자 판단의 책임은 투자자 본인에게 있습니다.
