@@ -1110,29 +1110,32 @@ function FinRowCard({ label, values, labels, expanded, onToggle, fmtFn, allowNeg
 function FinancialStatements({ data, currency }) {
   const [expandedKey, setExpandedKey] = useState(null);
   const toggle = (key) => setExpandedKey(expandedKey === key ? null : key);
-  const labels = data.income.labels;
+  const income = data.income || {};
+  const balance = data.balance || {};
+  const cashflow = data.cashflow || {};
+  const labels = income.labels || [];
   const unitLabel = currency === "KRW" ? "단위: 백만 원 (₩M)" : "단위: 백만 달러 ($M)";
   const sections = [
     { title: "📋 손익 계산서", subtitle: unitLabel, desc: "회사가 얼마나 벌고, 얼마나 남겼는지 보여주는 성적표입니다",
       rows: [
-        { key: "revenue", label: "총 매출", values: data.income.revenue, desc: "회사가 물건이나 서비스를 팔아서 벌어들인 총 수입" },
-        { key: "grossProfit", label: "매출 총이익", values: data.income.grossProfit, desc: "매출에서 원가를 뺀 이익" },
-        { key: "opIncome", label: "영업이익", values: data.income.operatingIncome, desc: "영업활동으로 벌어들인 순이익" },
-        { key: "netIncome", label: "순이익", values: data.income.netIncome, desc: "최종 이익 (모든 비용, 세금, 이자 제외 후)" },
+        { key: "revenue", label: "총 매출", values: income.revenue, desc: "회사가 물건이나 서비스를 팔아서 벌어들인 총 수입" },
+        { key: "grossProfit", label: "매출 총이익", values: income.grossProfit, desc: "매출에서 원가를 뺀 이익" },
+        { key: "opIncome", label: "영업이익", values: income.operatingIncome, desc: "영업활동으로 벌어들인 순이익" },
+        { key: "netIncome", label: "순이익", values: income.netIncome, desc: "최종 이익 (모든 비용, 세금, 이자 제외 후)" },
       ] },
     { title: "🏦 재무 상태표", subtitle: unitLabel, desc: "회사가 가진 자산과 빚, 순자산을 보여주는 재무 건강 진단서입니다",
       rows: [
-        { key: "totalAssets", label: "총 자산", values: data.balance.totalAssets, desc: "회사가 소유한 모든 자산" },
-        { key: "currentLiab", label: "유동 부채", values: data.balance.currentLiab, desc: "1년 이내로 갚아야 하는 부채" },
-        { key: "equity", label: "자본 총계", values: data.balance.equity, desc: "회사의 순가치 (자산-부채)" },
+        { key: "totalAssets", label: "총 자산", values: balance.totalAssets, desc: "회사가 소유한 모든 자산" },
+        { key: "currentLiab", label: "유동 부채", values: balance.currentLiab, desc: "1년 이내로 갚아야 하는 부채" },
+        { key: "equity", label: "자본 총계", values: balance.equity, desc: "회사의 순가치 (자산-부채)" },
       ] },
     { title: "💰 현금 흐름표", subtitle: unitLabel, desc: "실제로 현금이 어디서 들어오고 어디로 나갔는지 추적합니다",
       rows: [
-        { key: "fcf", label: "자유현금흐름", values: data.cashflow.fcf, desc: "진짜 자유롭게 쓸 수 있는 돈" },
-        { key: "opCash", label: "영업활동 현금흐름", values: data.cashflow.opCash, desc: "본업으로 실제 벌어들인 현금" },
-        { key: "invCash", label: "투자활동 현금흐름", values: data.cashflow.invCash, allowNeg: true, desc: "설비 투자를 위해 지출한 돈" },
-        { key: "finCash", label: "재무활동 현금흐름", values: data.cashflow.finCash, allowNeg: true, desc: "대출, 주식 발행, 배당 등" },
-        { key: "netChange", label: "현금 증감액", values: data.cashflow.netChange, allowNeg: true, desc: "현금의 순증가/순감소" },
+        { key: "fcf", label: "자유현금흐름", values: cashflow.fcf, desc: "진짜 자유롭게 쓸 수 있는 돈" },
+        { key: "opCash", label: "영업활동 현금흐름", values: cashflow.opCash, desc: "본업으로 실제 벌어들인 현금" },
+        { key: "invCash", label: "투자활동 현금흐름", values: cashflow.invCash, allowNeg: true, desc: "설비 투자를 위해 지출한 돈" },
+        { key: "finCash", label: "재무활동 현금흐름", values: cashflow.finCash, allowNeg: true, desc: "대출, 주식 발행, 배당 등" },
+        { key: "netChange", label: "현금 증감액", values: cashflow.netChange, allowNeg: true, desc: "현금의 순증가/순감소" },
       ] },
   ];
 
@@ -1157,22 +1160,24 @@ function FinancialStatements({ data, currency }) {
 function AdvancedMetrics({ data, currency, viewMode }) {
   const [expandedKey, setExpandedKey] = useState(null);
   const toggle = (key) => setExpandedKey(expandedKey === key ? null : key);
-  const labels = data.advanced.labels;
+  const adv = data.advanced || {};
+  const labels = adv.labels || [];
+  const safeFmt = (fn) => (v) => (typeof v === "number" && isFinite(v)) ? fn(v) : "-";
   const sections = [
     { title: "📐 밸류에이션 심화", desc: "기업의 적정 가치를 다각도로 평가하는 심화 지표입니다",
       rows: [
-        { key: "evEbitda", label: "EV/EBITDA", values: data.advanced.evEbitda, fmt: v => `${v.toFixed(1)}x`, desc: "현금으로 이 회사를 사려면 몇 년치 이익이 필요한지" },
-        { key: "pe", label: "PER", values: data.advanced.pe, fmt: v => v.toFixed(1), desc: "주가 대비 이익 비율" },
-        { key: "peg", label: "PEG", values: data.advanced.peg, fmt: v => v.toFixed(2), desc: "성장률을 감안한 밸류에이션" },
+        { key: "evEbitda", label: "EV/EBITDA", values: adv.evEbitda, fmt: safeFmt(v => `${v.toFixed(1)}x`), desc: "현금으로 이 회사를 사려면 몇 년치 이익이 필요한지" },
+        { key: "pe", label: "PER", values: adv.pe, fmt: safeFmt(v => v.toFixed(1)), desc: "주가 대비 이익 비율" },
+        { key: "peg", label: "PEG", values: adv.peg, fmt: safeFmt(v => v.toFixed(2)), desc: "성장률을 감안한 밸류에이션" },
       ] },
     { title: "📊 수익성", desc: "매출 대비 얼마나 효율적으로 이익을 내고 있는지",
       rows: [
-        { key: "opMargin", label: "영업이익률", values: data.advanced.opMargin, fmt: v => `${(v * 100).toFixed(1)}%`, desc: "핵심 영업의 효율성" },
-        { key: "netMargin", label: "순이익률", values: data.advanced.netMargin, fmt: v => `${(v * 100).toFixed(1)}%`, desc: "최종 이익 비율" },
+        { key: "opMargin", label: "영업이익률", values: adv.opMargin, fmt: safeFmt(v => `${(v * 100).toFixed(1)}%`), desc: "핵심 영업의 효율성" },
+        { key: "netMargin", label: "순이익률", values: adv.netMargin, fmt: safeFmt(v => `${(v * 100).toFixed(1)}%`), desc: "최종 이익 비율" },
       ] },
     ...(viewMode === "quarterly" ? [{ title: "👥 주주환원", desc: "자사주 매입 등 주주 가치를 높이는 활동",
       rows: [
-        { key: "shares", label: "발행주식수", values: (data.shares && (data.shares.data || data.shares.quarterly)) || [], fmt: v => `${v.toLocaleString()}M`, desc: "시장에 유통되는 총 주식 수 (줄면 주주 친화적)" },
+        { key: "shares", label: "발행주식수", values: (data.shares && (data.shares.data || data.shares.quarterly)) || [], fmt: safeFmt(v => `${v.toLocaleString()}M`), desc: "시장에 유통되는 총 주식 수 (줄면 주주 친화적)" },
       ] }] : []),
   ];
 
