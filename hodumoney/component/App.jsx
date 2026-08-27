@@ -1033,13 +1033,14 @@ function CoreValuations({ data, currency }) {
 
 // ─── Reusable Financial Row Card ─────────────────────────────────
 function FinRowCard({ label, values, labels, expanded, onToggle, fmtFn, allowNeg, desc, metricKey }) {
-  const validValues = values.filter(v => typeof v === "number" && isFinite(v));
+  const safeValues = Array.isArray(values) ? values : [];
+  const validValues = safeValues.filter(v => typeof v === "number" && isFinite(v));
   const hasAnyData = validValues.length > 0;
   const lastVal = hasAnyData ? validValues[validValues.length - 1] : null;
   const vMin = hasAnyData ? Math.min(...validValues) : 0;
   const vMax = hasAnyData ? Math.max(...validValues) : 0;
   const vRange = vMax - vMin || 1;
-  const chartData = values.map((v, i) => ({ label: labels[i], value: (typeof v === "number" && isFinite(v)) ? v : null }));
+  const chartData = safeValues.map((v, i) => ({ label: labels[i], value: (typeof v === "number" && isFinite(v)) ? v : null }));
   const isNeg = allowNeg && typeof lastVal === "number" && lastVal < 0;
 
   return (
@@ -1059,25 +1060,25 @@ function FinRowCard({ label, values, labels, expanded, onToggle, fmtFn, allowNeg
             const absMax = Math.max(...validValues.map(v => Math.abs(v))) || 1;
             
             if (hasNeg) {
-              // Bidirectional bars for negative values
-              return values.map((v, i) => {
+              // Bidirectional bars for negative safeValues
+              return safeValues.map((v, i) => {
                 const pct = Math.abs(v) / absMax * 45;
                 const neg = v < 0;
                 return (
                   <div key={i} style={{ flex: 1, display: "flex", flexDirection: "column", justifyContent: "center", height: "100%", minWidth: 9 }}>
                     <div style={{ height: "50%", display: "flex", alignItems: "flex-end" }}>
-                      {!neg && <div style={{ width: "100%", height: `${Math.max(8, pct)}%`, background: "var(--accent-blue)", borderRadius: "3px 3px 0 0", opacity: i === values.length - 1 ? 1 : 0.45 }} />}
+                      {!neg && <div style={{ width: "100%", height: `${Math.max(8, pct)}%`, background: "var(--accent-blue)", borderRadius: "3px 3px 0 0", opacity: i === safeValues.length - 1 ? 1 : 0.45 }} />}
                     </div>
                     <div style={{ height: "50%", display: "flex", alignItems: "flex-start" }}>
-                      {neg && <div style={{ width: "100%", height: `${Math.max(8, pct)}%`, background: "#F04452", borderRadius: "0 0 3px 3px", opacity: i === values.length - 1 ? 1 : 0.45 }} />}
+                      {neg && <div style={{ width: "100%", height: `${Math.max(8, pct)}%`, background: "#F04452", borderRadius: "0 0 3px 3px", opacity: i === safeValues.length - 1 ? 1 : 0.45 }} />}
                     </div>
                   </div>
                 );
               });
             }
             // All positive: proportional to actual magnitude
-            const allMax = Math.max(...values.map(v => Math.abs(v))) || 1;
-            return values.map((v, i) => (
+            const allMax = Math.max(...safeValues.map(v => Math.abs(v))) || 1;
+            return safeValues.map((v, i) => (
               <div key={i} className="m-bar" style={{ height: `${Math.max(15, (Math.abs(v) / allMax) * 100)}%` }} />
             ));
           })()}
