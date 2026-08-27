@@ -503,7 +503,8 @@ export async function getOverview(ticker) {
 }
 
 export async function getIncome(ticker, quarterly) {
-  const html = await fetchPage(ticker, "financials/", quarterly);
+  // 상세 income-statement 페이지 사용 (발행주식수, EBITDA 포함)
+  const html = await fetchPage(ticker, "financials/income-statement/", quarterly);
   const data = parseTable(html);
   const labels = extractLabels(html);
   const estIdx = findEstimateIndices(labels);
@@ -519,6 +520,9 @@ export async function getIncome(ticker, quarterly) {
     sharesOut: getRow(data, [
       "Shares Outstanding (Diluted)",
       "Shares Outstanding (Basic)",
+      "Diluted Shares Outstanding",
+      "Basic Shares Outstanding",
+      "Shares Outstanding",
     ]),
   };
 }
@@ -544,6 +548,7 @@ export async function getCashFlow(ticker, quarterly) {
     invCash: getRow(data, ["Investing Cash Flow", "Cash from Investing"]),
     finCash: getRow(data, ["Financing Cash Flow", "Cash from Financing"]),
     netChange: getRow(data, ["Net Change in Cash", "Net Cash Flow", "Net Change In Cash"]),
+    depreciation: getRow(data, ["Depreciation & Amortization", "Depreciation and Amortization", "Depreciation & Amortization (D&A)"]),
   };
 }
 
