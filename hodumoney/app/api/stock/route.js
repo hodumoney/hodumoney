@@ -107,6 +107,19 @@ export async function GET(request) {
       const opArr = rev(inc.operatingIncome);
       const niArr = rev(inc.netIncome);
 
+      // EBITDA 계산: income에 직접 있으면 사용, 없으면 영업이익 + 감가상각
+      const ebitdaRaw = rev(inc.ebitda);
+      const daArr = rev(cf.depreciation);
+      const ebitdaArr = ebitdaRaw.map((v, i) => {
+        if (typeof v === "number" && isFinite(v) && v !== 0) return v;
+        const op = opArr[i];
+        const da = daArr[i];
+        if (typeof op === "number" && isFinite(op) && typeof da === "number" && isFinite(da)) {
+          return op + Math.abs(da);
+        }
+        return null;
+      });
+
       return {
         labels,
         coreMetrics: {
@@ -116,7 +129,7 @@ export async function GET(request) {
           de: { value: rev(rat.deRatio)[4] ?? null, trend: rev(rat.deRatio), meaning: "회사의 자기자본에 비해 빚이 얼마나 있는지" },
           roe: { value: rev(rat.roe)[4] ?? null, trend: rev(rat.roe), meaning: "주주의 돈(자본)을 운용해 연 몇%의 이익을 냈는지" },
           div: { value: rev(rat.divYield)[4] ?? null, trend: rev(rat.divYield), meaning: "배당으로 받는 수익률" },
-          ebitda: { value: rev(inc.ebitda)[4] ?? null, trend: rev(inc.ebitda), meaning: "세금·이자·감가상각을 빼기 전 실제로 벌어들인 현금 흐름" },
+          ebitda: { value: ebitdaArr[4] ?? null, trend: ebitdaArr, meaning: "세금·이자·감가상각을 빼기 전 실제로 벌어들인 현금 흐름" },
         },
         income: {
           labels,
