@@ -157,8 +157,8 @@ export async function GET(request) {
           evEbitda: rev(rat.evEbitda),
           pe: rev(rat.pe),
           peg: rev(rat.peg),
-          opMargin: revArr.map((r, i) => r > 0 ? opArr[i] / r : 0),
-          netMargin: revArr.map((r, i) => r > 0 ? niArr[i] / r : 0),
+          opMargin: revArr.map((r, i) => (typeof r === "number" && r > 0 && typeof opArr[i] === "number") ? opArr[i] / r : null),
+          netMargin: revArr.map((r, i) => (typeof r === "number" && r > 0 && typeof niArr[i] === "number") ? niArr[i] / r : null),
         },
         shares: {
           data: rev(inc.sharesOut),
