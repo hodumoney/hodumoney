@@ -1,5 +1,5 @@
 "use client";
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useRef, useCallback, Fragment } from "react";
 import { LineChart, Line, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
 
 // ─── Firebase 설정 (lazy load — 빌드 시 실행 안 됨) ─────────────
@@ -59,9 +59,11 @@ function genHistory(current, months = 12, volatility = 0.02, trend = 0) {
 
 // ─── Constants & Data ────────────────────────────────────────────
 const MENU_ITEMS = [
-  { id: "market", label: "시장 동향", icon: "📊", ready: true },
-  { id: "company", label: "기업 분석", icon: "🔍", ready: true },
-  { id: "watchlist", label: "관심 종목", icon: "⭐", ready: true },
+  { id: "company", label: "기업 분석", icon: "🔍", section: "분석 도구" },
+  { id: "market", label: "시장 동향", icon: "📊", section: "분석 도구" },
+  { id: "watchlist", label: "관심 종목", icon: "⭐", section: "분석 도구" },
+  { id: "guide", label: "사용 가이드", icon: "📖", section: "정보" },
+  { id: "contact", label: "문의하기", icon: "💬", section: "정보" },
 ];
 
 const INDICES_US = [
@@ -142,30 +144,33 @@ const styles = `
   .app-container { display: flex; min-height: 100vh; }
 
   .sidebar {
-    width: 240px; background: var(--bg-card); border-right: none;
-    padding: 24px 0; position: fixed; top: 0; left: 0; height: 100vh;
-    overflow-y: auto; z-index: 100; transition: transform 0.3s ease;
+    width: 232px; background: var(--bg-card); border-right: none;
+    padding: 0; position: fixed; top: 0; left: 0; height: 100vh;
+    overflow: hidden; z-index: 100; transition: transform 0.3s ease;
     box-shadow: 1px 0 0 var(--border-strong);
+    display: flex; flex-direction: column;
   }
   .sidebar-logo {
-    padding: 36px 24px 28px; display: flex; flex-direction: column; align-items: center; gap: 0;
-    margin: 0; border-bottom: none; cursor: pointer; text-align: center;
+    padding: 28px 20px 16px; display: flex; flex-direction: column; align-items: center;
+    cursor: pointer; flex-shrink: 0; text-align: center;
   }
   .sidebar-logo::before { display: none; }
   .sidebar-logo::after { display: none; }
-  .logo-icon { font-size: 36px; margin-bottom: 8px; }
-  .logo-text { font-size: 28px; font-weight: 900; color: #5D4037; letter-spacing: -0.5px; line-height: 1; }
-  .logo-sub { font-size: 12px; color: var(--text-tertiary); font-weight: 500; margin-top: 8px; letter-spacing: 0.3px; }
-  .sidebar-section { padding: 0 12px; margin-bottom: 8px; }
-  .sidebar-section-label { font-size: 11px; font-weight: 600; color: var(--text-tertiary); text-transform: uppercase; letter-spacing: 0.5px; padding: 0 12px; margin-bottom: 6px; }
-  .sidebar-item { display: flex; align-items: center; gap: 12px; padding: 12px 14px; border-radius: var(--radius-sm); cursor: pointer; transition: all 0.15s ease; font-size: 15px; font-weight: 500; color: var(--text-secondary); position: relative; }
+  .logo-icon { font-size: 36px; margin-bottom: 4px; }
+  .logo-text { font-size: 20px; font-weight: 900; color: #5D4037; letter-spacing: 1.5px; line-height: 1.25; text-align: center; }
+  .logo-sub { font-size: 11px; color: var(--text-tertiary); font-weight: 500; margin-top: 4px; }
+  .sidebar-divider { height: 1px; background: var(--border); margin: 6px 20px; flex-shrink: 0; }
+  .sidebar-nav { flex: 1; padding: 0 10px; overflow: hidden; }
+  .sidebar-section { margin-bottom: 0; }
+  .sidebar-section-label { font-size: 10px; font-weight: 600; color: var(--text-tertiary); letter-spacing: 0.3px; padding: 10px 12px 3px; }
+  .sidebar-item { display: flex; align-items: center; gap: 10px; padding: 9px 12px; border-radius: 10px; cursor: pointer; transition: all 0.15s ease; font-size: 14px; font-weight: 500; color: var(--text-secondary); position: relative; }
   .sidebar-item:hover { background: var(--bg-hover); color: var(--text-primary); }
   .sidebar-item.active { background: var(--accent-blue-light); color: var(--accent-blue); font-weight: 700; }
-  .sidebar-item .item-icon { font-size: 18px; width: 28px; text-align: center; }
+  .sidebar-item .item-icon { font-size: 16px; width: 22px; text-align: center; }
   .sidebar-item .badge-soon { font-size: 10px; background: #F2F3F5; color: var(--text-tertiary); padding: 2px 6px; border-radius: 4px; margin-left: auto; font-weight: 600; }
-  .sidebar-divider { height: 1px; background: var(--border); margin: 12px 24px; }
+  .sidebar-bottom { flex-shrink: 0; padding: 8px 14px 14px; }
 
-  .main-content { flex: 1; margin-left: 240px; padding: 0; min-height: 100vh; }
+  .main-content { flex: 1; margin-left: 232px; padding: 0; min-height: 100vh; }
 
   .top-bar {
     position: sticky; top: 0; background: rgba(255,255,255,0.92); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
@@ -251,13 +256,13 @@ const styles = `
 
   .stats-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-bottom: 16px; }
   .stat-item { background: var(--bg-card); border: none; border-radius: var(--radius-md); padding: 18px 20px; box-shadow: var(--shadow-card); }
-  .stat-label { font-size: 12px; color: var(--text-tertiary); font-weight: 500; margin-bottom: 8px; }
+  .stat-label { font-size: 12px; color: var(--text-tertiary); font-weight: 500; margin-bottom: 8px; word-break: keep-all; line-height: 1.4; }
   .stat-value { font-size: 20px; font-weight: 800; letter-spacing: -0.3px; }
   .stat-sub { font-size: 11px; color: var(--text-tertiary); margin-top: 3px; }
 
   .metric-card { background: var(--bg-card); border: none; border-radius: var(--radius-md); padding: 18px 22px; margin-bottom: 10px; cursor: pointer; transition: all 0.2s ease; position: relative; box-shadow: var(--shadow-card); }
   .metric-card:hover { box-shadow: var(--shadow-md); }
-  .metric-card.expanded { box-shadow: 0 0 0 2px var(--accent-blue), var(--shadow-md); }
+  .metric-card.expanded { box-shadow: var(--shadow-md); }
   .metric-card-top { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
   .metric-card-left { display: flex; align-items: center; gap: 16px; min-width: 0; }
   .metric-card-name { font-size: 14px; font-weight: 700; color: var(--text-primary); min-width: 120px; flex-shrink: 0; }
@@ -269,7 +274,7 @@ const styles = `
   .metric-card-arrow { font-size: 12px; color: var(--text-tertiary); transition: transform 0.2s ease; margin-left: 8px; flex-shrink: 0; }
   .metric-card.expanded .metric-card-arrow { transform: rotate(180deg); }
 
-  @keyframes expandMetric { from { opacity: 0; max-height: 0; padding-top: 0; } to { opacity: 1; max-height: 340px; padding-top: 14px; } }
+  @keyframes expandMetric { from { opacity: 0; max-height: 0; padding-top: 0; } to { opacity: 1; max-height: 700px; padding-top: 14px; } }
   .metric-card-expand { overflow: hidden; animation: expandMetric 0.3s cubic-bezier(0.16,1,0.3,1) forwards; border-top: 1px solid #F2F3F5; margin-top: 14px; }
   .metric-card-expand-body { padding-top: 4px; }
 
@@ -298,6 +303,7 @@ const styles = `
   .fade-up-d3 { animation-delay: 0.15s; opacity: 0; }
   .fade-up-d4 { animation-delay: 0.2s; opacity: 0; }
 
+  .company-mobile-search { display: none; }
   .mobile-menu-btn { display: none; background: none; border: none; font-size: 22px; cursor: pointer; padding: 4px; color: var(--text-primary); }
   .sidebar-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.3); z-index: 99; }
 
@@ -313,6 +319,11 @@ const styles = `
     .price-block { text-align: left; }
     .search-wrapper { width: 220px; }
     .content-area { padding: 20px 16px 60px; }
+    .top-bar { padding: 0 16px; }
+    .top-bar-brand, .top-bar-brand-dot, .top-bar-search { display: none; }
+    .top-bar-title { font-size: 17px; }
+    .company-mobile-search { display: block; }
+    .company-mobile-search .search-wrapper { width: 100%; }
   }
 
   ::-webkit-scrollbar { width: 6px; height: 6px; }
@@ -383,7 +394,7 @@ const styles = `
 
   .index-card.clickable, .econ-card.clickable { cursor: pointer; position: relative; }
   .index-card.clickable:active, .econ-card.clickable:active { transform: scale(0.98); }
-  .index-card.selected, .econ-card.selected { box-shadow: 0 0 0 2px var(--accent-blue), var(--shadow-md); }
+  .index-card.selected, .econ-card.selected { box-shadow: var(--shadow-md); }
     .card-chart-btn {
     position: absolute; top: 50%; right: 14px; transform: translateY(-50%); width: 32px; height: 32px;
     border: 1px solid var(--border); border-radius: 8px; background: #fff;
@@ -395,12 +406,13 @@ const styles = `
   .card-chart-btn:hover { border-color: var(--accent-blue); color: var(--accent-blue); background: var(--accent-blue-light); }
 
   .section-header-distinct {
-    margin-bottom: 20px; padding: 0 0 12px;
+    margin-bottom: 14px; margin-top: 32px; padding: 0;
     background: transparent; border: none; border-radius: 0;
-    border-bottom: 2px solid var(--border);
+    border-left: none;
   }
+  .section-header-distinct:first-child { margin-top: 0; }
   .section-header-distinct .section-title { font-size: 20px; font-weight: 800; letter-spacing: -0.5px; color: var(--text-primary); }
-  .section-header-distinct .section-subtitle { font-size: 13px; color: var(--text-tertiary); font-weight: 400; margin-top: 3px; }
+  .section-header-distinct .section-subtitle { font-size: 12px; color: var(--text-tertiary); font-weight: 400; margin-top: 4px; padding-bottom: 12px; border-bottom: 1.5px solid var(--border-strong); }
   .section-header-distinct.indices, .section-header-distinct.econ { border-left: none; }
 
   .data-table { width: 100%; border-collapse: collapse; font-size: 13px; }
@@ -806,7 +818,7 @@ function SentimentGaugeVisual({ value, reversed }) {
 
 // ─── Inline Chart Panel (period-aware) ───────────────────────────
 function InlineChart({ item, onClose }) {
-  const [period, setPeriod] = useState("1D");
+  const [period, setPeriod] = useState("1Y");
   const [chartData, setChartData] = useState(item?.history || []);
   const [chartLoading, setChartLoading] = useState(false);
   const originalChange = { change: item?.change || "-", pct: item?.pct || "-", up: item?.up || false };
@@ -886,7 +898,7 @@ function InlineChart({ item, onClose }) {
           <div style={{ height: 220, display: "flex", alignItems: "center", justifyContent: "center", color: "var(--text-tertiary)", fontSize: 13 }}>데이터 없음</div>
         ) : (
           <ResponsiveContainer width="100%" height={220}>
-            <AreaChart data={data} margin={{ top: 8, right: 8, left: -10, bottom: 0 }}>
+            <AreaChart data={data} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
               <defs>
                 <linearGradient id={gradId} x1="0" y1="0" x2="0" y2="1">
                   <stop offset="0%" stopColor={color} stopOpacity={0.15} />
@@ -900,7 +912,7 @@ function InlineChart({ item, onClose }) {
                   return `${(v / 1000).toFixed(2).replace(/\.00$/, "").replace(/(\.\d)0$/, "$1")}k`;
                 }
                 return v.toFixed(v < 10 ? 2 : 1);
-              }} width={58} />
+              }} width={68} />
               <Tooltip contentStyle={{ background: "white", border: "1px solid #E5E8EB", borderRadius: 10, boxShadow: "0 4px 12px rgba(0,0,0,0.08)", padding: "8px 14px", fontSize: 13, fontWeight: 600 }} formatter={(val) => [typeof val === "number" ? val.toLocaleString(undefined, { maximumFractionDigits: 2 }) : val, ""]} labelStyle={{ color: "#8B95A1", fontSize: 11, marginBottom: 2 }} />
               <Area type="monotone" dataKey="value" stroke={color} strokeWidth={2.5} fill={`url(#${gradId})`} dot={false} activeDot={{ r: 5, stroke: color, strokeWidth: 2, fill: "white" }} />
             </AreaChart>
@@ -916,17 +928,18 @@ function InlineChart({ item, onClose }) {
 function CoreValuations({ data, currency }) {
   const [expandedKey, setExpandedKey] = useState(null);
   const safeVal = (v) => (typeof v === "number" && isFinite(v)) ? v : 0;
+  const hasData = (v) => v !== null && v !== undefined && typeof v === "number" && isFinite(v);
   const isKRW = currency === "KRW";
   const sym = isKRW ? "₩" : "$";
   const unit = isKRW ? "백만" : "M";
   const metrics = [
-    { key: "per", label: "PER", fmt: v => safeVal(v).toFixed(2), desc: "회사가 1년에 버는 돈에 비해 주가가 얼마나 비싼지" },
-    { key: "pbr", label: "PBR", fmt: v => safeVal(v).toFixed(2), desc: "회사의 순자산(자본)에 비해 주가가 얼마나 비싼지" },
-    { key: "eps", label: `EPS (${sym})`, fmt: v => `${sym}${safeVal(v).toLocaleString(undefined, { maximumFractionDigits: isKRW ? 0 : 2 })}`, desc: "주식 한 주당 회사가 1년간 벌어들이는 이익" },
-    { key: "de", label: "부채비율 (D/E)", fmt: v => `${(safeVal(v) * 100).toFixed(0)}%`, desc: "회사의 자기자본에 비해 빚이 얼마나 있는지" },
-    { key: "roe", label: "ROE (%)", fmt: v => `${safeVal(v).toFixed(1)}%`, desc: "주주의 돈(자본)을 운용해 연 몇%의 이익을 냈는지" },
-    { key: "div", label: "배당수익률 (%)", fmt: v => `${safeVal(v).toFixed(2)}%`, desc: "배당으로 받는 수익률" },
-    { key: "ebitda", label: `EBITDA (${sym}${unit})`, fmt: v => `${sym}${Math.round(safeVal(v)).toLocaleString()}${unit}`, desc: "세금·이자·감가상각을 빼기 전 실제로 벌어들인 현금 흐름" },
+    { key: "per", label: "PER", fmt: v => hasData(v) ? safeVal(v).toFixed(2) : "-", desc: "회사가 1년에 버는 돈에 비해 주가가 얼마나 비싼지" },
+    { key: "pbr", label: "PBR", fmt: v => hasData(v) ? safeVal(v).toFixed(2) : "-", desc: "회사의 순자산(자본)에 비해 주가가 얼마나 비싼지" },
+    { key: "eps", label: `EPS (${sym})`, fmt: v => hasData(v) ? `${sym}${safeVal(v).toLocaleString(undefined, { maximumFractionDigits: isKRW ? 0 : 2 })}` : "-", desc: "주식 한 주당 회사가 1년간 벌어들이는 이익" },
+    { key: "de", label: "부채비율 (D/E)", fmt: v => hasData(v) ? `${(safeVal(v) * 100).toFixed(0)}%` : "-", desc: "회사의 자기자본에 비해 빚이 얼마나 있는지" },
+    { key: "roe", label: "ROE (%)", fmt: v => hasData(v) ? `${safeVal(v).toFixed(1)}%` : "-", desc: "주주의 돈(자본)을 운용해 연 몇%의 이익을 냈는지" },
+    { key: "div", label: "배당수익률 (%)", fmt: v => hasData(v) ? `${safeVal(v).toFixed(2)}%` : "-", desc: "배당으로 받는 수익률" },
+    { key: "ebitda", label: `EBITDA (${sym}${unit})`, fmt: v => hasData(v) ? `${sym}${Math.round(safeVal(v)).toLocaleString()}${unit}` : "-", desc: "세금·이자·감가상각을 빼기 전 실제로 벌어들인 현금 흐름" },
   ];
   const toggle = (key) => setExpandedKey(expandedKey === key ? null : key);
   const trendLabels = data.labels && data.labels.length > 0 ? data.labels : ["Q1", "Q2", "Q3", "Q4", "Q5"];
@@ -940,12 +953,13 @@ function CoreValuations({ data, currency }) {
       {metrics.map(({ key, label, fmt: fmtFn, desc }) => {
         const metric = data.coreMetrics?.[key];
         if (!metric) return null;
-        const trendData = metric.trend || [0, 0, 0, 0, 0];
+        const trendData = metric.trend || [null, null, null, null, null];
+        const hasValidTrend = trendData.some(v => v !== null && v !== undefined && typeof v === "number" && isFinite(v));
         const isOpen = expandedKey === key;
-        const trendMin = Math.min(...trendData.map(v => safeVal(v)));
-        const trendMax = Math.max(...trendData.map(v => safeVal(v)));
+        const trendMin = Math.min(...trendData.filter(v => typeof v === "number" && isFinite(v)));
+        const trendMax = Math.max(...trendData.filter(v => typeof v === "number" && isFinite(v)));
         const trendRange = trendMax - trendMin || 1;
-        const chartData = trendData.map((v, i) => ({ label: trendLabels[i] || `Q${i+1}`, value: safeVal(v) }));
+        const chartData = trendData.map((v, i) => ({ label: trendLabels[i] || `Q${i+1}`, value: (typeof v === "number" && isFinite(v)) ? v : null }));
 
         return (
           <div className={`metric-card ${isOpen ? "expanded" : ""}`} key={key} onClick={() => toggle(key)}>
@@ -957,7 +971,10 @@ function CoreValuations({ data, currency }) {
               <div className="metric-card-desc">{desc}</div>
               <div className="metric-card-mini">
                 {(() => {
-                  const hasNeg = trendData.some(v => safeVal(v) < 0);
+                  if (!hasValidTrend) {
+                    return <div style={{ fontSize: 11, color: "var(--text-tertiary)", display: "flex", alignItems: "center" }}>데이터 없음</div>;
+                  }
+                  const hasNeg = trendData.some(v => typeof v === "number" && v < 0);
                   const absMax = Math.max(...trendData.map(v => Math.abs(safeVal(v)))) || 1;
                   if (hasNeg) {
                     // Bidirectional: bars above/below midline
@@ -977,9 +994,10 @@ function CoreValuations({ data, currency }) {
                       );
                     });
                   }
-                  // All positive: original logic
+                  // All positive: bars proportional to actual magnitude (not min-max normalized)
+                  const allMax = Math.max(...trendData.map(v => Math.abs(safeVal(v)))) || 1;
                   return trendData.map((v, i) => (
-                    <div key={i} className="m-bar" style={{ height: `${Math.max(15, 15 + ((safeVal(v) - trendMin) / trendRange) * 85)}%` }} />
+                    <div key={i} className="m-bar" style={{ height: `${Math.max(15, (Math.abs(safeVal(v)) / allMax) * 100)}%` }} />
                   ));
                 })()}
               </div>
@@ -988,16 +1006,20 @@ function CoreValuations({ data, currency }) {
             {isOpen && (
               <div className="metric-card-expand" onClick={e => e.stopPropagation()}>
                 <div className="metric-card-expand-body">
+                  {hasValidTrend ? (
                   <ResponsiveContainer width="100%" height={200}>
-                    <AreaChart data={chartData} margin={{ top: 8, right: 8, left: -10, bottom: 0 }}>
+                    <AreaChart data={chartData} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
                       <defs><linearGradient id={`mg-${key}`} x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="#3182F6" stopOpacity={0.15} /><stop offset="100%" stopColor="#3182F6" stopOpacity={0.02} /></linearGradient></defs>
                       <CartesianGrid strokeDasharray="3 3" stroke="#F2F3F5" vertical={false} />
                       <XAxis dataKey="label" axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: "#8B95A1" }} />
-                      <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: "#8B95A1" }} tickFormatter={v => v >= 1000 ? `${(v/1000).toFixed(1)}k` : v.toFixed(v < 10 ? 2 : 0)} width={52} />
+                      <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: "#8B95A1" }} domain={[d => { const pad = Math.abs(d) * 0.1 || 1; return d - pad; }, d => { const pad = Math.abs(d) * 0.1 || 1; return d + pad; }]} tickFormatter={v => v >= 1000 ? `${(v/1000).toFixed(1)}k` : v < -1000 ? `${(v/1000).toFixed(1)}k` : v.toFixed(Math.abs(v) < 10 ? 2 : 0)} width={68} />
                       <Tooltip contentStyle={{ background: "white", border: "1px solid #E5E8EB", borderRadius: 10, boxShadow: "0 4px 12px rgba(0,0,0,0.08)", padding: "8px 14px", fontSize: 13, fontWeight: 600 }} formatter={(val) => [typeof val === "number" ? val.toLocaleString(undefined, { maximumFractionDigits: 2 }) : val, label]} labelStyle={{ color: "#8B95A1", fontSize: 11 }} />
                       <Area type="monotone" dataKey="value" stroke="#3182F6" strokeWidth={2.5} fill={`url(#mg-${key})`} dot={{ r: 4, stroke: "#3182F6", strokeWidth: 2, fill: "white" }} activeDot={{ r: 6, stroke: "#3182F6", strokeWidth: 2, fill: "white" }} />
                     </AreaChart>
                   </ResponsiveContainer>
+                  ) : (
+                    <div style={{ textAlign: "center", padding: "40px 0", color: "var(--text-tertiary)", fontSize: 14 }}>이 종목의 해당 지표 데이터가 제공되지 않습니다</div>
+                  )}
                   <InsightPanel metricKey={key} />
                 </div>
               </div>
@@ -1011,12 +1033,14 @@ function CoreValuations({ data, currency }) {
 
 // ─── Reusable Financial Row Card ─────────────────────────────────
 function FinRowCard({ label, values, labels, expanded, onToggle, fmtFn, allowNeg, desc, metricKey }) {
-  const lastVal = values[values.length - 1];
-  const vMin = Math.min(...values);
-  const vMax = Math.max(...values);
+  const validValues = values.filter(v => typeof v === "number" && isFinite(v));
+  const hasAnyData = validValues.length > 0;
+  const lastVal = hasAnyData ? validValues[validValues.length - 1] : null;
+  const vMin = hasAnyData ? Math.min(...validValues) : 0;
+  const vMax = hasAnyData ? Math.max(...validValues) : 0;
   const vRange = vMax - vMin || 1;
-  const chartData = values.map((v, i) => ({ label: labels[i], value: v }));
-  const isNeg = allowNeg && lastVal < 0;
+  const chartData = values.map((v, i) => ({ label: labels[i], value: (typeof v === "number" && isFinite(v)) ? v : null }));
+  const isNeg = allowNeg && typeof lastVal === "number" && lastVal < 0;
 
   return (
     <div className={`metric-card ${expanded ? "expanded" : ""}`} onClick={onToggle}>
@@ -1024,15 +1048,15 @@ function FinRowCard({ label, values, labels, expanded, onToggle, fmtFn, allowNeg
         <div className="metric-card-left">
           <div className="metric-card-name">{label}</div>
           <div className="metric-card-value" style={isNeg ? { color: "var(--accent-blue)" } : {}}>
-            {fmtFn ? fmtFn(lastVal) : (isNeg ? `-${Math.abs(lastVal).toLocaleString()}` : lastVal.toLocaleString())}
+            {!hasAnyData ? "-" : fmtFn ? fmtFn(lastVal) : (isNeg ? `-${Math.abs(lastVal).toLocaleString()}` : (lastVal || 0).toLocaleString())}
           </div>
         </div>
         {desc && <div className="metric-card-desc">{desc}</div>}
         <div className="metric-card-mini">
           {(() => {
-            const hasNeg = values.some(v => v < 0);
-            const hasPos = values.some(v => v > 0);
-            const absMax = Math.max(...values.map(v => Math.abs(v))) || 1;
+            if (!hasAnyData) return <div style={{ fontSize: 11, color: "var(--text-tertiary)", display: "flex", alignItems: "center" }}>데이터 없음</div>;
+            const hasNeg = validValues.some(v => v < 0);
+            const absMax = Math.max(...validValues.map(v => Math.abs(v))) || 1;
             
             if (hasNeg) {
               // Bidirectional bars for negative values
@@ -1051,9 +1075,10 @@ function FinRowCard({ label, values, labels, expanded, onToggle, fmtFn, allowNeg
                 );
               });
             }
-            // All positive: original
+            // All positive: proportional to actual magnitude
+            const allMax = Math.max(...values.map(v => Math.abs(v))) || 1;
             return values.map((v, i) => (
-              <div key={i} className="m-bar" style={{ height: `${Math.max(15, 15 + ((v - vMin) / vRange) * 85)}%` }} />
+              <div key={i} className="m-bar" style={{ height: `${Math.max(15, (Math.abs(v) / allMax) * 100)}%` }} />
             ));
           })()}
         </div>
@@ -1063,11 +1088,11 @@ function FinRowCard({ label, values, labels, expanded, onToggle, fmtFn, allowNeg
         <div className="metric-card-expand" onClick={e => e.stopPropagation()}>
           <div className="metric-card-expand-body" style={{ paddingTop: 14 }}>
             <ResponsiveContainer width="100%" height={180}>
-              <AreaChart data={chartData} margin={{ top: 8, right: 8, left: -10, bottom: 0 }}>
+              <AreaChart data={chartData} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
                 <defs><linearGradient id={`fg-${label.replace(/[^a-zA-Z]/g,"")}`} x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="#3182F6" stopOpacity={0.15} /><stop offset="100%" stopColor="#3182F6" stopOpacity={0.02} /></linearGradient></defs>
                 <CartesianGrid strokeDasharray="3 3" stroke="#F2F3F5" vertical={false} />
                 <XAxis dataKey="label" axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: "#8B95A1" }} />
-                <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: "#8B95A1" }} tickFormatter={v => Math.abs(v) >= 1000 ? `${(v/1000).toFixed(0)}k` : v.toFixed(v < 10 && v > -10 ? 2 : 0)} width={52} />
+                <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: "#8B95A1" }} domain={[d => { const pad = Math.abs(d) * 0.1 || 1; return d - pad; }, d => { const pad = Math.abs(d) * 0.1 || 1; return d + pad; }]} tickFormatter={v => Math.abs(v) >= 1000 ? `${(v/1000).toFixed(0)}k` : v.toFixed(Math.abs(v) < 10 ? 2 : 0)} width={68} />
                 <Tooltip contentStyle={{ background: "white", border: "1px solid #E5E8EB", borderRadius: 10, boxShadow: "0 4px 12px rgba(0,0,0,0.08)", padding: "8px 14px", fontSize: 13, fontWeight: 600 }} formatter={(val) => [typeof val === "number" ? (fmtFn ? fmtFn(val) : val.toLocaleString()) : val, ""]} labelStyle={{ color: "#8B95A1", fontSize: 11 }} />
                 <Area type="monotone" dataKey="value" stroke="#3182F6" strokeWidth={2.5} fill={`url(#fg-${label.replace(/[^a-zA-Z]/g,"")})`} dot={{ r: 4, stroke: "#3182F6", strokeWidth: 2, fill: "white" }} activeDot={{ r: 6, stroke: "#3182F6", strokeWidth: 2, fill: "white" }} />
               </AreaChart>
@@ -1146,8 +1171,7 @@ function AdvancedMetrics({ data, currency }) {
       ] },
     { title: "👥 주주환원", desc: "자사주 매입 등 주주 가치를 높이는 활동",
       rows: [
-        { key: "sharesQ", label: "발행주식수 (분기)", values: data.shares.quarterly, fmt: v => `${v.toLocaleString()}M`, desc: "시장에 유통되는 총 주식 수" },
-        { key: "sharesY", label: "발행주식수 (연간)", values: data.shares.yearly, fmt: v => `${v.toLocaleString()}M`, desc: "주식 수가 줄면 주주 친화적" },
+        { key: "shares", label: "발행주식수", values: data.shares.data, fmt: v => `${v.toLocaleString()}M`, desc: "시장에 유통되는 총 주식 수 (줄면 주주 친화적)" },
       ] },
   ];
 
@@ -1214,6 +1238,16 @@ function MarketPage() {
         </div>
       </div>
 
+      {loading && !marketData && (
+        <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "80px 20px", gap: 16 }}>
+          <div style={{ width: 40, height: 40, border: "3px solid #F2F4F6", borderTop: "3px solid #5D4037", borderRadius: "50%", animation: "spin 0.8s linear infinite" }} />
+          <div style={{ fontSize: 15, fontWeight: 600, color: "var(--text-secondary)" }}>시장 데이터를 불러오고 있습니다</div>
+          <div style={{ fontSize: 12, color: "var(--text-tertiary)" }}>잠시만 기다려주세요...</div>
+          <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
+        </div>
+      )}
+
+      {(!loading || marketData) && <>
       <div className="section-header section-header-distinct indices fade-up"><div className="section-title">주가지수</div><div className="section-subtitle">미국/한국 대표 지수</div></div>
 
       {showUS && liveIdxUS.length > 0 && (
@@ -1250,7 +1284,7 @@ function MarketPage() {
         </div>
       )}
 
-      <div className="section-header section-header-distinct econ fade-up fade-up-d2" style={{ marginTop: 20 }}>
+      <div className="section-header section-header-distinct econ fade-up fade-up-d2">
         <div><div className="section-title">경제 지표</div><div className="section-subtitle">기준금리·채권·환율 중심 지표</div></div>
       </div>
 
@@ -1259,16 +1293,20 @@ function MarketPage() {
           <div className="country-label">미국</div>
           <div className="econ-grid">
             {liveEconUS.map((ind, i) => (
-              <div className={`econ-card ${ind.isStatic ? "" : "clickable"} ${isSelected("econUS", ind.name) ? "selected" : ""}`} key={i} onClick={() => { if (!ind.isStatic) toggle("econUS", ind); }}>
-                {!ind.isStatic && <button className="card-chart-btn" onClick={(e) => { e.stopPropagation(); toggle("econUS", ind); }} title="차트 보기"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="2,12 5.5,7 8.5,9 14,3" /><polyline points="10,3 14,3 14,7" /></svg></button>}
-                <div className="econ-name">{ind.name}</div>
-                <div className="econ-value">{ind.value}</div>
-                {ind.change && !ind.isStatic && <div className={`econ-change ${ind.up ? "up" : "down"}`}>{ind.up ? "▲" : "▼"} {ind.change}{ind.pct ? ` (${ind.pct})` : ""}</div>}
-                {ind.status && <span className="econ-status" style={{ color: ind.statusColor || "var(--text-tertiary)" }}>{ind.status}</span>}
-              </div>
+              <Fragment key={i}>
+                <div className={`econ-card ${ind.isStatic ? "" : "clickable"} ${isSelected("econUS", ind.name) ? "selected" : ""}`} onClick={() => { if (!ind.isStatic) toggle("econUS", ind); }}>
+                  {!ind.isStatic && <button className="card-chart-btn" onClick={(e) => { e.stopPropagation(); toggle("econUS", ind); }} title="차트 보기"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="2,12 5.5,7 8.5,9 14,3" /><polyline points="10,3 14,3 14,7" /></svg></button>}
+                  <div className="econ-name">{ind.name}</div>
+                  <div className="econ-value">{ind.value}</div>
+                  {ind.change && !ind.isStatic && <div className={`econ-change ${ind.up ? "up" : "down"}`}>{ind.up ? "▲" : "▼"} {ind.change}{ind.pct ? ` (${ind.pct})` : ""}</div>}
+                  {ind.status && <span className="econ-status" style={{ color: ind.statusColor || "var(--text-tertiary)" }}>{ind.status}</span>}
+                </div>
+                {selectedIndex && selectedIndex.group === "econUS" && selectedIndex.name === ind.name && (
+                  <div style={{ gridColumn: "1 / -1" }}><InlineChart item={selectedIndex} onClose={() => setSelectedIndex(null)} /></div>
+                )}
+              </Fragment>
             ))}
           </div>
-          {selectedIndex && selectedIndex.group === "econUS" && <InlineChart item={selectedIndex} onClose={() => setSelectedIndex(null)} />}
         </div>
       )}
 
@@ -1277,45 +1315,54 @@ function MarketPage() {
           <div className="country-label">한국</div>
           <div className="econ-grid">
             {liveEconKR.map((ind, i) => (
-              <div className={`econ-card ${ind.isStatic ? "" : "clickable"} ${isSelected("econKR", ind.name) ? "selected" : ""}`} key={i} onClick={() => { if (!ind.isStatic) toggle("econKR", ind); }}>
-                {!ind.isStatic && <button className="card-chart-btn" onClick={(e) => { e.stopPropagation(); toggle("econKR", ind); }} title="차트 보기"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="2,12 5.5,7 8.5,9 14,3" /><polyline points="10,3 14,3 14,7" /></svg></button>}
-                <div className="econ-name">{ind.name}</div>
-                <div className="econ-value">{ind.value}</div>
-                {ind.change && !ind.isStatic && <div className={`econ-change ${ind.up ? "up" : "down"}`}>{ind.up ? "▲" : "▼"} {ind.change}{ind.pct ? ` (${ind.pct})` : ""}</div>}
-                {ind.status && <span className="econ-status" style={{ color: ind.statusColor || "var(--text-tertiary)" }}>{ind.status}</span>}
-              </div>
+              <Fragment key={i}>
+                <div className={`econ-card ${ind.isStatic ? "" : "clickable"} ${isSelected("econKR", ind.name) ? "selected" : ""}`} onClick={() => { if (!ind.isStatic) toggle("econKR", ind); }}>
+                  {!ind.isStatic && <button className="card-chart-btn" onClick={(e) => { e.stopPropagation(); toggle("econKR", ind); }} title="차트 보기"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="2,12 5.5,7 8.5,9 14,3" /><polyline points="10,3 14,3 14,7" /></svg></button>}
+                  <div className="econ-name">{ind.name}</div>
+                  <div className="econ-value">{ind.value}</div>
+                  {ind.change && !ind.isStatic && <div className={`econ-change ${ind.up ? "up" : "down"}`}>{ind.up ? "▲" : "▼"} {ind.change}{ind.pct ? ` (${ind.pct})` : ""}</div>}
+                  {ind.status && <span className="econ-status" style={{ color: ind.statusColor || "var(--text-tertiary)" }}>{ind.status}</span>}
+                </div>
+                {selectedIndex && selectedIndex.group === "econKR" && selectedIndex.name === ind.name && (
+                  <div style={{ gridColumn: "1 / -1" }}><InlineChart item={selectedIndex} onClose={() => setSelectedIndex(null)} /></div>
+                )}
+              </Fragment>
             ))}
           </div>
-          {selectedIndex && selectedIndex.group === "econKR" && <InlineChart item={selectedIndex} onClose={() => setSelectedIndex(null)} />}
         </div>
       )}
 
-      <div className="section-header fade-up fade-up-d3" style={{ marginTop: 20 }}>
-        <div><div className="section-title">심리 지표</div><div className="section-subtitle">시장 공포·탐욕 수준을 한눈에</div></div>
-      </div>
-      <div className="sentiment-grid fade-up fade-up-d3">
-        {liveVix && (
-          <div className={`sentiment-card ${isSelected("sentiment", liveVix.name) ? "selected" : ""}`} style={{ cursor: "pointer", border: isSelected("sentiment", liveVix.name) ? "2px solid var(--accent-blue)" : undefined }} onClick={() => toggle("sentiment", liveVix)}>
-            <div className="sentiment-card-label">VIX 공포 지수</div>
-            <SentimentGaugeVisual value={vixGauge} reversed />
-            <div className="sentiment-value" style={{ color: liveVix.statusColor || "#F59E0B" }}>{liveVix.value}</div>
-            <div className="sentiment-status" style={{ color: liveVix.statusColor || "#F59E0B" }}>{liveVix.status || "보통"}</div>
-            <div className="sentiment-desc">전일대비 변동폭을 기반으로 시장 불안 수준을 측정합니다</div>
-            <div className="sentiment-sub-values">
-              <span>전일대비: <strong style={{ color: liveVix.up ? "var(--accent-red)" : "var(--accent-blue)" }}>{liveVix.change} ({liveVix.pct})</strong></span>
-              {liveVix.yearHigh > 0 && <span>52주 최고: <strong>{liveVix.yearHigh.toFixed(2)}</strong></span>}
-              {liveVix.yearLow > 0 && <span>52주 최저: <strong>{liveVix.yearLow.toFixed(2)}</strong></span>}
+      {showUS && (
+        <>
+        <div className="section-header section-header-distinct fade-up fade-up-d3">
+          <div><div className="section-title">심리 지표</div><div className="section-subtitle">시장 공포·탐욕 수준을 한눈에</div></div>
+        </div>
+        <div className="sentiment-grid fade-up fade-up-d3">
+          {liveVix && (
+            <div className={`sentiment-card ${isSelected("sentiment", liveVix.name) ? "selected" : ""}`} style={{ cursor: "pointer" }} onClick={() => toggle("sentiment", liveVix)}>
+              <div className="sentiment-card-label">VIX 공포 지수</div>
+              <SentimentGaugeVisual value={vixGauge} reversed />
+              <div className="sentiment-value" style={{ color: liveVix.statusColor || "#F59E0B" }}>{liveVix.value}</div>
+              <div className="sentiment-status" style={{ color: liveVix.statusColor || "#F59E0B" }}>{liveVix.status || "보통"}</div>
+              <div className="sentiment-desc">전일대비 변동폭을 기반으로 시장 불안 수준을 측정합니다</div>
+              <div className="sentiment-sub-values">
+                <span>전일대비: <strong style={{ color: liveVix.up ? "var(--accent-red)" : "var(--accent-blue)" }}>{liveVix.change} ({liveVix.pct})</strong></span>
+                {liveVix.yearHigh > 0 && <span>52주 최고: <strong>{liveVix.yearHigh.toFixed(2)}</strong></span>}
+                {liveVix.yearLow > 0 && <span>52주 최저: <strong>{liveVix.yearLow.toFixed(2)}</strong></span>}
+              </div>
             </div>
-          </div>
-        )}
-      </div>
-      {selectedIndex && selectedIndex.group === "sentiment" && <InlineChart item={selectedIndex} onClose={() => setSelectedIndex(null)} />}
+          )}
+        </div>
+        {selectedIndex && selectedIndex.group === "sentiment" && <InlineChart item={selectedIndex} onClose={() => setSelectedIndex(null)} />}
+        </>
+      )}
 
       {marketData?.updatedAt && (
         <div style={{ textAlign: "right", fontSize: 11, color: "var(--text-tertiary)", marginTop: 8 }}>
           마지막 업데이트: {new Date(marketData.updatedAt).toLocaleString("ko-KR")}
         </div>
       )}
+      </>}
     </div>
   );
 }
@@ -1359,6 +1406,7 @@ const METRIC_INSIGHTS = {
   opMargin: { up: "매출 대비 영업이익의 비중이 늘어나고 있는 상태입니다. 본업의 운영 효율성이 개선되고 있습니다.", down: "매출 대비 영업이익 비중이 줄어들고 있는 상태입니다. 경쟁 심화나 비용 증가가 원인일 수 있습니다.", comment: "비율이 높을수록 업계에서 독점적인 지위를 가졌거나 비용 관리를 잘 하고 있다는 뜻입니다. 동종 경쟁사와 한번 비교해보세요." },
   netMargin: { up: "매출 대비 최종 이익의 비중이 늘어나고 있는 상태입니다. 전반적인 재무 건전성이 좋아지고 있습니다.", down: "매출 대비 최종 이익 비중이 줄어들고 있는 상태입니다. 금융비용이나 세금 부담 증가가 원인일 수 있습니다.", comment: "영업 이익률과 차이가 너무 크다면(5% 이상) 영업 외 이익이나 비용이 과도하지 않은지 점검해야 합니다." },
   // 주주환원
+  shares: { up: "시장에 유통되는 주식 수가 늘어나고 있는 상태입니다. 유상증자나 스톡옵션 행사가 원인이며, 기존 주주의 지분율이 희석됩니다.", down: "자사주 매입 및 소각을 통해 주식 수가 줄어들고 있는 상태입니다. 주주 친화적인 정책을 시행하고 있습니다.", comment: "주식 수가 꾸준히 줄어드는 것(우하향)이 주주 친화적인 기업입니다." },
   sharesQ: { up: "시장에 유통되는 주식 수가 늘어나고 있는 상태입니다. 유상증자나 스톡옵션 행사가 원인이며, 기존 주주의 지분율이 희석됩니다.", down: "자사주 매입 및 소각을 통해 주식 수가 줄어들고 있는 상태입니다. 주주 친화적인 정책을 시행하고 있습니다.", comment: "주식 수가 꾸준히 줄어드는 것(우하향)이 주주 친화적인 기업입니다." },
   sharesY: { up: "연간 기준 발행 주식 수가 늘어나고 있는 상태입니다. 유상증자나 스톡옵션 행사가 원인일 수 있습니다.", down: "연간 기준 주식 수가 줄어들고 있는 상태입니다. 자사주 매입 및 소각으로 주주 가치가 높아지고 있습니다.", comment: "주식 수가 꾸준히 줄어드는 것(우하향)이 주주 친화적인 기업입니다." },
 };
@@ -1402,13 +1450,21 @@ function PriceChart({ ticker, dailyChange, onPeriodChange }) {
   const lastPrice = chartData.length > 0 ? chartData[chartData.length - 1].price : 0;
   const chartUp = lastPrice >= firstPrice;
   const color = chartUp ? "#F04452" : "#3182F6";
+  const periodReturn = firstPrice > 0 ? ((lastPrice - firstPrice) / firstPrice) * 100 : 0;
 
   return (
     <div className="card fade-up" style={{ padding: "16px" }}>
-      <div style={{ display: "flex", gap: 4, marginBottom: 12, flexWrap: "wrap" }}>
-        {["1D", "1M", "3M", "6M", "1Y", "3Y", "5Y", "10Y", "MAX"].map(p => (
-          <button key={p} className={`chart-period-btn ${period === p ? "active" : ""}`} onClick={() => setPeriod(p)} style={{ padding: "5px 10px" }}>{p}</button>
-        ))}
+      <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 12, flexWrap: "wrap" }}>
+        <div style={{ display: "flex", gap: 4, flexWrap: "wrap" }}>
+          {["1D", "1M", "3M", "6M", "1Y", "3Y", "5Y", "10Y", "MAX"].map(p => (
+            <button key={p} className={`chart-period-btn ${period === p ? "active" : ""}`} onClick={() => setPeriod(p)} style={{ padding: "5px 10px" }}>{p}</button>
+          ))}
+        </div>
+        {!loading && chartData.length > 0 && (
+          <div style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: 6, padding: "4px 12px", borderRadius: 8, background: chartUp ? "#FFF0F1" : "#EBF3FE", fontSize: 13, fontWeight: 700, color }}>
+            <span>{chartUp ? "▲" : "▼"} {Math.abs(periodReturn).toFixed(2)}%</span>
+          </div>
+        )}
       </div>
       {loading ? (
         <div style={{ height: 220, display: "flex", alignItems: "center", justifyContent: "center", color: "var(--text-tertiary)", fontSize: 13 }}>Loading...</div>
@@ -1416,11 +1472,11 @@ function PriceChart({ ticker, dailyChange, onPeriodChange }) {
         <div style={{ height: 220, display: "flex", alignItems: "center", justifyContent: "center", color: "var(--text-tertiary)", fontSize: 13 }}>No data</div>
       ) : (
         <ResponsiveContainer width="100%" height={220}>
-          <AreaChart data={chartData} margin={{ top: 8, right: 8, left: -10, bottom: 0 }}>
+          <AreaChart data={chartData} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
             <defs><linearGradient id="priceGrad" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor={color} stopOpacity={0.12} /><stop offset="100%" stopColor={color} stopOpacity={0.01} /></linearGradient></defs>
             <CartesianGrid strokeDasharray="3 3" stroke="#F2F3F5" vertical={false} />
             <XAxis dataKey="date" axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: "#8B95A1" }} interval={Math.max(0, Math.floor(chartData.length / 6) - 1)} />
-            <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: "#8B95A1" }} domain={["dataMin * 0.97", "dataMax * 1.03"]} tickFormatter={v => `$${v >= 1000 ? Math.round(v).toLocaleString() : v.toFixed(1)}`} width={58} />
+            <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: "#8B95A1" }} domain={["dataMin * 0.97", "dataMax * 1.03"]} tickFormatter={v => `$${v >= 1000 ? Math.round(v).toLocaleString() : v.toFixed(1)}`} width={68} />
             <Tooltip contentStyle={{ background: "white", border: "1px solid #E5E8EB", borderRadius: 10, boxShadow: "0 4px 12px rgba(0,0,0,0.08)", padding: "8px 14px", fontSize: 13, fontWeight: 600 }} formatter={(val) => [`$${typeof val === "number" ? val.toFixed(2) : val}`, ""]} labelStyle={{ color: "#8B95A1", fontSize: 11 }} />
             <Area type="monotone" dataKey="price" stroke={color} strokeWidth={2} fill="url(#priceGrad)" dot={false} activeDot={{ r: 4, stroke: color, strokeWidth: 2, fill: "white" }} />
           </AreaChart>
@@ -1535,6 +1591,9 @@ function CompanyPage({ searchTicker, onQuickSearch, onUsageConsume, user, isInWa
 
   return (
     <div className="content-area">
+      <div className="company-mobile-search" style={{ marginBottom: 16 }}>
+        {onQuickSearch && <SearchBox onSelect={onQuickSearch} />}
+      </div>
       <div className="company-hero fade-up">
         <div className="company-info">
           <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
@@ -1789,16 +1848,29 @@ function WatchlistPage({ user, onLogin, onSearch, watchlist, addToWatchlist, rem
 }
 
 // ─── Paywall Modal ───────────────────────────────────────────────
-function PaywallModal({ usageCount, maxFree, onCodeSubmit, onClose }) {
+function PaywallModal({ usageCount, maxFree, onCodeSubmit, onClose, mode }) {
   const [code, setCode] = useState("");
   const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
+  const isRegister = mode === "register";
 
-  const handleSubmit = () => {
-    if (onCodeSubmit(code.trim())) {
-      onClose();
-    } else {
-      setError("유효하지 않은 코드입니다");
+  const handleSubmit = async () => {
+    if (!code.trim()) return;
+    setLoading(true);
+    setError("");
+    try {
+      const result = await onCodeSubmit(code.trim());
+      if (result) {
+        onClose();
+      } else {
+        setError("유효하지 않은 코드입니다");
+        setTimeout(() => setError(""), 2000);
+      }
+    } catch {
+      setError("오류가 발생했습니다");
       setTimeout(() => setError(""), 2000);
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -1806,16 +1878,21 @@ function PaywallModal({ usageCount, maxFree, onCodeSubmit, onClose }) {
     <div className="paywall-overlay" onClick={onClose}>
       <div className="paywall-card" onClick={e => e.stopPropagation()} style={{ position: "relative" }}>
         <button className="paywall-close" onClick={onClose}>✕</button>
-        <div style={{ fontSize: 40, marginBottom: 12 }}>🔒</div>
-        <h3>무료 분석 횟수를 모두 사용했어요</h3>
-        <p>기업 분석은 <strong>{maxFree}회</strong>까지 무료입니다.<br />코드를 입력하거나 구매하면 무제한으로 사용할 수 있어요!</p>
-        <a href="https://litt.ly/hodumoney/sale/QnPfK6I" target="_blank" rel="noopener noreferrer"
-          style={{ display: "block", width: "100%", padding: "12px", marginBottom: 12, border: "none", borderRadius: 10,
-            background: "linear-gradient(135deg, #3182F6, #1B64DA)", color: "white", fontSize: 15, fontWeight: 700,
-            cursor: "pointer", fontFamily: "inherit", textAlign: "center", textDecoration: "none", letterSpacing: "-0.3px" }}>
-          기업분석 무제한 이용권 구매하기
-        </a>
-        <div style={{ fontSize: 12, color: "var(--text-tertiary)", marginBottom: 16 }}>또는 이미 이용권이 있으시면 코드를 입력해주세요</div>
+        <div style={{ fontSize: 40, marginBottom: 12 }}>{isRegister ? "🔑" : "🔒"}</div>
+        <h3>{isRegister ? "이용권 코드 등록" : "무료 분석 횟수를 모두 사용했어요"}</h3>
+        <p>{isRegister
+          ? "구매하신 이용권 코드를 입력해주세요."
+          : <>기업 분석은 <strong>{maxFree}회</strong>까지 무료입니다.<br />코드를 입력하거나 구매하면 무제한으로 사용할 수 있어요!</>
+        }</p>
+        {!isRegister && (
+          <a href="https://litt.ly/hodumoney/sale/QnPfK6I" target="_blank" rel="noopener noreferrer"
+            style={{ display: "block", width: "100%", padding: "12px", marginBottom: 12, border: "none", borderRadius: 10,
+              background: "linear-gradient(135deg, #3182F6, #1B64DA)", color: "white", fontSize: 15, fontWeight: 700,
+              cursor: "pointer", fontFamily: "inherit", textAlign: "center", textDecoration: "none", letterSpacing: "-0.3px" }}>
+            기업분석 무제한 이용권 구매하기
+          </a>
+        )}
+        {!isRegister && <div style={{ fontSize: 12, color: "var(--text-tertiary)", marginBottom: 16 }}>또는 이미 이용권이 있으시면 코드를 입력해주세요</div>}
         <input
           className={`paywall-input ${error ? "error" : ""}`}
           type="text"
@@ -1825,8 +1902,8 @@ function PaywallModal({ usageCount, maxFree, onCodeSubmit, onClose }) {
           onKeyDown={e => { if (e.key === "Enter") handleSubmit(); }}
         />
         {error && <div className="paywall-error">{error}</div>}
-        <button className="paywall-submit" onClick={handleSubmit}>코드 인증</button>
-        <div className="paywall-counter">사용 {usageCount}/{maxFree}회</div>
+        <button className="paywall-submit" onClick={handleSubmit} disabled={loading}>{loading ? "확인 중..." : "코드 인증"}</button>
+        {!isRegister && <div className="paywall-counter">사용 {usageCount}/{maxFree}회</div>}
       </div>
     </div>
   );
@@ -1851,6 +1928,72 @@ function UsageNotice({ message, onClose }) {
       }}>
         <div style={{ fontSize: 32, marginBottom: 8 }}>🔑</div>
         <div style={{ fontSize: 16, fontWeight: 700, color: "var(--text-primary)", letterSpacing: "-0.3px" }}>{message}</div>
+      </div>
+    </div>
+  );
+}
+
+// ─── 사용 가이드 Page ────────────────────────────────────────────
+function GuidePage() {
+  const sections = [
+    { icon: "📊", title: "시장 동향", desc: "미국과 한국의 주요 지수(S&P 500, 나스닥, 코스피 등)를 실시간으로 확인할 수 있습니다. 경제 지표, 심리 지표, 기준금리까지 한눈에 파악하세요.", free: true },
+    { icon: "🔍", title: "기업 분석", desc: "종목을 검색하면 핵심 밸류에이션(PER, PBR, EPS 등), 손익계산서, 대차대조표, 현금흐름표를 한국어로 쉽게 볼 수 있습니다. 각 항목을 클릭하면 트렌드 차트와 호두머니 코멘트가 표시됩니다.", free: false },
+    { icon: "⭐", title: "관심 종목", desc: "자주 보는 종목을 관심 종목으로 등록하면, 현재가와 기간별 수익률(1일/1주/1달/1년)을 한 페이지에서 확인할 수 있습니다. 로그인 후 이용 가능합니다.", free: false },
+  ];
+  return (
+    <div className="content-area" style={{ maxWidth: 680, margin: "0 auto", padding: "40px 20px" }}>
+      <div className="fade-up" style={{ textAlign: "center", marginBottom: 40 }}>
+        <div style={{ fontSize: 48, marginBottom: 12 }}>🥜</div>
+        <h2 style={{ fontSize: 26, fontWeight: 800, marginBottom: 8, letterSpacing: "-0.5px" }}>HODU MONEY 사용 가이드</h2>
+        <p style={{ fontSize: 15, color: "var(--text-tertiary)", lineHeight: 1.7 }}>어렵게 느껴지는 투자를 쉽게 정리합니다</p>
+      </div>
+      {sections.map((s, i) => (
+        <div key={i} className="card fade-up" style={{ marginBottom: 16, animationDelay: `${i * 0.1}s` }}>
+          <div style={{ display: "flex", alignItems: "flex-start", gap: 16 }}>
+            <div style={{ fontSize: 32, flexShrink: 0 }}>{s.icon}</div>
+            <div>
+              <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
+                <div style={{ fontSize: 18, fontWeight: 800 }}>{s.title}</div>
+                <span style={{ fontSize: 11, fontWeight: 600, padding: "2px 8px", borderRadius: 4, background: s.free ? "#E8FAF3" : "#FFF0F1", color: s.free ? "#03B26C" : "#F04452" }}>{s.free ? "무료" : "로그인 필요"}</span>
+              </div>
+              <p style={{ fontSize: 14, color: "var(--text-secondary)", lineHeight: 1.7, margin: 0 }}>{s.desc}</p>
+            </div>
+          </div>
+        </div>
+      ))}
+      <div className="card fade-up" style={{ marginTop: 24, textAlign: "center", padding: 28 }}>
+        <div style={{ fontSize: 15, fontWeight: 700, marginBottom: 12 }}>💡 무제한 이용권</div>
+        <p style={{ fontSize: 14, color: "var(--text-secondary)", lineHeight: 1.7, marginBottom: 16 }}>기업 분석은 무료 5회 체험 후, 무제한 이용권을 구매하시면 제한 없이 사용할 수 있습니다.</p>
+        <a href="https://litt.ly/hodumoney/sale/QnPfK6I" target="_blank" rel="noopener noreferrer" style={{ display: "inline-block", padding: "12px 28px", background: "#5D4037", color: "white", borderRadius: 10, fontSize: 15, fontWeight: 700, textDecoration: "none" }}>무제한 이용권 구매하기</a>
+      </div>
+    </div>
+  );
+}
+
+// ─── 문의하기 Page ───────────────────────────────────────────────
+function ContactPage() {
+  return (
+    <div className="content-area" style={{ maxWidth: 560, margin: "0 auto", padding: "60px 20px" }}>
+      <div className="fade-up" style={{ textAlign: "center", marginBottom: 40 }}>
+        <div style={{ fontSize: 48, marginBottom: 12 }}>💬</div>
+        <h2 style={{ fontSize: 26, fontWeight: 800, marginBottom: 8 }}>문의하기</h2>
+        <p style={{ fontSize: 15, color: "var(--text-tertiary)", lineHeight: 1.7 }}>궁금한 점이나 건의사항이 있으시면 언제든 연락해주세요</p>
+      </div>
+      <div className="card fade-up" style={{ textAlign: "center", padding: 32 }}>
+        <div style={{ fontSize: 14, color: "var(--text-secondary)", marginBottom: 16 }}>아래 이메일로 문의해주시면 빠르게 답변드리겠습니다</div>
+        <a href="mailto:hodusolution@naver.com" style={{ fontSize: 20, fontWeight: 800, color: "#5D4037", textDecoration: "none", display: "inline-flex", alignItems: "center", gap: 8, padding: "14px 28px", background: "#FFF8F0", borderRadius: 12, border: "1.5px solid #EFEBE9" }}>
+          📧 hodusolution@naver.com
+        </a>
+        <div style={{ marginTop: 20, fontSize: 13, color: "var(--text-tertiary)", lineHeight: 1.6 }}>
+          보통 1~2일 내 답변드립니다
+        </div>
+      </div>
+      <div className="card fade-up" style={{ marginTop: 16, textAlign: "center", padding: 28 }}>
+        <div style={{ fontSize: 15, fontWeight: 700, marginBottom: 12 }}>🔗 SNS</div>
+        <div style={{ display: "flex", gap: 12, justifyContent: "center" }}>
+          <a href="https://www.instagram.com/hodu.money/" target="_blank" rel="noopener noreferrer" style={{ padding: "10px 20px", background: "#F2F4F6", borderRadius: 10, fontSize: 14, fontWeight: 600, color: "var(--text-primary)", textDecoration: "none" }}>📸 인스타그램</a>
+          <a href="https://cafe.naver.com/hodumoney" target="_blank" rel="noopener noreferrer" style={{ padding: "10px 20px", background: "#F2F4F6", borderRadius: 10, fontSize: 14, fontWeight: 600, color: "var(--text-primary)", textDecoration: "none" }}>☕ 네이버 카페</a>
+        </div>
       </div>
     </div>
   );
@@ -1906,16 +2049,15 @@ function AuthModal({ onClose, onLogin }) {
 }
 
 // ─── Main App ────────────────────────────────────────────────────
-const VALID_CODES = ["MZHODU"];
 const MAX_FREE_ANALYSES = 5;
 
 export default function App() {
-  const [activePage, setActivePage] = useState("market");
+  const [activePage, setActivePage] = useState("company");
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [searchedTicker, setSearchedTicker] = useState("");
   const [usageCount, setUsageCount] = useState(0);
   const [isUnlocked, setIsUnlocked] = useState(false);
-  const [showPaywall, setShowPaywall] = useState(false);
+  const [showPaywall, setShowPaywall] = useState(null); // null | "limit" | "register"
   const [showWelcome, setShowWelcome] = useState(false);
   const [welcomeShown, setWelcomeShown] = useState(false);
   const [noticeMsg, setNoticeMsg] = useState(null);
@@ -1923,6 +2065,34 @@ export default function App() {
   const [showAuth, setShowAuth] = useState(null); // null | "login" | "signup"
   const [watchlist, setWatchlist] = useState([]); // [{ ticker, name, addedAt }]
   const [watchlistLoading, setWatchlistLoading] = useState(false);
+
+  // 유저 변경 시: Firestore + localStorage에서 unlock 상태 + 사용 횟수 로드
+  useEffect(() => {
+    if (!user?.uid) { setIsUnlocked(false); setUsageCount(0); return; }
+    // localStorage 즉시 복원 (Firestore 로딩 전에도 상태 유지)
+    try {
+      const local = JSON.parse(localStorage.getItem(`hodu_user_${user.uid}`) || "{}");
+      if (local.isUnlocked) setIsUnlocked(true);
+      if (typeof local.usageCount === "number") setUsageCount(local.usageCount);
+    } catch {}
+    // Firestore에서도 로드 (더 정확한 값으로 덮어씀)
+    (async () => {
+      try {
+        const { doc, getDoc } = await import("firebase/firestore");
+        const db = await getFirebaseFirestore();
+        const snap = await getDoc(doc(db, "users", user.uid));
+        if (snap.exists()) {
+          const d = snap.data();
+          if (d.isUnlocked) setIsUnlocked(true);
+          if (typeof d.usageCount === "number") setUsageCount(d.usageCount);
+          // localStorage도 동기화
+          try { localStorage.setItem(`hodu_user_${user.uid}`, JSON.stringify({ isUnlocked: !!d.isUnlocked, usageCount: d.usageCount || 0 })); } catch {}
+        }
+      } catch (e) {
+        console.error("User data load error:", e);
+      }
+    })();
+  }, [user?.uid]);
 
   // 관심종목 Firestore에서 로드 (유저 변경 시)
   useEffect(() => {
@@ -2016,8 +2186,12 @@ export default function App() {
   };
 
   const handleSearchSelect = (ticker) => {
+    if (!user) {
+      setShowAuth("login");
+      return;
+    }
     if (!isUnlocked && usageCount >= MAX_FREE_ANALYSES) {
-      setShowPaywall(true);
+      setShowPaywall("limit");
       return;
     }
     setSearchedTicker(ticker);
@@ -2025,15 +2199,19 @@ export default function App() {
   };
 
   const handleQuickSearch = (ticker) => {
+    if (!user) {
+      setShowAuth("login");
+      return;
+    }
     if (!isUnlocked && usageCount >= MAX_FREE_ANALYSES) {
-      setShowPaywall(true);
+      setShowPaywall("limit");
       return;
     }
     setSearchedTicker(ticker);
     setActivePage("company");
   };
 
-  const handleUsageConsume = () => {
+  const handleUsageConsume = async () => {
     if (isUnlocked) return;
     const newCount = usageCount + 1;
     setUsageCount(newCount);
@@ -2043,19 +2221,56 @@ export default function App() {
     } else {
       setNoticeMsg("무료 사용 횟수를 모두 사용했습니다");
     }
+    // localStorage 즉시 저장
+    if (user?.uid) {
+      try { localStorage.setItem(`hodu_user_${user.uid}`, JSON.stringify({ isUnlocked, usageCount: newCount })); } catch {}
+    }
+    // Firestore에도 저장
+    if (user?.uid) {
+      try {
+        const { doc, setDoc } = await import("firebase/firestore");
+        const db = await getFirebaseFirestore();
+        await setDoc(doc(db, "users", user.uid), { usageCount: newCount, email: user.email }, { merge: true });
+      } catch (e) { console.error("Usage save error:", e); }
+    }
   };
 
-  const handleCodeSubmit = (code) => {
-    if (VALID_CODES.includes(code.toUpperCase())) {
-      setIsUnlocked(true);
-      setNoticeMsg("무제한 이용권이 활성화되었습니다!");
-      return true;
+  const handleCodeSubmit = async (code) => {
+    try {
+      const res = await fetch("/api/verify-code", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ code }),
+      });
+      const data = await res.json();
+      if (data.valid) {
+        setIsUnlocked(true);
+        setNoticeMsg(data.message || "무제한 이용권이 활성화되었습니다!");
+        // localStorage 즉시 저장
+        if (user?.uid) {
+          try { localStorage.setItem(`hodu_user_${user.uid}`, JSON.stringify({ isUnlocked: true, usageCount })); } catch {}
+        }
+        // Firestore에 저장 (재로그인 시 유지)
+        if (user?.uid) {
+          try {
+            const { doc, setDoc } = await import("firebase/firestore");
+            const db = await getFirebaseFirestore();
+            await setDoc(doc(db, "users", user.uid), { isUnlocked: true, unlockedAt: new Date().toISOString(), email: user.email }, { merge: true });
+          } catch (e) { console.error("Unlock save error:", e); }
+        }
+        return true;
+      } else {
+        setNoticeMsg(data.error || "유효하지 않은 코드입니다");
+        return false;
+      }
+    } catch (e) {
+      setNoticeMsg("코드 확인 중 오류가 발생했습니다");
+      return false;
     }
-    return false;
   };
 
   const pageTitle = {
-    market: "시장 동향", company: "기업 분석", watchlist: "관심 종목",
+    market: "시장 동향", company: "기업 분석", watchlist: "관심 종목", guide: "사용 가이드", contact: "문의하기",
   };
 
   const usageBadgeClass = isUnlocked ? "usage-badge unlimited" : (usageCount >= MAX_FREE_ANALYSES ? "usage-badge warning" : "usage-badge");
@@ -2081,10 +2296,11 @@ export default function App() {
 
       {showPaywall && (
         <PaywallModal
+          mode={showPaywall}
           usageCount={usageCount}
           maxFree={MAX_FREE_ANALYSES}
           onCodeSubmit={handleCodeSubmit}
-          onClose={() => setShowPaywall(false)}
+          onClose={() => setShowPaywall(null)}
         />
       )}
 
@@ -2095,88 +2311,103 @@ export default function App() {
       {showAuth && <AuthModal onClose={() => setShowAuth(null)} onLogin={(u) => setUser(u)} />}
 
       <aside className={`sidebar ${sidebarOpen ? "open" : ""}`}>
-        <div className="sidebar-logo" onClick={() => handlePageChange("market")}>
+        <div className="sidebar-logo" onClick={() => handlePageChange("company")}>
           <div className="logo-icon">🥜</div>
-          <div className="logo-text">HODU MONEY</div>
+          <div className="logo-text">HODU<br/>MONEY</div>
           <div className="logo-sub">투자를 쉽게 정리합니다</div>
         </div>
-        {/* 로그인 */}
-        {user ? (
-          <div style={{ padding: "12px 12px 4px" }}>
-            <div className="auth-user">
-              <span>🙂</span>
-              <span className="auth-user-email">{user.name || user.email}</span>
-              <button className="auth-logout" onClick={async () => {
-                try {
-                  const { signOut } = await import("firebase/auth");
-                  const auth = await getFirebaseAuth();
-                  await signOut(auth);
-                } catch (e) {}
+        <div style={{ padding: "0 14px 0", flexShrink: 0 }}>
+          {user ? (
+            <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "7px 10px", background: "#F7F8FA", borderRadius: 8 }}>
+              <span style={{ fontSize: 13 }}>🙂</span>
+              <span style={{ fontSize: 13, fontWeight: 600, flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{user.name || user.email.split("@")[0]}</span>
+              <button onClick={async () => {
+                try { const { signOut } = await import("firebase/auth"); const auth = await getFirebaseAuth(); await signOut(auth); } catch (e) {}
                 setUser(null);
-              }}>로그아웃</button>
+              }} style={{ fontSize: 10, color: "var(--text-tertiary)", background: "none", border: "none", cursor: "pointer", fontFamily: "inherit", fontWeight: 600, flexShrink: 0 }}>로그아웃</button>
             </div>
-            <div style={{ fontSize: 11, color: "var(--text-tertiary)", textAlign: "center", marginTop: 6, lineHeight: 1.4 }}>
-              ⭐ 관심종목을 등록하고 한눈에 확인하세요
+          ) : (
+            <div onClick={() => setShowAuth("login")} style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 6, padding: "9px", background: "#5D4037", color: "white", borderRadius: 8, fontWeight: 700, fontSize: 13, cursor: "pointer", fontFamily: "inherit" }}>
+              🔐 Google로 로그인
             </div>
-          </div>
-        ) : (
-          <div style={{ padding: "12px 12px 4px" }}>
-            <div className="sidebar-item" onClick={() => setShowAuth("login")} style={{ background: "#5D4037", color: "white", borderRadius: "var(--radius-sm)", justifyContent: "center", fontWeight: 700 }}>
-              <span className="item-icon">🔐</span><span>Google로 로그인</span>
-            </div>
-            <div style={{ fontSize: 11, color: "var(--text-tertiary)", textAlign: "center", marginTop: 6, lineHeight: 1.4 }}>
-              로그인하면 관심종목을 등록할 수 있어요
-            </div>
-          </div>
-        )}
-        <div className="sidebar-divider" />
-        <div className="sidebar-section">
-          <div className="sidebar-section-label">분석 도구</div>
-          {MENU_ITEMS.map(item => (
-            <div key={item.id} className={`sidebar-item ${activePage === item.id ? "active" : ""}`} onClick={() => handlePageChange(item.id)}>
-              <span className="item-icon">{item.icon}</span>
-              <span>{item.label}</span>
-              {item.id === "company" && <span className="badge-soon" style={{ background: "#FFF0F1", color: "#F04452" }}>유료</span>}
-            </div>
-          ))}
+          )}
         </div>
         <div className="sidebar-divider" />
-        <div className="sidebar-section">
-          <div className="sidebar-section-label">정보</div>
-          <div className="sidebar-item"><span className="item-icon">📖</span><span>사용 가이드</span></div>
-          <div className="sidebar-item"><span className="item-icon">💬</span><span>문의하기</span></div>
+        <div className="sidebar-nav">
+          <div className="sidebar-section">
+            <div className="sidebar-section-label">분석 도구</div>
+            {MENU_ITEMS.filter(i => i.section === "분석 도구").map(item => (
+              <div key={item.id} className={`sidebar-item ${activePage === item.id ? "active" : ""}`} onClick={() => {
+                if (item.id === "watchlist" && !user) { setShowAuth("login"); return; }
+                handlePageChange(item.id);
+              }}>
+                <span className="item-icon">{item.icon}</span>
+                <span>{item.label}</span>
+              </div>
+            ))}
+          </div>
+          <div className="sidebar-section">
+            <div className="sidebar-section-label">정보</div>
+            {MENU_ITEMS.filter(i => i.section === "정보").map(item => (
+              <div key={item.id} className={`sidebar-item ${activePage === item.id ? "active" : ""}`} onClick={() => handlePageChange(item.id)}>
+                <span className="item-icon">{item.icon}</span>
+                <span>{item.label}</span>
+              </div>
+            ))}
+          </div>
         </div>
-        <div style={{ padding: "12px 24px" }}>
-          <div className={usageBadgeClass}>
-            {isUnlocked ? "✓ " : "🔑 "}기업분석 {usageBadgeText}
+        {/* 하단 고정 */}
+        <div className="sidebar-bottom">
+          {!isUnlocked && (
+            <a href="https://litt.ly/hodumoney/sale/QnPfK6I" target="_blank" rel="noopener noreferrer" style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 6, padding: "11px", background: "linear-gradient(135deg, #5D4037, #8D6E63)", color: "white", borderRadius: 10, fontWeight: 700, fontSize: 13, textDecoration: "none", fontFamily: "inherit", marginBottom: 6 }}>
+              무제한 이용권 구매
+            </a>
+          )}
+          <div onClick={() => { if (!isUnlocked) { if (!user) { setShowAuth("login"); } else { setShowPaywall("register"); } } }} style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 6, padding: "9px", background: isUnlocked ? "#E8FAF3" : "#F2F4F6", color: isUnlocked ? "#03B26C" : "var(--text-secondary)", borderRadius: 8, fontWeight: 700, fontSize: 12, cursor: isUnlocked ? "default" : "pointer", fontFamily: "inherit" }}>
+            {isUnlocked ? "✅ 무제한 이용권 등록 완료" : "🔑 이용권 코드 등록"}
+          </div>
+          <div style={{ textAlign: "center", marginTop: 5 }}>
+            <span className={usageBadgeClass} style={{ fontSize: 10 }}>
+              기업분석 {usageBadgeText}
+            </span>
           </div>
         </div>
       </aside>
 
       <main className="main-content">
         <div className="top-bar">
-          <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 12, minWidth: 0 }}>
             <button className="mobile-menu-btn" onClick={() => setSidebarOpen(true)}>☰</button>
-            <div className="top-bar-title">{pageTitle[activePage]}</div>
-          </div>
-          {activePage === "company" && searchedTicker && <SearchBox onSelect={handleSearchSelect} />}
-          {!user && (
-            <button onClick={() => setShowAuth("login")} style={{ padding: "7px 16px", borderRadius: 8, border: "1px solid var(--border)", background: "white", fontFamily: "inherit", fontSize: 13, fontWeight: 600, cursor: "pointer", color: "var(--text-secondary)", transition: "all 0.15s", whiteSpace: "nowrap" }}>로그인</button>
-          )}
-          {user && (
-            <div style={{ fontSize: 13, fontWeight: 600, color: "var(--text-secondary)", display: "flex", alignItems: "center", gap: 6 }}>
-              <span>🙂</span> {user.name || user.email.split("@")[0]}
+            <div style={{ display: "flex", alignItems: "center", gap: 10, minWidth: 0 }}>
+              <div className="top-bar-title">{pageTitle[activePage]}</div>
+              <div className="top-bar-brand-dot" style={{ width: 4, height: 4, borderRadius: 2, background: "#A67B5B", flexShrink: 0 }} />
+              <div className="top-bar-brand" style={{ fontSize: 12, color: "var(--text-tertiary)", fontWeight: 500, whiteSpace: "nowrap" }}>HODU MONEY</div>
             </div>
-          )}
+          </div>
+          <div style={{ display: "flex", alignItems: "center", gap: 12, flexShrink: 0 }}>
+            <div className="top-bar-search">
+              {activePage === "company" && searchedTicker && <SearchBox onSelect={handleSearchSelect} />}
+            </div>
+            {!user && (
+              <button onClick={() => setShowAuth("login")} style={{ padding: "8px 18px", borderRadius: 10, border: "none", background: "#5D4037", fontFamily: "inherit", fontSize: 13, fontWeight: 700, cursor: "pointer", color: "white", transition: "all 0.15s", whiteSpace: "nowrap" }}>로그인</button>
+            )}
+            {user && (
+              <div className="top-bar-user" style={{ fontSize: 13, fontWeight: 600, color: "var(--text-secondary)", display: "flex", alignItems: "center", gap: 6, padding: "6px 12px", background: "var(--bg-hover)", borderRadius: 8, maxWidth: 140, overflow: "hidden" }}>
+                <span style={{ flexShrink: 0 }}>🙂</span> <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{user.name || user.email.split("@")[0]}</span>
+              </div>
+            )}
+          </div>
         </div>
 
         {activePage === "market" && <MarketPage />}
         {activePage === "company" && (
           searchedTicker
-            ? <CompanyPage searchTicker={searchedTicker} onUsageConsume={handleUsageConsume} user={user} isInWatchlist={isInWatchlist} addToWatchlist={addToWatchlist} removeFromWatchlist={removeFromWatchlist} />
+            ? <CompanyPage searchTicker={searchedTicker} onQuickSearch={handleQuickSearch} onUsageConsume={handleUsageConsume} user={user} isInWatchlist={isInWatchlist} addToWatchlist={addToWatchlist} removeFromWatchlist={removeFromWatchlist} />
             : <CompanyPage searchTicker={null} onQuickSearch={handleQuickSearch} user={user} isInWatchlist={isInWatchlist} addToWatchlist={addToWatchlist} removeFromWatchlist={removeFromWatchlist} />
         )}
         {activePage === "watchlist" && <WatchlistPage user={user} onLogin={() => setShowAuth("login")} onSearch={(ticker) => { setSearchedTicker(ticker); setActivePage("company"); }} watchlist={watchlist} addToWatchlist={addToWatchlist} removeFromWatchlist={removeFromWatchlist} />}
+        {activePage === "guide" && <GuidePage />}
+        {activePage === "contact" && <ContactPage />}
       </main>
     </div>
   );
