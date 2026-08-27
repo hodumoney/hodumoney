@@ -161,8 +161,7 @@ export async function GET(request) {
           netMargin: revArr.map((r, i) => r > 0 ? niArr[i] / r : 0),
         },
         shares: {
-          quarterly: rev(inc.sharesOut),
-          yearly: rev(inc.sharesOut),
+          data: rev(inc.sharesOut),
         },
       };
     };
