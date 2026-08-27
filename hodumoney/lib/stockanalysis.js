@@ -180,26 +180,32 @@ function parseTable(html) {
   if (!html) return {};
 
   const map = {};
-  const m = html.match(/<tbody[^>]*>([\s\S]*?)<\/tbody>/);
-  if (!m) return map;
+  // 여러 <tbody> 섹션 모두 읽기 (StockAnalysis ratios 페이지는 섹션별로 분리됨)
+  const tbodies = [...html.matchAll(/<tbody[^>]*>([\s\S]*?)<\/tbody>/g)];
+  if (tbodies.length === 0) return map;
 
-  for (const row of m[1].split("</tr>")) {
-    if (!row.includes("<td")) continue;
+  for (const tb of tbodies) {
+    for (const row of tb[1].split("</tr>")) {
+      if (!row.includes("<td")) continue;
 
-    const nm = row.match(/<td[^>]*>(.*?)<\/td>/);
-    if (!nm) continue;
+      const nm = row.match(/<td[^>]*>(.*?)<\/td>/);
+      if (!nm) continue;
 
-    const name = stripHtml(nm[1]);
-    const vals = [];
-    const cells = [...row.matchAll(/<td[^>]*>([\s\S]*?)<\/td>/g)];
+      const name = stripHtml(nm[1]);
+      if (!name) continue;
 
-    for (let j = 1; j < cells.length; j++) {
-      let v = stripHtml(cells[j][1]).replace(/,/g, "").replace("%", "");
-      let n = v === "-" || v === "" || v.toLowerCase() === "n/a" ? 0 : parseFloat(v);
-      vals.push(Number.isNaN(n) ? 0 : n);
+      const vals = [];
+      const cells = [...row.matchAll(/<td[^>]*>([\s\S]*?)<\/td>/g)];
+
+      for (let j = 1; j < cells.length; j++) {
+        let v = stripHtml(cells[j][1]).replace(/,/g, "").replace("%", "");
+        let n = v === "-" || v === "" || v.toLowerCase() === "n/a" ? 0 : parseFloat(v);
+        vals.push(Number.isNaN(n) ? 0 : n);
+      }
+
+      // 이미 있는 키는 덮어쓰지 않음 (첫 등장 우선)
+      if (!(name in map)) map[name] = vals;
     }
-
-    map[name] = vals;
   }
 
   return map;
@@ -251,21 +257,26 @@ function findEstimateIndices(labels) {
     if (qm) {
       const qNum = parseInt(qm[1]);
       const year = parseInt(qm[2]);
-      // Allow current quarter + 1 for fiscal year offset, skip anything beyond
-      if (year > curYear + 1 || (year === curYear + 1 && qNum > curQ + 1)) {
+      if (year > curYear || (year === curYear && qNum > curQ)) {
         indices.push(i);
       }
     }
-    // Check annual: "FY 2028" etc
+    // Check annual: "FY 2027" etc
     const fm = l.match(/FY\s*(\d{4})/);
-    if (fm && parseInt(fm[1]) > curYear + 1) {
+    if (fm && parseInt(fm[1]) > curYear) {
       indices.push(i);
     }
   }
   return indices;
 }
 
-// 추정치 제거한 배열 반환
+// 추정치 라벨에 (예상) 표시 추가
+function markEstimateLabels(labels, estIndices) {
+  if (!labels || !estIndices || estIndices.length === 0) return labels;
+  return labels.map((l, i) => estIndices.includes(i) ? `${l.replace(/E$/i, "")} (예상)` : l);
+}
+
+// 추정치 제거한 배열 반환 (사용하지 않지만 유지)
 function removeEstimates(arr, estIndices) {
   if (!arr || !estIndices || estIndices.length === 0) return arr;
   return arr.filter((_, i) => !estIndices.includes(i));
@@ -467,6 +478,11 @@ export async function getOverview(ticker) {
     rawDescription,
   });
 
+  // 결산월 추출 (Fiscal Year Ends: "January", "September" 등)
+  const fyEndRaw = stats["Fiscal Year Ends"] || stats["Fiscal Year End"] || "";
+  const monthMap = { january: 1, february: 2, march: 3, april: 4, may: 5, june: 6, july: 7, august: 8, september: 9, october: 10, november: 11, december: 12 };
+  const fiscalYearEndMonth = monthMap[fyEndRaw.toLowerCase().trim()] || 12; // 기본값 12월 (달력 = 회계연도)
+
   return {
     name: companyName,
     ticker: ticker.toUpperCase(),
@@ -482,6 +498,7 @@ export async function getOverview(ticker) {
     yearLow,
     dailyChange,
     currency,
+    fiscalYearEndMonth,
   };
 }
 
@@ -490,68 +507,63 @@ export async function getIncome(ticker, quarterly) {
   const data = parseTable(html);
   const labels = extractLabels(html);
   const estIdx = findEstimateIndices(labels);
-  const clean = (arr) => removeEstimates(arr, estIdx);
 
   return {
-    labels: clean(labels),
-    revenue: clean(getRow(data, ["Revenue", "Total Revenue"])),
-    grossProfit: clean(getRow(data, ["Gross Profit"])),
-    operatingIncome: clean(getRow(data, ["Operating Income"])),
-    netIncome: clean(getRow(data, ["Net Income"])),
-    ebitda: clean(getRow(data, ["EBITDA"])),
-    eps: clean(getRow(data, ["EPS (Diluted)", "EPS (Basic)", "EPS"])),
-    sharesOut: clean(getRow(data, [
+    labels: markEstimateLabels(labels, estIdx),
+    revenue: getRow(data, ["Revenue", "Total Revenue"]),
+    grossProfit: getRow(data, ["Gross Profit"]),
+    operatingIncome: getRow(data, ["Operating Income"]),
+    netIncome: getRow(data, ["Net Income"]),
+    ebitda: getRow(data, ["EBITDA"]),
+    eps: getRow(data, ["EPS (Diluted)", "EPS (Basic)", "EPS"]),
+    sharesOut: getRow(data, [
       "Shares Outstanding (Diluted)",
       "Shares Outstanding (Basic)",
-    ])),
+    ]),
   };
 }
 
 export async function getBalance(ticker, quarterly) {
   const html = await fetchPage(ticker, "financials/balance-sheet/", quarterly);
   const data = parseTable(html);
-  const labels = extractLabels(html);
-  const estIdx = findEstimateIndices(labels);
-  const clean = (arr) => removeEstimates(arr, estIdx);
 
   return {
-    totalAssets: clean(getRow(data, ["Total Assets"])),
-    currentLiab: clean(getRow(data, ["Total Current Liabilities"])),
-    equity: clean(getRow(data, ["Total Equity", "Shareholders' Equity"])),
+    totalAssets: getRow(data, ["Total Assets"]),
+    currentLiab: getRow(data, ["Total Current Liabilities", "Current Liabilities"]),
+    equity: getRow(data, ["Shareholders' Equity", "Total Shareholders' Equity", "Total Equity", "Total Stockholders Equity", "Total Common Equity"]),
   };
 }
 
 export async function getCashFlow(ticker, quarterly) {
   const html = await fetchPage(ticker, "financials/cash-flow-statement/", quarterly);
   const data = parseTable(html);
-  const labels = extractLabels(html);
-  const estIdx = findEstimateIndices(labels);
-  const clean = (arr) => removeEstimates(arr, estIdx);
 
   return {
-    fcf: clean(getRow(data, ["Free Cash Flow"])),
-    opCash: clean(getRow(data, ["Operating Cash Flow"])),
-    invCash: clean(getRow(data, ["Investing Cash Flow"])),
-    finCash: clean(getRow(data, ["Financing Cash Flow"])),
-    netChange: clean(getRow(data, ["Net Change in Cash", "Net Cash Flow"])),
+    fcf: getRow(data, ["Free Cash Flow", "Levered Free Cash Flow"]),
+    opCash: getRow(data, ["Operating Cash Flow", "Cash from Operations", "Operating Cash Flow"]),
+    invCash: getRow(data, ["Investing Cash Flow", "Cash from Investing"]),
+    finCash: getRow(data, ["Financing Cash Flow", "Cash from Financing"]),
+    netChange: getRow(data, ["Net Change in Cash", "Net Cash Flow", "Net Change In Cash"]),
   };
 }
 
 export async function getRatios(ticker, quarterly) {
   const html = await fetchPage(ticker, "financials/ratios/", quarterly);
   const data = parseTable(html);
+
+  // ratios 페이지는 첫 데이터 컬럼이 "Current"(실시간)일 수 있음 → 헤더로 판별해 제거
   const labels = extractLabels(html);
-  const estIdx = findEstimateIndices(labels);
-  const clean = (arr) => removeEstimates(arr, estIdx);
+  const hasCurrentCol = labels.length > 0 && /current/i.test(labels[0]);
+  const drop = (arr) => hasCurrentCol && arr.length > 1 ? arr.slice(1) : arr;
 
   return {
-    pe: clean(getRow(data, ["PE Ratio"])),
-    pb: clean(getRow(data, ["PB Ratio"])),
-    deRatio: clean(getRow(data, ["Debt / Equity Ratio"])),
-    roe: clean(getRow(data, ["Return on Equity (ROE)"])),
-    divYield: clean(getRow(data, ["Dividend Yield"])),
-    evEbitda: clean(getRow(data, ["EV / EBITDA", "EV/EBITDA"])),
-    peg: clean(getRow(data, ["PEG Ratio"])),
+    pe: drop(getRow(data, ["PE Ratio"])),
+    pb: drop(getRow(data, ["PB Ratio"])),
+    deRatio: drop(getRow(data, ["Debt / Equity Ratio"])),
+    roe: drop(getRow(data, ["Return on Equity (ROE)"])),
+    divYield: drop(getRow(data, ["Dividend Yield"])),
+    evEbitda: drop(getRow(data, ["EV/EBITDA Ratio", "EV / EBITDA", "EV/EBITDA"])),
+    peg: drop(getRow(data, ["PEG Ratio"])),
   };
 }
 
